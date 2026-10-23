@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Database\OracleConnection;
+use Illuminate\Database\Connection;
 use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
@@ -13,7 +15,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Reaproveita o resolver do yajra (PDO e variáveis de sessão já aplicadas) e
+        // troca só a classe da conexão, para o schema builder tolerar bancos sem Oracle Text.
+        $yajra = Connection::getResolver('oracle');
+
+        Connection::resolverFor('oracle', function ($pdo, $database, $prefix, $config) use ($yajra) {
+            $base = $yajra($pdo, $database, $prefix, $config);
+
+            return new OracleConnection($base->getPdo(), $database, $prefix, $config);
+        });
     }
 
     /**
