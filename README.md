@@ -1,76 +1,90 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Mapa Cultura
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Portal da Fundação Gregório de Mattos (FGM), Salvador/BA: vitrine de editais e eventos culturais, com entrada pelo login único gov.br (OIDC + PKCE). Proponentes não têm senha; o usuário é identificado pelo CPF.
 
-## About Laravel
+Stack: Laravel 13, Inertia + Vue 3, Vite, Oracle 23ai Free (Docker).
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Como subir
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
-
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
-
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+Requisitos: Docker (no Windows, Docker/WSL com pelo menos 2 GB de RAM livres para o Oracle Free; 4 GB recomendados), Node e npm no host.
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+cp .env.example .env            # defina DB_PASSWORD e ORACLE_PASSWORD
+docker compose up -d --build
+docker compose exec app composer install
+docker compose exec app php artisan key:generate
+docker compose exec app php artisan migrate --seed
+npm i
+npm run dev                     # ou "npm run build" para o bundle de produção
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+O app responde em http://localhost:8000. As portas 8000 e 1521 ficam presas a `127.0.0.1`, ou seja, não são expostas à rede.
 
-## Contributing
+### Banco de dados
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+- Oracle 23ai Free (`gvenzl/oracle-free:23-slim`), service `FREEPDB1`, `DB_SERVER_VERSION=12c`.
+- `DB_PASSWORD` é repassada ao Oracle como `APP_USER_PASSWORD`. O script `docker/oracle/init/01-test-user.sh` cria também o usuário `mapacultura_test` com a mesma senha, usado pelos testes. Nenhuma senha é versionada.
+- O Oracle Free não tem o Oracle Text, que o driver padrão assume. Por isso o app traz `App\Database\OracleConnection`.
+- Todo comando PHP roda no container: `docker compose exec app ...`.
 
-## Code of Conduct
+## Testes
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```bash
+docker compose exec app php artisan test
+docker compose exec app vendor/bin/pint --test
+```
 
-## Security Vulnerabilities
+## Login gov.br
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Rotas: `GET /auth/govbr/redirect`, `GET /auth/govbr/callback`, `GET /auth/govbr/logout` (retorno do logout do gov.br) e `POST /logout`.
 
-## License
+O `id_token` é validado com o JWKS do gov.br (cache de 1 h, só RS256), `iss`, `aud`, `exp` (tolerância de 60 s) e `nonce`; o `sub` precisa ser um CPF válido. O limite é de 10 requisições por minuto por rota e por IP.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### Pedido de credenciais ao gov.br
 
-## Banco de dados (Oracle 23ai Free via Docker)
+Ao solicitar a credencial, informe:
 
-`docker compose up -d --build` sobe o app (porta 8000) e o Oracle (porta 1521, service `FREEPDB1`).
-Copie `.env.example` para `.env` e defina `DB_PASSWORD` e `ORACLE_PASSWORD` (nenhuma senha e versionada).
-`DB_PASSWORD` e repassada ao Oracle como `APP_USER_PASSWORD`; o script `docker/oracle/init/01-test-user.sh` cria `mapacultura_test` com a mesma senha
-(os testes usam esse usuario). Comandos PHP rodam no container: `docker compose exec app php artisan test`.
+| Campo | Valor |
+| --- | --- |
+| URL de retorno | `https://fgm.techpulseglobal.com.br/auth/govbr/callback` |
+| URL de logout | `https://fgm.techpulseglobal.com.br/auth/govbr/logout` |
 
-## Login gov.br (Login Único — OIDC + PKCE)
+A homologação não exige domínio oficial. A produção exige (Portaria SGD/MGI nº 7.076/2024).
 
-Fluxo Authorization Code + PKCE (S256) com `state` e `nonce`. Rotas: `GET /auth/govbr/redirect`, `GET /auth/govbr/callback`, `GET /auth/govbr/logout` (retorno do logout do gov.br) e `POST /logout`.
+### Trocar do login simulado para o real
 
-- `.env`: `GOVBR_DRIVER=govbr`, `GOVBR_BASE_URL` (staging `https://sso.staging.acesso.gov.br`, produção `https://sso.acesso.gov.br`), `GOVBR_CLIENT_ID`, `GOVBR_CLIENT_SECRET`, `GOVBR_REDIRECT_URI` (`…/auth/govbr/callback`), `GOVBR_LOGOUT_REDIRECT_URI` (`…/auth/govbr/logout`, precisa estar cadastrada como URL de Log Out da credencial), `GOVBR_SCOPES`.
-- O `id_token` é validado com o JWKS do gov.br (cache de 1h, só RS256), `iss`, `aud`, `exp` (tolerância de 60s), `nonce`, e o `sub` precisa ser um CPF válido.
-- Limite: 10 req/min por rota e por IP (limitador `govbr`). O JWKS é recarregado uma vez (no máximo a cada 60s) quando chega um `kid` desconhecido, o que cobre a rotação de chaves.
-- `GOVBR_TRUST_LEVEL_URL` é opcional (vazio = não consulta). Aceita o marcador `{cpf}` e é chamada com o `access_token` como Bearer. Uma falha nessa consulta não impede o login.
+O padrão local é `GOVBR_DRIVER=fake`, que oferece contas de teste. Para o login real:
 
-**Conferido no Roteiro em 2026-10-23** (https://roteiro-tecnico.acesso.gov.br/iniciarintegracao.html): `GET {base}/authorize`, `POST {base}/token` (form, Basic `client_id:client_secret`, `grant_type`, `code`, `redirect_uri`, `code_verifier`), `{base}/jwk` e `{base}/logout?post_logout_redirect_uri=…`. Os defaults de `config('govbr.endpoints')` estão de acordo e não foram alterados. O Roteiro também cita os escopos `govbr_confiabilidades` / `govbr_confiabilidades_idtoken` e a claim `reliability_info` no `id_token` como a forma atual de obter a confiabilidade. A API de níveis aparece como obsoleta. Esta versão ainda não lê `reliability_info`.
+```env
+GOVBR_DRIVER=govbr
+GOVBR_BASE_URL=https://sso.staging.acesso.gov.br   # produção: https://sso.acesso.gov.br
+GOVBR_CLIENT_ID=...
+GOVBR_CLIENT_SECRET=...
+GOVBR_REDIRECT_URI=https://fgm.techpulseglobal.com.br/auth/govbr/callback
+GOVBR_LOGOUT_REDIRECT_URI=https://fgm.techpulseglobal.com.br/auth/govbr/logout
+GOVBR_SCOPES="openid email profile"
+```
+
+`GOVBR_DRIVER=fake` só funciona com `APP_ENV` em `local` ou `staging`. Em `production` a aplicação não sobe com o driver simulado, e as rotas do login simulado respondem 404.
+
+`GOVBR_TRUST_LEVEL_URL` é opcional (vazio = não consulta); aceita o marcador `{cpf}` e é chamada com o `access_token` como Bearer. Uma falha nela não impede o login. O Roteiro marca essa API de níveis como obsoleta; a forma atual é a claim `reliability_info` do `id_token` (escopos `govbr_confiabilidades`), que esta versão ainda não lê.
+
+Roteiro conferido em 2026-10-23 (https://roteiro-tecnico.acesso.gov.br/iniciarintegracao.html): `GET {base}/authorize`, `POST {base}/token` (form, Basic `client_id:client_secret`), `{base}/jwk` e `{base}/logout?post_logout_redirect_uri=…`. Os defaults de `config/govbr.php` seguem esses caminhos.
+
+## Homologação (staging)
+
+```env
+APP_ENV=staging
+APP_DEBUG=false
+SESSION_SECURE_COOKIE=true
+TRUSTED_PROXIES=<IP do proxy que termina o TLS, ou *>
+```
+
+- Fora de `local`, o app força HTTPS e cookie de sessão seguro.
+- `TRUSTED_PROXIES` é necessário atrás de proxy reverso para honrar `X-Forwarded-Proto` (HSTS, URLs https). Vazio = nenhum.
+- Com `APP_ENV=staging` e `GOVBR_DRIVER=fake`, todas as páginas mostram a faixa "Ambiente de teste — login simulado, não use dados reais".
+- Mantenha `APP_DEBUG=false` em staging e produção.
+
+## Segurança e auditoria
+
+`composer audit` e `npm audit --omit=dev` devem ficar sem vulnerabilidades. O app envia CSP com nonce por requisição e demais cabeçalhos de segurança (`SecurityHeaders`).
