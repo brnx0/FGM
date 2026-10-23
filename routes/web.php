@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Auth\LogoutController;
+use App\Http\Controllers\CadastroController;
 use App\Http\Controllers\EditalController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\PaginaController;
@@ -14,3 +16,6 @@ Route::controller(PaginaController::class)->group(function () {
     Route::get('/privacidade', 'privacidade')->name('paginas.privacidade');
     Route::get('/termos', 'termos')->name('paginas.termos');
 });
+
+Route::get('/cadastro', [CadastroController::class, 'completar'])->middleware('auth')->name('cadastro');
+Route::post('/logout', LogoutController::class)->name('logout');

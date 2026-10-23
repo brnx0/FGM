@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\Cpf;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -38,9 +39,8 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'auth' => [
-                // Task 6 completa com o nome do cadastro e o CPF mascarado.
                 'user' => fn () => $request->user()
-                    ? ['nome' => $request->user()->name, 'cpfMascarado' => null]
+                    ? ['nome' => $request->user()->name, 'cpfMascarado' => Cpf::mascarar($request->user()->cpf)]
                     : null,
             ],
             'ambienteTeste' => app()->environment('staging') && config('govbr.driver') === 'fake',
