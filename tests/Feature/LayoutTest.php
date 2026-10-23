@@ -2,11 +2,15 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class LayoutTest extends TestCase
 {
+    // A home consulta editais e eventos.
+    use RefreshDatabase;
+
     public function test_home_usa_inertia_com_props_compartilhadas(): void
     {
         $this->get('/')->assertOk()->assertInertia(fn (Assert $p) => $p

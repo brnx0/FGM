@@ -1,7 +1,16 @@
 <?php
 
+use App\Http\Controllers\EditalController;
+use App\Http\Controllers\HomeController;
+use App\Http\Controllers\PaginaController;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
-// Provisória: a home real (com editais e eventos) chega na Task 5.
-Route::get('/', fn () => Inertia::render('Home'))->name('home');
+Route::get('/', HomeController::class)->name('home');
+Route::get('/editais/{edital:slug}', [EditalController::class, 'show'])->name('editais.show');
+
+Route::controller(PaginaController::class)->group(function () {
+    Route::get('/a-fgm', 'aFgm')->name('paginas.a-fgm');
+    Route::get('/duvidas', 'duvidas')->name('paginas.duvidas');
+    Route::get('/privacidade', 'privacidade')->name('paginas.privacidade');
+    Route::get('/termos', 'termos')->name('paginas.termos');
+});
