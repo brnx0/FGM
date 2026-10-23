@@ -5,10 +5,11 @@ import { onMounted, ref } from 'vue';
 const CHAVE_FONTE = 'a11yFonte';
 const CHAVE_CONTRASTE = 'a11yContraste';
 
+// Os rótulos começam pelo texto visível (WCAG 2.5.3, rótulo no nome).
 const tamanhos = [
-    { valor: '90', texto: 'A-', rotulo: 'Diminuir tamanho do texto' },
-    { valor: '100', texto: 'A', rotulo: 'Tamanho padrão do texto' },
-    { valor: '115', texto: 'A+', rotulo: 'Aumentar tamanho do texto' },
+    { valor: '90', texto: 'A-', rotulo: 'A-, diminuir tamanho do texto' },
+    { valor: '100', texto: 'A', rotulo: 'A, tamanho padrão do texto' },
+    { valor: '115', texto: 'A+', rotulo: 'A+, aumentar tamanho do texto' },
 ];
 
 const fonte = ref('100');

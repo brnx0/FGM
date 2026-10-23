@@ -84,6 +84,11 @@ html.alto-contraste .barra-institucional {
         outline: 2px solid var(--color-acao);
         outline-offset: 2px;
     }
+
+    /* Sobre o azul profundo (e o preto do alto contraste) o anel azul some: usa branco. */
+    .barra-institucional :focus-visible {
+        outline-color: #ffffff;
+    }
 }
 
 /* Botões e controles: escala .95 ao pressionar (regra Apple). */

@@ -20,6 +20,9 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->redirectGuestsTo('/');
+
+        // Proxies confiáveis (TRUSTED_PROXIES) são aplicados no AppServiceProvider,
+        // a partir de config('app.trusted_proxies'), para funcionar com config:cache.
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

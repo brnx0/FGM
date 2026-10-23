@@ -68,6 +68,13 @@ return [
     'timezone' => env('APP_TIMEZONE', 'UTC'),
 
     /*
+    | Proxies que terminam o TLS na frente do app: IPs/CIDRs separados por
+    | vírgula, ou "*". Vazio = nenhum (X-Forwarded-* é ignorado).
+    */
+
+    'trusted_proxies' => env('TRUSTED_PROXIES', ''),
+
+    /*
     |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------
