@@ -26,7 +26,7 @@ onBeforeUnmount(() => {
     <div
         ref="faixa"
         role="status"
-        class="sticky top-0 z-[60] bg-[#FEF3C7] px-4 py-2 text-center text-[0.875rem] font-semibold text-[#78350F]"
+        class="sticky top-0 z-[60] bg-aviso-fundo px-4 py-2 text-center text-[0.875rem] font-semibold text-aviso-texto"
     >
         Ambiente de teste — login simulado, não use dados reais
     </div>

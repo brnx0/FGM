@@ -90,4 +90,15 @@ class LayoutTest extends TestCase
         $this->assertNotEmpty($csp[1] ?? null, 'CSP sem nonce');
         $this->assertSame($csp[1], $script[1] ?? null, 'Script de preferências sem o nonce da CSP');
     }
+
+    public function test_tema_noturno_e_aplicado_pelo_mesmo_script_com_nonce(): void
+    {
+        $resposta = $this->get('/')->assertOk();
+
+        preg_match("/'nonce-([A-Za-z0-9+\/=]+)'/", $resposta->headers->get('Content-Security-Policy'), $csp);
+        preg_match('/<script nonce="([^"]+)">[^<]*prefers-color-scheme: dark[^<]*classList\.add\(\'escuro\'\)/', $resposta->getContent(), $script);
+
+        $this->assertNotEmpty($script[1] ?? null, 'Script não aplica a classe escuro');
+        $this->assertSame($csp[1] ?? null, $script[1], 'Tema noturno fora do script de preferências com nonce');
+    }
 }

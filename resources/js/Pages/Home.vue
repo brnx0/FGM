@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import EditalCard from '../Components/EditalCard.vue';
-import EventoCard from '../Components/EventoCard.vue';
+import EventosCarrossel from '../Components/EventosCarrossel.vue';
 import GovBrButton from '../Components/GovBrButton.vue';
 import type { HomeProps } from '../types';
 
@@ -49,7 +49,7 @@ const textoAbertos = computed(() =>
         </svg>
     </section>
 
-    <section id="editais" class="faixa-editais scroll-mt-20 bg-acao px-4 pt-14 pb-20 text-sobre-acao" aria-labelledby="editais-titulo">
+    <section id="editais" class="faixa-editais scroll-mt-20 bg-faixa px-4 pt-14 pb-20 text-sobre-faixa" aria-labelledby="editais-titulo">
         <div class="mx-auto max-w-6xl">
             <div class="text-center">
                 <p class="text-[4rem] leading-none font-extrabold tracking-[-0.04em] sm:text-[5.5rem]" aria-hidden="true">{{ totalAbertos }}</p>
@@ -69,18 +69,19 @@ const textoAbertos = computed(() =>
         </div>
     </section>
 
-    <section id="eventos" class="scroll-mt-20 bg-nevoa px-4 py-16" aria-labelledby="eventos-titulo">
-        <div class="mx-auto max-w-6xl">
-            <div class="text-center">
+    <section
+        id="eventos"
+        class="scroll-mt-20 bg-nevoa py-16"
+        aria-labelledby="eventos-titulo"
+        :aria-roledescription="eventos.length ? 'carrossel' : undefined"
+    >
+        <div class="px-4">
+            <div class="mx-auto max-w-6xl">
                 <h2 id="eventos-titulo" class="text-[1.75rem] sm:text-[2.5rem]">Já aconteceu.</h2>
                 <p class="mt-2 text-tinta-suave">O que a cultura de Salvador viveu nos últimos meses.</p>
+                <p v-if="!eventos.length" class="mt-8 text-[1.1875rem]">Nenhum evento publicado ainda.</p>
             </div>
-            <ul v-if="eventos.length" class="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 grade3:grid-cols-3">
-                <li v-for="(evento, i) in eventos" :key="i">
-                    <EventoCard :evento="evento" />
-                </li>
-            </ul>
-            <p v-else class="mt-8 text-center text-[1.1875rem]">Nenhum evento publicado ainda.</p>
         </div>
+        <EventosCarrossel v-if="eventos.length" :eventos="eventos" class="mt-10" />
     </section>
 </template>

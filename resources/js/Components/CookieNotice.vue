@@ -27,7 +27,7 @@ const dispensar = () => {
     <section
         v-if="visivel"
         aria-label="Aviso de cookies"
-        class="fixed inset-x-4 bottom-4 z-40 mx-auto max-w-lg rounded-card border border-hairline bg-fundo p-5 pr-14 sm:inset-x-auto sm:right-6 sm:bottom-6"
+        class="fixed inset-x-4 bottom-4 z-40 mx-auto max-w-lg rounded-card border border-hairline bg-superficie p-5 pr-14 sm:inset-x-auto sm:right-6 sm:bottom-6"
     >
         <button
             type="button"

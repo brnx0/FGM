@@ -22,8 +22,30 @@
     --color-sobre-acao: #ffffff;
     --color-tinta-suave: #4a4a4f;
 
+    /* Cards e painéis sobre o fundo; botão gov.br; faixa azul dos editais. */
+    --color-superficie: #ffffff;
+    --color-sobre-govbr: #ffffff;
+    --color-faixa: #004d9f;
+    --color-sobre-faixa: #ffffff;
+
+    /* Mensagens: erro (flash) e aviso (ambiente de teste, texto provisório). */
+    --color-erro-fundo: #fdecec;
+    --color-erro-borda: #f5c2c0;
+    --color-erro-texto: #8a1c1c;
+    --color-aviso-fundo: #fef3c7;
+    --color-aviso-texto: #78350f;
+
+    /* Carrossel "Já aconteceu": setas translúcidas (Apple) e cores dos cards sem foto. */
+    --color-seta: rgba(210, 210, 215, 0.64);
+    --color-seta-hover: rgba(223, 223, 227, 0.8);
+    --color-seta-icone: #1d1d1f;
+    --color-cartao-1: #004d9f;
+    --color-cartao-2: #0a2747;
+    --color-cartao-3: #0c427b;
+
     --radius-sm: 8px;
     --radius-card: 18px;
+    --radius-cartao: 24px;
     --radius-pill: 9999px;
 
     /* Corpo em 17px; em rem para acompanhar os controles A- / A / A+. */
@@ -37,8 +59,61 @@
     --breakpoint-grade3: 66.75rem;
 }
 
+/* Modo noturno: azul-marinho em vez de preto. Vem antes do alto contraste, que
+   redefine os mesmos tokens e por isso sempre vence quando as duas classes estão ativas. */
+html.escuro {
+    color-scheme: dark;
+    --color-fundo: #0b1526;
+    --color-superficie: #13233d;
+    --color-parchment: #0f1d33;
+    --color-nevoa: #0e1c30;
+    --color-tinta: #f5f5f7;
+    --color-tinta-suave: #b8c2d3;
+    --color-hairline: rgba(255, 255, 255, 0.14);
+    --color-acao: #6aa6ff;
+    --color-acao-escuro: #4c8ef5;
+    --color-sobre-acao: #0b1526;
+    --color-profundo: #0a2747;
+    --color-govbr: #1351b4;
+    --color-sobre-govbr: #ffffff;
+    --color-faixa: #0c427b;
+    --color-sobre-faixa: #f5f5f7;
+    --color-erro-fundo: #3a1820;
+    --color-erro-borda: #7a2e38;
+    --color-erro-texto: #ffd6d6;
+    --color-aviso-fundo: #3b2f12;
+    --color-aviso-texto: #fde68a;
+    --color-seta: rgba(184, 194, 211, 0.2);
+    --color-seta-hover: rgba(184, 194, 211, 0.3);
+    --color-seta-icone: #f5f5f7;
+    --color-cartao-1: #0c427b;
+    --color-cartao-2: #1a3a66;
+    --color-cartao-3: #12305a;
+}
+
+/* Véu da abertura mais fechado à noite, terminando no azul da faixa de editais. */
+html.escuro:not(.alto-contraste) .abertura-veu {
+    background-image: linear-gradient(180deg, rgba(11, 21, 38, 0.7), rgba(12, 66, 123, 0.9));
+}
+
 /* Modo de acessibilidade: a regra "nada de preto" não se aplica aqui. */
 html.alto-contraste {
+    color-scheme: dark;
+    --color-superficie: #000000;
+    --color-sobre-govbr: #000000;
+    --color-faixa: #000000;
+    --color-sobre-faixa: #ffffff;
+    --color-erro-fundo: #fdecec;
+    --color-erro-borda: #f5c2c0;
+    --color-erro-texto: #8a1c1c;
+    --color-aviso-fundo: #fef3c7;
+    --color-aviso-texto: #78350f;
+    --color-seta: #000000;
+    --color-seta-hover: #000000;
+    --color-seta-icone: #ffffff;
+    --color-cartao-1: #000000;
+    --color-cartao-2: #000000;
+    --color-cartao-3: #000000;
     --color-fundo: #000000;
     --color-tinta: #ffffff;
     --color-tinta-suave: #ffffff;
@@ -56,8 +131,14 @@ html.alto-contraste a {
     text-decoration: underline;
 }
 
+html.alto-contraste .barra-institucional,
+html.alto-contraste .cartao-evento,
+html.alto-contraste .seta-carrossel {
+    border: 1px solid var(--color-hairline);
+}
+
 html.alto-contraste .barra-institucional {
-    border-bottom: 1px solid var(--color-hairline);
+    border-width: 0 0 1px;
 }
 
 /* Abertura da home: ilustração de Salvador sob véu azul (única exceção à regra de
@@ -72,7 +153,7 @@ html.alto-contraste .barra-institucional {
 
 /* A onda é pintada com a cor da faixa seguinte (editais). */
 .abertura .onda {
-    fill: var(--color-acao);
+    fill: var(--color-faixa);
 }
 
 /* Foco branco sobre o azul da abertura. */
@@ -142,6 +223,26 @@ html.alto-contraste .faixa-editais {
     @media (prefers-reduced-motion: reduce) {
         transition: none;
     }
+}
+
+/* Trilho do carrossel: rola na horizontal sem barra visível. O recuo lateral alinha o
+   primeiro card com a borda do conteúdo (max-w-6xl) e deixa a mesma margem após o último. */
+@utility trilho-carrossel {
+    --recuo-trilho: max(1rem, calc((100% - 72rem) / 2));
+    padding-inline: var(--recuo-trilho);
+    scroll-padding-inline: var(--recuo-trilho);
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+/* Seta do carrossel no fim do trilho: continua focável, mas não "afunda" ao clicar. */
+.seta-carrossel[aria-disabled='true']:active {
+    transform: none;
 }
 
 /* Texto corrido das páginas institucionais. */

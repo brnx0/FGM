@@ -6,7 +6,7 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
         <title inertia>{{ config('app.name', 'Mapa Cultura') }}</title>
 
-        {{-- Reaplica as preferências de acessibilidade antes da primeira pintura. --}}
+        {{-- Reaplica as preferências de acessibilidade e o tema antes da primeira pintura. --}}
         <script nonce="{{ Vite::cspNonce() }}">
             (function () {
                 var html = document.documentElement;
@@ -19,6 +19,16 @@
                         html.classList.add('alto-contraste');
                     }
                 } catch (e) {}
+
+                // Modo noturno: escolha salva ('claro' | 'escuro') ou, sem escolha, o sistema.
+                var tema = null;
+                try {
+                    tema = localStorage.getItem('tema');
+                } catch (e) {}
+                var sistemaEscuro = !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                if (tema === 'escuro' || (tema !== 'claro' && sistemaEscuro)) {
+                    html.classList.add('escuro');
+                }
             })();
         </script>
 

@@ -11,7 +11,7 @@ withDefaults(
     <!-- Link comum (não Inertia): a rota redireciona para fora do portal. -->
     <a
         href="/auth/govbr/redirect"
-        class="pressionavel inline-flex min-h-11 items-center justify-center gap-2 rounded-pill bg-govbr font-semibold whitespace-nowrap text-sobre-acao no-underline hover:brightness-110"
+        class="pressionavel inline-flex min-h-11 items-center justify-center gap-2 rounded-pill bg-govbr font-semibold whitespace-nowrap text-sobre-govbr no-underline hover:brightness-110"
         :class="size === 'sm' ? 'px-4 text-[0.9375rem]' : 'min-h-12 px-6 text-corpo'"
     >
         <svg

@@ -7,7 +7,7 @@ const erro = computed(() => usePage().props.flash?.erro);
 
 <template>
     <div v-if="erro" role="alert" class="mx-auto mt-6 max-w-5xl px-4">
-        <p class="rounded-card border border-[#F5C2C0] bg-[#FDECEC] px-5 py-4 text-[#8A1C1C]">
+        <p class="rounded-card border border-erro-borda bg-erro-fundo px-5 py-4 text-erro-texto">
             {{ erro }}
         </p>
     </div>

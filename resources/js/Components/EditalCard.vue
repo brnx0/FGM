@@ -8,7 +8,7 @@ defineProps<{
 </script>
 
 <template>
-    <article class="flex h-full flex-col rounded-card border border-hairline bg-fundo p-6 text-left text-tinta">
+    <article class="flex h-full flex-col rounded-card border border-hairline bg-superficie p-6 text-left text-tinta">
         <p
             class="text-[0.8125rem] font-bold tracking-wide uppercase"
             :class="edital.situacao === 'aberto' ? 'text-acao' : 'text-tinta-suave'"
