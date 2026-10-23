@@ -63,3 +63,13 @@ The Laravel framework is open-sourced software licensed under the [MIT license](
 Copie `.env.example` para `.env` e defina `DB_PASSWORD` e `ORACLE_PASSWORD` (nenhuma senha e versionada).
 `DB_PASSWORD` e repassada ao Oracle como `APP_USER_PASSWORD`; o script `docker/oracle/init/01-test-user.sh` cria `mapacultura_test` com a mesma senha
 (os testes usam esse usuario). Comandos PHP rodam no container: `docker compose exec app php artisan test`.
+
+## Login gov.br (Login Único — OIDC + PKCE)
+
+Fluxo Authorization Code + PKCE (S256) com `state` e `nonce`. Rotas: `GET /auth/govbr/redirect`, `GET /auth/govbr/callback`, `GET /auth/govbr/logout` (retorno do logout do gov.br) e `POST /logout`.
+
+- `.env`: `GOVBR_DRIVER=govbr`, `GOVBR_BASE_URL` (staging `https://sso.staging.acesso.gov.br`, produção `https://sso.acesso.gov.br`), `GOVBR_CLIENT_ID`, `GOVBR_CLIENT_SECRET`, `GOVBR_REDIRECT_URI` (`…/auth/govbr/callback`), `GOVBR_LOGOUT_REDIRECT_URI` (`…/auth/govbr/logout`, precisa estar cadastrada como URL de Log Out da credencial), `GOVBR_SCOPES`.
+- O `id_token` é validado com o JWKS do gov.br (cache de 1h, só RS256), `iss`, `aud`, `exp` (tolerância de 60s), `nonce`, e o `sub` precisa ser um CPF válido.
+- `GOVBR_TRUST_LEVEL_URL` é opcional (vazio = não consulta). Aceita o marcador `{cpf}` e é chamada com o `access_token` como Bearer. Uma falha nessa consulta não impede o login.
+
+**Conferido no Roteiro em 2026-10-23** (https://roteiro-tecnico.acesso.gov.br/iniciarintegracao.html): `GET {base}/authorize`, `POST {base}/token` (form, Basic `client_id:client_secret`, `grant_type`, `code`, `redirect_uri`, `code_verifier`), `{base}/jwk` e `{base}/logout?post_logout_redirect_uri=…`. Os defaults de `config('govbr.endpoints')` estão de acordo e não foram alterados. O Roteiro também cita os escopos `govbr_confiabilidades` / `govbr_confiabilidades_idtoken` e a claim `reliability_info` no `id_token` como a forma atual de obter a confiabilidade. A API de níveis aparece como obsoleta. Esta versão ainda não lê `reliability_info`.

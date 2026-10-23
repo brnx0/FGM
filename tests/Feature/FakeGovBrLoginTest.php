@@ -90,7 +90,8 @@ class FakeGovBrLoginTest extends TestCase
         config(['govbr.driver' => 'govbr']);
 
         $this->get('/auth/govbr/fake')->assertNotFound();
-        $this->get('/auth/govbr/redirect')->assertNotFound();
+        // Com driver govbr, o início do fluxo vai para o gov.br real, nunca para o simulado.
+        $this->get('/auth/govbr/redirect')->assertRedirectContains(config('govbr.base_url').'/authorize');
     }
 
     public function test_boot_falha_em_producao_com_fake(): void
