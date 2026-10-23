@@ -10,8 +10,6 @@ Este documento parte do `DESIGN-apple.md` (linguagem Apple, usada como estrutura
 - **Acessibilidade:** contraste AA, foco visível, navegação por teclado, textos alternativos.
 
 ---
-
----
 version: alpha
 name: Apple-design-analysis
 description: A photography-first interface that turns marketing into a museum gallery. Edge-to-edge product tiles alternate light and dark canvases, framed by SF Pro Display headlines with negative letter-spacing and a single Action Blue (#0066cc) interactive color. UI chrome recedes so the product can speak — no decorative gradients, no shadows on chrome, only the one signature drop-shadow under product imagery resting on a surface.

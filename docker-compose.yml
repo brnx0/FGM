@@ -1,0 +1,33 @@
+services:
+  oracle:
+    image: gvenzl/oracle-free:23-slim
+    shm_size: 1gb
+    environment:
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD}
+      APP_USER: mapacultura
+      APP_USER_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "1521:1521"
+    volumes:
+      - oracle-data:/opt/oracle/oradata
+      - ./docker/oracle/init:/container-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 60s
+
+  app:
+    build: docker/php
+    working_dir: /var/www/html
+    volumes:
+      - .:/var/www/html
+    ports:
+      - "8000:8000"
+    depends_on:
+      oracle:
+        condition: service_healthy
+
+volumes:
+  oracle-data:
