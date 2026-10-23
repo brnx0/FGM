@@ -8,6 +8,8 @@ createInertiaApp({
         const pages = import.meta.glob('./Pages/**/*.vue', { eager: true });
         const page = pages[`./Pages/${name}.vue`];
         page.default.layout ??= PortalLayout;
+        // Props compartilhadas do Inertia não devem cair como atributos em páginas de raiz fragmentada.
+        page.default.inheritAttrs = false;
         return page;
     },
     setup({ el, App, props, plugin }) {

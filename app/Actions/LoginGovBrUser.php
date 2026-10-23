@@ -13,8 +13,8 @@ class LoginGovBrUser
         $user = User::firstOrNew(['cpf' => $id->cpf]);
 
         $user->fill([
-            'name' => $id->nome,
-            'email' => $id->email,
+            'name' => mb_substr($id->nome, 0, 255),
+            'email' => $id->email !== null && mb_strlen($id->email) <= 255 ? $id->email : null,
             'email_verified' => $id->emailVerificado,
             'phone' => $id->telefone,
         ]);

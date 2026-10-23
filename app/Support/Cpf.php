@@ -14,9 +14,19 @@ final class Cpf
 
     public static function valido(string $cpf): bool
     {
-        $cpf = self::normalizar($cpf);
+        // Só dígitos e a pontuação usual; 10 dígitos ainda vale (zero à esquerda perdido).
+        if (preg_match('/^[\d.\-\s]*$/', $cpf) !== 1) {
+            return false;
+        }
 
-        if (strlen($cpf) !== 11 || preg_match('/^(\d)\1{10}$/', $cpf)) {
+        $digitos = preg_replace('/\D/', '', $cpf) ?? '';
+        if (strlen($digitos) < 10 || strlen($digitos) > 11) {
+            return false;
+        }
+
+        $cpf = self::normalizar($digitos);
+
+        if (preg_match('/^(\d)\1{10}$/', $cpf)) {
             return false;
         }
 

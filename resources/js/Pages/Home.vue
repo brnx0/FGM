@@ -72,17 +72,18 @@ const textoAbertos = computed(() =>
         </div>
     </section>
 
-    <section v-if="eventos.length" id="eventos" class="scroll-mt-20 bg-nevoa px-4 py-16" aria-labelledby="eventos-titulo">
+    <section id="eventos" class="scroll-mt-20 bg-nevoa px-4 py-16" aria-labelledby="eventos-titulo">
         <div class="mx-auto max-w-6xl">
             <div class="text-center">
                 <h2 id="eventos-titulo" class="text-[1.75rem] sm:text-[2.5rem]">Já aconteceu.</h2>
                 <p class="mt-2 text-tinta-suave">O que a cultura de Salvador viveu nos últimos meses.</p>
             </div>
-            <ul class="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 grade3:grid-cols-3">
+            <ul v-if="eventos.length" class="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 grade3:grid-cols-3">
                 <li v-for="(evento, i) in eventos" :key="i">
                     <EventoCard :evento="evento" />
                 </li>
             </ul>
+            <p v-else class="mt-8 text-center text-[1.1875rem]">Nenhum evento publicado ainda.</p>
         </div>
     </section>
 </template>

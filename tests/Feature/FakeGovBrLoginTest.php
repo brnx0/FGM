@@ -74,6 +74,17 @@ class FakeGovBrLoginTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_nome_e_email_acima_do_limite_sao_recusados(): void
+    {
+        $this->app['env'] = 'local';
+        config(['govbr.driver' => 'fake']);
+
+        $this->post('/auth/govbr/fake', [
+            'cpf' => '52998224725', 'nome' => str_repeat('N', 121), 'email' => str_repeat('e', 250).'@example.com',
+        ])->assertSessionHasErrors(['nome', 'email']);
+        $this->assertGuest();
+    }
+
     public function test_simulado_404_em_producao(): void
     {
         config(['govbr.driver' => 'fake']);

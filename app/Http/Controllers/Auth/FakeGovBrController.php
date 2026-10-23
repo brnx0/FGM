@@ -31,7 +31,7 @@ class FakeGovBrController extends Controller
         $dados = $request->validate([
             'cpf' => ['required', 'string', fn ($attr, $valor, $fail) => Cpf::valido((string) $valor) ?: $fail('CPF inválido.')],
             'nome' => ['required', 'string', 'max:120'],
-            'email' => ['nullable', 'email'],
+            'email' => ['nullable', 'email', 'max:255'],
         ]);
 
         $user = $login->handle(new GovBrIdentity(

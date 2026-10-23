@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use App\Enums\SituacaoEdital;
+use App\Models\Concerns\UsaDiaCivil;
 use Carbon\CarbonInterface;
 use Database\Factories\EditalFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -13,6 +15,8 @@ class Edital extends Model
 {
     /** @use HasFactory<EditalFactory> */
     use HasFactory;
+
+    use UsaDiaCivil;
 
     protected $table = 'editais';
 
@@ -35,15 +39,19 @@ class Edital extends Model
         return 'slug';
     }
 
-    /** "Hoje" no fuso da aplicação (America/Bahia). */
-    private static function hoje(?CarbonInterface $agora = null): string
+    protected function inscricoesInicio(): Attribute
     {
-        return ($agora ?? now())->setTimezone(config('app.timezone'))->toDateString();
+        return Attribute::set(fn ($v) => self::diaParaGravar($v));
+    }
+
+    protected function inscricoesFim(): Attribute
+    {
+        return Attribute::set(fn ($v) => self::diaParaGravar($v));
     }
 
     public function situacao(?CarbonInterface $agora = null): SituacaoEdital
     {
-        $hoje = self::hoje($agora);
+        $hoje = self::hoje($agora)->toDateString();
 
         return match (true) {
             $hoje < $this->inscricoes_inicio->toDateString() => SituacaoEdital::EmBreve,
@@ -60,7 +68,7 @@ class Edital extends Model
     public function scopeNaVitrine(Builder $query, ?CarbonInterface $agora = null): void
     {
         $query->publicados()
-            ->where('inscricoes_fim', '>=', self::hoje($agora))
+            ->where('inscricoes_fim', '>=', self::hoje($agora)->toDateString())
             ->orderBy('inscricoes_inicio');
     }
 
@@ -69,8 +77,8 @@ class Edital extends Model
         $hoje = self::hoje($agora);
 
         return static::query()->publicados()
-            ->where('inscricoes_inicio', '<=', $hoje)
-            ->where('inscricoes_fim', '>=', $hoje)
+            ->where('inscricoes_inicio', '<', $hoje->addDay()->toDateString())
+            ->where('inscricoes_fim', '>=', $hoje->toDateString())
             ->count();
     }
 }

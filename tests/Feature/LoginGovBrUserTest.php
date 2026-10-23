@@ -58,4 +58,14 @@ class LoginGovBrUserTest extends TestCase
         $user->forceFill(['profile_completed_at' => now()])->save();
         $this->assertSame(route('home'), $acao->destinoPosLogin($user));
     }
+
+    public function test_dados_do_govbr_acima_do_limite_nao_estouram_a_coluna(): void
+    {
+        $user = app(LoginGovBrUser::class)->handle(new GovBrIdentity(
+            '52998224725', str_repeat('N', 400), str_repeat('e', 250).'@example.com', true, null,
+        ));
+
+        $this->assertSame(255, mb_strlen($user->fresh()->name));
+        $this->assertNull($user->fresh()->email);
+    }
 }

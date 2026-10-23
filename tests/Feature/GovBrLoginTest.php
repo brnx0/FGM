@@ -68,6 +68,18 @@ class GovBrLoginTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_retorno_repetido_com_usuario_ja_logado_nao_mostra_erro(): void
+    {
+        $this->get('/auth/govbr/redirect');
+        $state = session('govbr.state');
+        $this->fakeTokenEndpoint($this->claimsValidos(session('govbr.nonce')));
+        $this->get('/auth/govbr/callback?code=abc&state='.$state)->assertRedirect('/cadastro');
+
+        $this->get('/auth/govbr/callback?code=abc&state='.$state)
+            ->assertRedirect('/cadastro')->assertSessionMissing('erro');
+        $this->assertAuthenticated();
+    }
+
     public function test_callback_sem_fluxo_iniciado_falha(): void
     {
         $this->get('/auth/govbr/callback?code=abc&state=')

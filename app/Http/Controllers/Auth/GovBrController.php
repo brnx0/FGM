@@ -34,7 +34,7 @@ class GovBrController extends Controller
             || ! is_string($state) || ! is_string($nonce) || ! is_string($verifier)
             || ! is_string($stateRecebido) || ! hash_equals($state, $stateRecebido)
             || ! is_string($code) || $code === '') {
-            return $this->falhou();
+            return $this->falhou($login);
         }
 
         try {
@@ -43,7 +43,7 @@ class GovBrController extends Controller
         } catch (GovBrException $e) {
             report($e);
 
-            return $this->falhou();
+            return $this->falhou($login);
         }
 
         $nivel = $tokens['access_token'] !== null
@@ -68,8 +68,13 @@ class GovBrController extends Controller
         return redirect('/');
     }
 
-    private function falhou(): RedirectResponse
+    private function falhou(LoginGovBrUser $login): RedirectResponse
     {
+        // Retorno repetido (duplo clique) com sessão já autenticada: segue o fluxo, sem erro.
+        if (auth()->check()) {
+            return redirect($login->destinoPosLogin(auth()->user()));
+        }
+
         return redirect('/')->with('erro', self::ERRO);
     }
 }
