@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Auth\GovBr\FakeLoginGate;
 use App\Support\Cpf;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -43,7 +44,7 @@ class HandleInertiaRequests extends Middleware
                     ? ['nome' => $request->user()->name, 'cpfMascarado' => Cpf::mascarar($request->user()->cpf)]
                     : null,
             ],
-            'ambienteTeste' => app()->environment('staging') && config('govbr.driver') === 'fake',
+            'ambienteTeste' => FakeLoginGate::bannerVisivel(),
             'flash' => [
                 'erro' => fn () => $request->session()->get('erro'),
             ],

@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Auth\GovBr\FakeLoginGate;
 use App\Database\OracleConnection;
 use Illuminate\Database\Connection;
 use Illuminate\Http\Middleware\TrustProxies;
@@ -31,6 +32,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->app->make(FakeLoginGate::class)->assertNaoEmProducao();
+
         // Atrás de um proxy que termina o TLS, honra X-Forwarded-Proto; sem isso
         // isSecure() fica falso e o HSTS (SecurityHeaders) nunca é enviado.
         $proxies = trim((string) config('app.trusted_proxies'));

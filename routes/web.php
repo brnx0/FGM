@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Auth\FakeGovBrController;
+use App\Http\Controllers\Auth\GovBrRedirectController;
 use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\CadastroController;
 use App\Http\Controllers\EditalController;
@@ -19,3 +21,9 @@ Route::controller(PaginaController::class)->group(function () {
 
 Route::get('/cadastro', [CadastroController::class, 'completar'])->middleware('auth')->name('cadastro');
 Route::post('/logout', LogoutController::class)->name('logout');
+
+Route::get('/auth/govbr/redirect', GovBrRedirectController::class)->name('govbr.redirect');
+Route::middleware('throttle:10,1')->controller(FakeGovBrController::class)->group(function () {
+    Route::get('/auth/govbr/fake', 'create')->name('govbr.fake');
+    Route::post('/auth/govbr/fake', 'store');
+});
