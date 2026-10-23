@@ -1,9 +1,10 @@
-<script setup>
+<script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
+import type { EditalResumo } from '../types';
 
-defineProps({
-    edital: { type: Object, required: true },
-});
+defineProps<{
+    edital: EditalResumo;
+}>();
 </script>
 
 <template>

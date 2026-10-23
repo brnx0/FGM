@@ -1,9 +1,9 @@
-<script setup>
+<script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
 
-defineProps({
-    titulo: { type: String, required: true },
-});
+defineProps<{
+    titulo: string;
+}>();
 </script>
 
 <template>

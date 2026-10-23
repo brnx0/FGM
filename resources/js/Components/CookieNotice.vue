@@ -1,14 +1,14 @@
-<script setup>
+<script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { Link } from '@inertiajs/vue3';
 
 const CHAVE = 'cookieAviso';
-const visivel = ref(false);
+const visivel = ref<boolean>(false);
 
 onMounted(() => {
     try {
         visivel.value = localStorage.getItem(CHAVE) !== '1';
-    } catch (e) {
+    } catch {
         visivel.value = true;
     }
 });
@@ -17,7 +17,7 @@ const dispensar = () => {
     visivel.value = false;
     try {
         localStorage.setItem(CHAVE, '1');
-    } catch (e) {
+    } catch {
         // Sem armazenamento: o aviso volta na próxima visita.
     }
 };

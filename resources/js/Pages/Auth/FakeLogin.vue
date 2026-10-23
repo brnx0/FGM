@@ -1,20 +1,24 @@
-<script setup>
+<script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
+import type { ContaFake } from '../../types';
 
-defineProps({
-    contas: { type: Array, default: () => [] },
-});
+withDefaults(
+    defineProps<{
+        contas?: ContaFake[];
+    }>(),
+    { contas: () => [] },
+);
 
 const form = useForm({ cpf: '', nome: '', email: '' });
 
-function entrarComo(conta) {
+function entrarComo(conta: ContaFake): void {
     form.cpf = conta.cpf;
     form.nome = conta.nome;
     form.email = conta.email ?? '';
     form.post('/auth/govbr/fake');
 }
 
-function enviar() {
+function enviar(): void {
     form.post('/auth/govbr/fake');
 }
 </script>

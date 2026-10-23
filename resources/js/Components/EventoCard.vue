@@ -1,7 +1,9 @@
-<script setup>
-defineProps({
-    evento: { type: Object, required: true },
-});
+<script setup lang="ts">
+import type { Evento } from '../types';
+
+defineProps<{
+    evento: Evento;
+}>();
 </script>
 
 <template>

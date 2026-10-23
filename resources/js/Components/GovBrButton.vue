@@ -1,11 +1,10 @@
-<script setup>
-defineProps({
-    size: {
-        type: String,
-        default: 'lg',
-        validator: (v) => ['sm', 'lg'].includes(v),
-    },
-});
+<script setup lang="ts">
+withDefaults(
+    defineProps<{
+        size?: 'sm' | 'lg';
+    }>(),
+    { size: 'lg' },
+);
 </script>
 
 <template>

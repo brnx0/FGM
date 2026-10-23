@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed, onUnmounted, ref } from 'vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
 import BrandLogo from './BrandLogo.vue';
@@ -8,16 +8,16 @@ import InstitutionalBar from './InstitutionalBar.vue';
 const page = usePage();
 const usuario = computed(() => page.props.auth?.user);
 // Token do <meta> de app.blade.php (a página é recarregada inteira após o login).
-const csrf = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+const csrf = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
 
-const links = [
+const links: { href: string; texto: string }[] = [
     { href: '/#editais', texto: 'Editais' },
     { href: '/#eventos', texto: 'Eventos' },
     { href: '/a-fgm', texto: 'A FGM' },
     { href: '/duvidas', texto: 'Dúvidas' },
 ];
 
-const menuAberto = ref(false);
+const menuAberto = ref<boolean>(false);
 const pararDeOuvir = router.on('navigate', () => {
     menuAberto.value = false;
 });

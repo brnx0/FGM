@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { onMounted, ref } from 'vue';
 
 // Mesmas chaves lidas pelo script de app.blade.php antes da primeira pintura.
@@ -6,30 +6,30 @@ const CHAVE_FONTE = 'a11yFonte';
 const CHAVE_CONTRASTE = 'a11yContraste';
 
 // Os rótulos começam pelo texto visível (WCAG 2.5.3, rótulo no nome).
-const tamanhos = [
+const tamanhos: { valor: string; texto: string; rotulo: string }[] = [
     { valor: '90', texto: 'A-', rotulo: 'A-, diminuir tamanho do texto' },
     { valor: '100', texto: 'A', rotulo: 'A, tamanho padrão do texto' },
     { valor: '115', texto: 'A+', rotulo: 'A+, aumentar tamanho do texto' },
 ];
 
-const fonte = ref('100');
-const contraste = ref(false);
+const fonte = ref<string>('100');
+const contraste = ref<boolean>(false);
 
-const salvar = (chave, valor) => {
+const salvar = (chave: string, valor: string): void => {
     try {
         localStorage.setItem(chave, valor);
-    } catch (e) {
+    } catch {
         // Armazenamento indisponível (modo privado, bloqueio): vale só nesta página.
     }
 };
 
-const aplicarFonte = (valor) => {
+const aplicarFonte = (valor: string): void => {
     fonte.value = valor;
     document.documentElement.style.fontSize = valor === '100' ? '' : `${valor}%`;
     salvar(CHAVE_FONTE, valor);
 };
 
-const alternarContraste = () => {
+const alternarContraste = (): void => {
     contraste.value = !contraste.value;
     document.documentElement.classList.toggle('alto-contraste', contraste.value);
     salvar(CHAVE_CONTRASTE, contraste.value ? '1' : '0');

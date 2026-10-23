@@ -1,7 +1,7 @@
-<script setup>
+<script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
 
-const portal = [
+const portal: { href: string; texto: string }[] = [
     { href: '/#editais', texto: 'Editais' },
     { href: '/#eventos', texto: 'Eventos' },
     { href: '/a-fgm', texto: 'A FGM' },

@@ -1,18 +1,19 @@
-<script setup>
+<script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 
 // Publica a altura da faixa para o topo fixo se posicionar logo abaixo dela.
-const faixa = ref(null);
-let observer;
+const faixa = ref<HTMLElement | null>(null);
+let observer: ResizeObserver | undefined;
 
-const publicarAltura = () => {
+const publicarAltura = (): void => {
+    if (!faixa.value) return;
     document.documentElement.style.setProperty('--altura-faixa-teste', `${faixa.value.offsetHeight}px`);
 };
 
 onMounted(() => {
     publicarAltura();
     observer = new ResizeObserver(publicarAltura);
-    observer.observe(faixa.value);
+    if (faixa.value) observer.observe(faixa.value);
 });
 
 onBeforeUnmount(() => {

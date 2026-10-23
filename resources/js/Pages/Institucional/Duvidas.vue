@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import PaginaInstitucional from '../../Components/PaginaInstitucional.vue';
 
 const perguntas = [

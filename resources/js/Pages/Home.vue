@@ -1,15 +1,12 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import EditalCard from '../Components/EditalCard.vue';
 import EventoCard from '../Components/EventoCard.vue';
 import GovBrButton from '../Components/GovBrButton.vue';
+import type { HomeProps } from '../types';
 
-const props = defineProps({
-    totalAbertos: { type: Number, required: true },
-    editais: { type: Array, required: true },
-    eventos: { type: Array, required: true },
-});
+const props = defineProps<HomeProps>();
 
 const usuario = computed(() => usePage().props.auth?.user);
 const textoAbertos = computed(() =>

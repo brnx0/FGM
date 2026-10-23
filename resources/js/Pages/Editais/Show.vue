@@ -1,11 +1,10 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import GovBrButton from '../../Components/GovBrButton.vue';
+import type { EditaisShowProps } from '../../types';
 
-defineProps({
-    edital: { type: Object, required: true },
-});
+defineProps<EditaisShowProps>();
 
 const usuario = computed(() => usePage().props.auth?.user);
 </script>
