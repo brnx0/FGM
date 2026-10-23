@@ -20,6 +20,8 @@ npm run dev                     # ou "npm run build" para o bundle de produção
 
 O app responde em http://localhost:8000. As portas 8000 e 1521 ficam presas a `127.0.0.1`, ou seja, não são expostas à rede.
 
+No dia a dia, `composer run dev` sobe os containers e o Vite. **Não rode `php artisan serve` no host**: o PHP do Windows não tem a extensão `oci8`, e a aplicação quebra com `Undefined constant "Yajra\Pdo\OCI_DEFAULT"`. O servidor PHP é o do container (porta 8000).
+
 ### Banco de dados
 
 - Oracle 23ai Free (`gvenzl/oracle-free:23-slim`), service `FREEPDB1`, `DB_SERVER_VERSION=12c`.

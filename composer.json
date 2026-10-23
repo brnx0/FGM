@@ -45,7 +45,8 @@
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
-            "@php artisan dev"
+            "docker compose up -d",
+            "npm run dev"
         ],
         "test": [
             "@php artisan config:clear --ansi @no_additional_args",
