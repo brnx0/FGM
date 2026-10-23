@@ -21,6 +21,7 @@ class HomeController extends Controller
                 'categoria' => $edital->categoria,
                 'situacao' => $edital->situacao()->value,
                 'situacaoRotulo' => $edital->situacao()->rotulo(),
+                'inscricoesInicio' => $edital->inscricoes_inicio->format('d/m/Y'),
                 'inscricoesFim' => $edital->inscricoes_fim->format('d/m/Y'),
             ])->all(),
             'eventos' => Evento::realizados()->limit(self::LIMITE_EVENTOS)->get()->map(fn (Evento $evento) => [

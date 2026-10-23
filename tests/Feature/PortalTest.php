@@ -42,8 +42,10 @@ class PortalTest extends TestCase
                 ->where('categoria', 'Fomento')
                 ->where('situacao', 'aberto')
                 ->where('situacaoRotulo', 'Aberto')
+                ->where('inscricoesInicio', '01/11/2026')
                 ->where('inscricoesFim', '15/11/2026'))
             ->where('editais.2.situacao', 'em_breve')
+            ->where('editais.2.inscricoesInicio', '01/12/2026')
             ->has('eventos', 2)
             ->has('eventos.0', fn (Assert $e) => $e
                 ->where('titulo', 'Jornada do Patrimônio')

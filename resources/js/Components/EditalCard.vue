@@ -12,7 +12,10 @@ defineProps({
             class="text-[0.8125rem] font-bold tracking-wide uppercase"
             :class="edital.situacao === 'aberto' ? 'text-acao' : 'text-tinta-suave'"
         >
-            {{ edital.situacaoRotulo }} · até {{ edital.inscricoesFim }}
+            <template v-if="edital.situacao === 'em_breve'">
+                {{ edital.situacaoRotulo }} · inscrições a partir de {{ edital.inscricoesInicio }}
+            </template>
+            <template v-else>{{ edital.situacaoRotulo }} · até {{ edital.inscricoesFim }}</template>
         </p>
         <h3 class="mt-2 text-[1.375rem]">{{ edital.titulo }}</h3>
         <p class="mt-1 text-[0.9375rem] text-tinta-suave">{{ edital.categoria }}</p>

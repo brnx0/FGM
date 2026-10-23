@@ -43,14 +43,18 @@ const usuario = computed(() => usePage().props.auth?.user);
 
         <p class="mt-8 text-[1.1875rem]">{{ edital.resumo }}</p>
 
-        <div role="note" class="mt-8 rounded-card border border-acao bg-nevoa p-6">
+        <div v-if="edital.situacao === 'encerrado'" role="note" class="mt-8 rounded-card border border-hairline bg-parchment p-6">
+            <p class="text-[1.25rem] font-extrabold tracking-[-0.025em]">Inscrições encerradas em {{ edital.inscricoesFim }}.</p>
+        </div>
+
+        <div v-else role="note" class="mt-8 rounded-card border border-acao bg-nevoa p-6">
             <p class="text-[1.25rem] font-extrabold tracking-[-0.025em]">Documentos e inscrição em breve.</p>
             <p class="mt-1 text-tinta-suave">
                 O edital completo e o formulário de inscrição serão publicados aqui. Entre com sua conta gov.br para adiantar o seu cadastro.
             </p>
         </div>
 
-        <div class="mt-8">
+        <div v-if="edital.situacao !== 'encerrado'" class="mt-8">
             <Link
                 v-if="usuario"
                 href="/cadastro"

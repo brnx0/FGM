@@ -22,8 +22,9 @@ import PaginaInstitucional from '../../Components/PaginaInstitucional.vue';
         </p>
         <h2>Cookies</h2>
         <p>
-            Usamos apenas um cookie de sessão, essencial para manter você conectado com segurança. Não usamos
-            cookies de publicidade nem de rastreamento.
+            Usamos apenas cookies estritamente necessários: o cookie de sessão, que mantém você conectado, e o
+            cookie de proteção contra falsificação de requisição (XSRF-TOKEN), que impede que outros sites façam
+            pedidos em seu nome. Não usamos cookies de publicidade nem de rastreamento.
         </p>
         <h2>Compartilhamento</h2>
         <p>
