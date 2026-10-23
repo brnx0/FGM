@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import EventoCard from './EventoCard.vue';
 import type { Evento } from '../types';
 
-defineProps<{
+const props = defineProps<{
     eventos: Evento[];
 }>();
 
@@ -12,7 +12,8 @@ const ID_TRILHO = 'eventos-trilho';
 const trilho = ref<HTMLUListElement | null>(null);
 const noInicio = ref<boolean>(true);
 const noFim = ref<boolean>(false);
-const cabeTudo = ref<boolean>(false);
+// Começa como "cabe tudo" para as setas não piscarem antes da primeira medição.
+const cabeTudo = ref<boolean>(true);
 
 let observador: ResizeObserver | undefined;
 let quadro = 0;
@@ -59,24 +60,50 @@ const rolarPara = (posicao: 'inicio' | 'fim'): void => {
 };
 
 const aoTeclar = (evento: KeyboardEvent): void => {
-    const acoes: Record<string, () => void> = {
-        ArrowRight: () => rolar(1),
-        ArrowLeft: () => rolar(-1),
-        Home: () => rolarPara('inicio'),
-        End: () => rolarPara('fim'),
-    };
-    const acao = acoes[evento.key];
-    if (!acao) return;
+    switch (evento.key) {
+        case 'ArrowRight':
+            rolar(1);
+            break;
+        case 'ArrowLeft':
+            rolar(-1);
+            break;
+        case 'Home':
+            rolarPara('inicio');
+            break;
+        case 'End':
+            rolarPara('fim');
+            break;
+        default:
+            return;
+    }
     evento.preventDefault();
-    acao();
 };
 
+// Observa o trilho e o texto do primeiro card. Os cards têm largura em px, mas o recuo
+// do trilho e o texto são em rem: o texto muda de altura com A- / A / A+ e avisa que o
+// recuo (e, portanto, a rolagem máxima) pode ter mudado.
+const observar = (): void => {
+    const el = trilho.value;
+    if (!observador || !el) return;
+    observador.disconnect();
+    observador.observe(el);
+    const texto = el.querySelector<HTMLElement>(':scope > li h3');
+    if (texto) observador.observe(texto);
+};
+
+watch(
+    () => props.eventos.length,
+    () =>
+        nextTick(() => {
+            observar();
+            atualizar();
+        }),
+);
+
 onMounted(() => {
+    observador = new ResizeObserver(atualizar);
+    observar();
     atualizar();
-    if (trilho.value) {
-        observador = new ResizeObserver(atualizar);
-        observador.observe(trilho.value);
-    }
 });
 
 onBeforeUnmount(() => {

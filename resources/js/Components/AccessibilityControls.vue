@@ -78,12 +78,22 @@ onMounted(() => {
 
     if (typeof window.matchMedia === 'function') {
         consultaSistema = window.matchMedia('(prefers-color-scheme: dark)');
-        consultaSistema.addEventListener('change', aoMudarSistema);
+        // Safari < 14 só tem addListener/removeListener.
+        if (typeof consultaSistema.addEventListener === 'function') {
+            consultaSistema.addEventListener('change', aoMudarSistema);
+        } else {
+            consultaSistema.addListener(aoMudarSistema);
+        }
     }
 });
 
 onBeforeUnmount(() => {
-    consultaSistema?.removeEventListener('change', aoMudarSistema);
+    if (!consultaSistema) return;
+    if (typeof consultaSistema.removeEventListener === 'function') {
+        consultaSistema.removeEventListener('change', aoMudarSistema);
+    } else {
+        consultaSistema.removeListener(aoMudarSistema);
+    }
 });
 </script>
 

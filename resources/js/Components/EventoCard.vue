@@ -32,10 +32,10 @@ const idBase = computed<string>(() => `evento-${props.posicao}`);
         <template v-if="evento.imagem">
             <img :src="evento.imagem" alt="" loading="lazy" class="absolute inset-0 -z-10 size-full object-cover" />
             <!-- Véu só no topo, para a legibilidade do título sobre a foto. -->
-            <div class="veu-cartao absolute inset-x-0 top-0 -z-10 h-3/5" aria-hidden="true"></div>
+            <div class="veu-cartao absolute inset-x-0 top-0 -z-10 h-4/5" aria-hidden="true"></div>
         </template>
 
-        <div class="p-6 lg:p-8">
+        <div class="p-6 lg:p-8" :class="{ 'texto-sobre-foto': evento.imagem }">
             <p class="text-[0.8125rem] font-semibold text-white/85 first-letter:uppercase lg:text-[0.875rem]">
                 {{ evento.dataRealizacao }}<template v-if="evento.local"> · {{ evento.local }}</template>
             </p>
@@ -75,6 +75,16 @@ const idBase = computed<string>(() => `evento-${props.posicao}`);
 
 <style scoped>
 .veu-cartao {
-    background-image: linear-gradient(180deg, rgba(11, 21, 38, 0.66), rgba(11, 21, 38, 0));
+    background-image: linear-gradient(
+        180deg,
+        rgba(11, 21, 38, 0.78) 0%,
+        rgba(11, 21, 38, 0.55) 55%,
+        rgba(11, 21, 38, 0) 100%
+    );
+}
+
+/* Reforço sutil para fotos muito claras sob o título. */
+.texto-sobre-foto {
+    text-shadow: 0 1px 12px rgba(11, 21, 38, 0.45);
 }
 </style>
