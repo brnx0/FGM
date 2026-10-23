@@ -1,13 +1,12 @@
 services:
   oracle:
     image: gvenzl/oracle-free:23-slim
-    shm_size: 1gb
     environment:
       ORACLE_PASSWORD: ${ORACLE_PASSWORD}
       APP_USER: mapacultura
       APP_USER_PASSWORD: ${DB_PASSWORD}
     ports:
-      - "1521:1521"
+      - "127.0.0.1:1521:1521"
     volumes:
       - oracle-data:/opt/oracle/oradata
       - ./docker/oracle/init:/container-entrypoint-initdb.d
@@ -24,7 +23,7 @@ services:
     volumes:
       - .:/var/www/html
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     depends_on:
       oracle:
         condition: service_healthy

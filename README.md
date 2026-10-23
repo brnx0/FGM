@@ -60,6 +60,6 @@ The Laravel framework is open-sourced software licensed under the [MIT license](
 ## Banco de dados (Oracle 23ai Free via Docker)
 
 `docker compose up -d --build` sobe o app (porta 8000) e o Oracle (porta 1521, service `FREEPDB1`).
-Copie `.env.example` para `.env` e defina `DB_PASSWORD` e `ORACLE_PASSWORD`. Apenas para desenvolvimento local,
-`DB_PASSWORD` deve ser igual a senha do usuario `mapacultura_test` em `docker/oracle/init/01-test-user.sql`
+Copie `.env.example` para `.env` e defina `DB_PASSWORD` e `ORACLE_PASSWORD` (nenhuma senha e versionada).
+`DB_PASSWORD` e repassada ao Oracle como `APP_USER_PASSWORD`; o script `docker/oracle/init/01-test-user.sh` cria `mapacultura_test` com a mesma senha
 (os testes usam esse usuario). Comandos PHP rodam no container: `docker compose exec app php artisan test`.

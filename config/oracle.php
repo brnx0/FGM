@@ -14,7 +14,7 @@ return [
         'prefix' => env('DB_PREFIX', ''),
         'prefix_schema' => env('DB_SCHEMA_PREFIX', ''),
         'edition' => env('DB_EDITION', 'ora$base'),
-        'server_version' => env('DB_SERVER_VERSION', '11g'),
+        'server_version' => env('DB_SERVER_VERSION', '12c'),
         'load_balance' => env('DB_LOAD_BALANCE', 'yes'),
         'connect_timeout' => env('DB_CONNECT_TIMEOUT', ''),
         'retry_count' => env('DB_RETRY_COUNT', '3'), // 12c and above only

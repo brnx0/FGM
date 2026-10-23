@@ -1,5 +1,0 @@
--- Usuário de testes (mesma senha de DB_PASSWORD do .env de desenvolvimento).
-ALTER SESSION SET CONTAINER = FREEPDB1;
-
-CREATE USER mapacultura_test IDENTIFIED BY "MapaCultura2026" QUOTA UNLIMITED ON USERS;
-GRANT CREATE SESSION, CREATE TABLE, CREATE SEQUENCE, CREATE TRIGGER, CREATE VIEW TO mapacultura_test;
