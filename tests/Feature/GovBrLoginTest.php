@@ -106,6 +106,38 @@ class GovBrLoginTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_falha_de_conexao_no_token_nao_gera_500(): void
+    {
+        $this->get('/auth/govbr/redirect');
+        Http::fake([self::GOVBR_BASE.'/token' => Http::failedConnection()]);
+
+        $this->get('/auth/govbr/callback?code=abc&state='.session('govbr.state'))
+            ->assertRedirect('/')->assertSessionHas('erro', self::ERRO);
+        $this->assertGuest();
+    }
+
+    public function test_jwks_com_erro_500_nao_gera_500(): void
+    {
+        $this->get('/auth/govbr/redirect');
+        $this->fakeTokenEndpoint($this->claimsValidos(session('govbr.nonce')));
+        $this->govbrJwksStatus = 500;
+
+        $this->get('/auth/govbr/callback?code=abc&state='.session('govbr.state'))
+            ->assertRedirect('/')->assertSessionHas('erro', self::ERRO);
+        $this->assertGuest();
+    }
+
+    public function test_limite_e_por_rota(): void
+    {
+        for ($i = 0; $i < 10; $i++) {
+            $this->get('/auth/govbr/callback?code=abc&state=errado')->assertRedirect('/');
+        }
+        $this->get('/auth/govbr/callback?code=abc&state=errado')->assertTooManyRequests();
+
+        // O limite esgotado do callback não bloqueia o início do fluxo.
+        $this->get('/auth/govbr/redirect')->assertRedirectContains(self::GOVBR_BASE.'/authorize');
+    }
+
     public function test_logout_redireciona_para_govbr(): void
     {
         $this->actingAs(User::factory()->create(['cpf' => '52998224725']));

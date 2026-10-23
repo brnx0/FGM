@@ -4,8 +4,11 @@ namespace App\Providers;
 
 use App\Auth\GovBr\FakeLoginGate;
 use App\Database\OracleConnection;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Connection;
 use Illuminate\Http\Middleware\TrustProxies;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
@@ -33,6 +36,11 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->app->make(FakeLoginGate::class)->assertNaoEmProducao();
+
+        // 10/min por rota e por IP: um login (redirect + callback) não gasta o limite da outra rota.
+        RateLimiter::for('govbr', fn (Request $request) => Limit::perMinute(10)->by(
+            ($request->route()?->getName() ?? $request->method().':'.$request->path()).'|'.$request->ip()
+        ));
 
         // Atrás de um proxy que termina o TLS, honra X-Forwarded-Proto; sem isso
         // isSecure() fica falso e o HSTS (SecurityHeaders) nunca é enviado.

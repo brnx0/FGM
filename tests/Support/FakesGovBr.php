@@ -18,6 +18,13 @@ trait FakesGovBr
     /** @var \OpenSSLAsymmetricKey */
     protected $govbrChavePrivada;
 
+    protected string $govbrKid = self::GOVBR_KID;
+
+    /** JWKS servido em /jwk; o fake lê este valor a cada requisição. */
+    protected array $govbrJwks = [];
+
+    protected int $govbrJwksStatus = 200;
+
     protected function setUpFakesGovBr(): void
     {
         config([
@@ -30,28 +37,37 @@ trait FakesGovBr
             'govbr.trust_level_url' => null,
         ]);
 
+        $this->rotacionarChaveGovBr(self::GOVBR_KID);
+
+        Http::preventStrayRequests();
+        Http::fake([
+            self::GOVBR_BASE.'/jwk' => fn () => Http::response($this->govbrJwks, $this->govbrJwksStatus),
+        ]);
+    }
+
+    /** Gera um novo par RSA e passa a publicar só a chave nova no JWKS. */
+    protected function rotacionarChaveGovBr(string $kid): void
+    {
+        $this->govbrKid = $kid;
         $this->govbrChavePrivada = openssl_pkey_new([
             'private_key_bits' => 2048,
             'private_key_type' => OPENSSL_KEYTYPE_RSA,
         ]);
         $rsa = openssl_pkey_get_details($this->govbrChavePrivada)['rsa'];
 
-        Http::preventStrayRequests();
-        Http::fake([
-            self::GOVBR_BASE.'/jwk' => Http::response(['keys' => [[
-                'kty' => 'RSA',
-                'alg' => 'RS256',
-                'use' => 'sig',
-                'kid' => self::GOVBR_KID,
-                'n' => JWT::urlsafeB64Encode($rsa['n']),
-                'e' => JWT::urlsafeB64Encode($rsa['e']),
-            ]]]),
-        ]);
+        $this->govbrJwks = ['keys' => [[
+            'kty' => 'RSA',
+            'alg' => 'RS256',
+            'use' => 'sig',
+            'kid' => $kid,
+            'n' => JWT::urlsafeB64Encode($rsa['n']),
+            'e' => JWT::urlsafeB64Encode($rsa['e']),
+        ]]];
     }
 
-    protected function idTokenAssinado(array $claims): string
+    protected function idTokenAssinado(array $claims, ?string $kid = null): string
     {
-        return JWT::encode($claims, $this->govbrChavePrivada, 'RS256', self::GOVBR_KID);
+        return JWT::encode($claims, $this->govbrChavePrivada, 'RS256', $kid ?? $this->govbrKid);
     }
 
     protected function fakeTokenEndpoint(array $claims): void

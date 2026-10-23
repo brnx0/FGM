@@ -23,7 +23,8 @@ Route::controller(PaginaController::class)->group(function () {
 Route::get('/cadastro', [CadastroController::class, 'completar'])->middleware('auth')->name('cadastro');
 Route::post('/logout', LogoutController::class)->name('logout');
 
-Route::middleware('throttle:10,1')->group(function () {
+// Limitador 'govbr' (AppServiceProvider): 10/min por rota e por IP.
+Route::middleware('throttle:govbr')->group(function () {
     Route::get('/auth/govbr/redirect', GovBrRedirectController::class)->name('govbr.redirect');
 
     Route::controller(GovBrController::class)->group(function () {

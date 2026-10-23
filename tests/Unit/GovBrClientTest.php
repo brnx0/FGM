@@ -168,6 +168,72 @@ class GovBrClientTest extends TestCase
         Http::assertSentCount(1);
     }
 
+    public function test_rotacao_de_chave_recarrega_jwks_uma_vez(): void
+    {
+        // JWKS com a chave A fica em cache.
+        $this->client()->identityFromIdToken($this->idTokenAssinado($this->claimsValidos('n')), 'n');
+        Http::assertSentCount(1);
+
+        // O gov.br passa a assinar com a chave B e publica só ela.
+        $this->rotacionarChaveGovBr('chave-b');
+        $id = $this->client()->identityFromIdToken($this->idTokenAssinado($this->claimsValidos('n')), 'n');
+
+        $this->assertSame('52998224725', $id->cpf);
+        Http::assertSentCount(2);
+    }
+
+    public function test_kid_desconhecido_dentro_do_intervalo_nao_busca_de_novo(): void
+    {
+        $this->client()->identityFromIdToken($this->idTokenAssinado($this->claimsValidos('n')), 'n');
+        $this->rotacionarChaveGovBr('chave-b');
+        $this->client()->identityFromIdToken($this->idTokenAssinado($this->claimsValidos('n')), 'n');
+        Http::assertSentCount(2);
+
+        try {
+            $this->client()->identityFromIdToken($this->idTokenAssinado($this->claimsValidos('n'), 'forjado'), 'n');
+            $this->fail('kid desconhecido deveria ser rejeitado.');
+        } catch (GovBrException) {
+        }
+
+        Http::assertSentCount(2);
+    }
+
+    public function test_cache_do_jwks_e_por_base_url(): void
+    {
+        $this->client()->identityFromIdToken($this->idTokenAssinado($this->claimsValidos('n')), 'n');
+
+        config(['govbr.base_url' => 'https://sso.acesso.gov.br']);
+        Http::fake(['https://sso.acesso.gov.br/jwk' => Http::response($this->govbrJwks)]);
+        $claims = ['iss' => 'https://sso.acesso.gov.br/'] + $this->claimsValidos('n');
+        $this->client()->identityFromIdToken($this->idTokenAssinado($claims), 'n');
+
+        Http::assertSent(fn ($req) => $req->url() === 'https://sso.acesso.gov.br/jwk');
+    }
+
+    public function test_rejeita_token_sem_kid(): void
+    {
+        $token = JWT::encode($this->claimsValidos('n'), $this->govbrChavePrivada, 'RS256');
+
+        $this->expectException(GovBrException::class);
+        $this->client()->identityFromIdToken($token, 'n');
+    }
+
+    public function test_jwks_indisponivel_vira_govbr_exception(): void
+    {
+        $this->govbrJwksStatus = 500;
+
+        $this->expectException(GovBrException::class);
+        $this->client()->identityFromIdToken($this->idTokenAssinado($this->claimsValidos('n')), 'n');
+    }
+
+    public function test_falha_de_conexao_no_token_vira_govbr_exception(): void
+    {
+        Http::fake(['https://sso.staging.acesso.gov.br/token' => Http::failedConnection()]);
+
+        $this->expectException(GovBrException::class);
+        $this->client()->exchangeCode('abc', 'verificador');
+    }
+
     public function test_logout_url(): void
     {
         $this->assertSame(
