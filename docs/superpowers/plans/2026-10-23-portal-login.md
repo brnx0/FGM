@@ -62,7 +62,7 @@ database/seeders/{DatabaseSeeder,EditalSeeder,EventoSeeder}.php
 resources/css/app.css                      tokens (@theme) + base
 resources/js/app.js
 resources/js/Layouts/PortalLayout.vue
-resources/js/Components/{SiteHeader,SiteFooter,TestEnvBanner,GovBrButton,EditalCard,EventoCard,FlashMessage}.vue
+resources/js/Components/{SiteHeader,SiteFooter,TestEnvBanner,GovBrButton,EditalCard,EventoCard,FlashMessage,SkipLink,InstitutionalBar,AccessibilityControls,CookieNotice,BrandLogo}.vue
 resources/js/Pages/{Home,Editais/Show,Cadastro/Completar,Auth/FakeLogin}.vue
 resources/js/Pages/Institucional/{AFgm,Duvidas,Privacidade,Termos}.vue
 tests/Support/FakesGovBr.php
@@ -176,7 +176,17 @@ public function test_cabecalhos_de_seguranca(): void
   - `SiteFooter`: fundo parchment, com "Fundação Gregório de Mattos", "Ladeira da Barroquinha, 02 — Salvador/BA" e links do portal, Privacidade e Termos.
   - `TestEnvBanner`: faixa fixa no topo, fundo `#FEF3C7` e texto `#78350F`, com o texto exato do spec.
   - `FlashMessage`: mostra `flash.erro`.
-  - Aviso de cookies discreto no rodapé, só informativo e sem botão de aceite (spec §10: só há o cookie de sessão essencial). Texto: "Usamos apenas cookies essenciais para manter você conectado." e link para "Privacidade".
+  - **Elementos herdados do FPS-SEMOP** (spec §7 item 0). Componentes novos:
+    - `SkipLink.vue`: "Pular para o conteúdo", aponta para `#conteudo`; o `<main id="conteudo">` fica no `PortalLayout`.
+    - `InstitutionalBar.vue`: fundo `#0A2747`, ícone de escudo e o texto "Site oficial da Prefeitura de Salvador · Fundação Gregório de Mattos".
+    - `AccessibilityControls.vue`: botões A-/A/A+ que aplicam `font-size` 90%/100%/115% no `<html>` e um botão "Alto contraste" que alterna a classe `alto-contraste` no `<html>`. As duas preferências ficam salvas em `localStorage` (com try/catch) e são reaplicadas antes da primeira pintura por um script em `app.blade.php` com `nonce` da CSP. Cada botão tem `aria-pressed` e rótulo acessível.
+    - `CookieNotice.vue`: cartão flutuante embaixo com o texto "Este portal usa apenas cookies necessários para manter você conectado. Não usamos cookies de publicidade nem de rastreamento." O botão "Entendi" e o ✕ guardam `cookieAviso=1` em `localStorage`. Tem link para Privacidade.
+  - Em `app.css`, crie um bloco `html.alto-contraste` que redefine os tokens: fundo `#000`, texto `#FFF`, ação `#FFD700`, hairline `#FFF`. A regra de "nada de preto" não vale aqui, porque esse modo é de acessibilidade.
+  - **Logo:** use o componente `BrandLogo.vue`, por enquanto com a marca em texto "Mapa Cultura" sobre "Fundação Gregório de Mattos". Ele precisa ficar pronto para trocar por `<img>` quando chegarem os arquivos oficiais da FGM e da Prefeitura.
+  - **CSP:** gere um nonce por request em `SecurityHeaders`, compartilhe com o Blade via `Vite::useCspNonce()` e use em `script-src 'self' 'nonce-…'`.
+  - **Testes a acrescentar:**
+    - Em `LayoutTest`: `test_csp_tem_nonce` faz `assertMatchesRegularExpression("/script-src[^;]*'nonce-[A-Za-z0-9+\/=]+'/", header CSP)`.
+    - `test_pagina_tem_skip_link_e_barra_institucional` checa se o HTML de `/` contém o `app.blade.php` com o script de preferências (`assertSee('alto-contraste', false)`).
 - [ ] **Step 5:** Rode os testes. Esperado: PASS. Rode `npm run build`. Esperado: build sem erros.
 - [ ] **Step 6:** Commit: `feat: base Inertia/Vue, tokens visuais, layout e cabeçalhos de segurança`.
 
@@ -266,7 +276,13 @@ public function test_paginas_institucionais_abrem(): void { /* /a-fgm, /duvidas,
 - [ ] **Step 2:** Rode `php artisan test --filter=PortalTest`. Esperado: FAIL.
 - [ ] **Step 3:** Implemente os controllers e as rotas. Monte as props com arrays explícitos, sem serializar o model inteiro.
 - [ ] **Step 4: `Home.vue`.** Siga o mockup aprovado em `.superpowers/brainstorm/*/content/portal-home-azul-prefeitura.html`, opção A. As faixas ocupam toda a largura e não têm raio.
-  - **Abertura (branco):** h1 "Sua cultura começa aqui." (~56px, peso 800, encolhendo até 30px no celular). Subtítulo "Inscreva-se nos editais da Fundação Gregório de Mattos usando sua conta gov.br." Botões `GovBrButton lg` e um pill contornado "Ver editais" (`#editais`). Se o usuário estiver logado, o botão gov.br vira "Continuar meu cadastro" (`/cadastro`).
+  - **Abertura** (como no FPS-SEMOP, spec §7 item 0):
+    - Fundo `/images/hero-salvador.jpg` em `cover` na largura total (altura mínima de cerca de 70vh no desktop e 520px no celular).
+    - Sobreposição em degradê azul `linear-gradient(180deg, rgba(10,39,71,.55), rgba(0,77,159,.80))`. É a única exceção à regra de "sem degradês", porque serve à legibilidade sobre a foto.
+    - Texto branco. Borda inferior em onda feita com SVG inline, preenchida com a cor da faixa seguinte.
+    - h1 "Sua cultura começa aqui." (~56px, peso 800, encolhendo até 30px no celular). Subtítulo "Inscreva-se nos editais da Fundação Gregório de Mattos usando sua conta gov.br."
+    - Botões `GovBrButton lg` e um pill contornado branco "Ver editais" (`#editais`). Se o usuário estiver logado, o botão gov.br vira "Continuar meu cadastro" (`/cadastro`).
+    - A imagem é decorativa (`role="presentation"` ou CSS background).
   - **Editais (`id="editais"`, fundo `#004D9F`, texto branco):** número grande `totalAbertos` e o texto "editais com inscrições abertas." (singular "edital com inscrições abertas." quando for 1). Logo abaixo, a grade de `EditalCard`.
   - **`EditalCard`:** card branco, raio 18px. Rótulo da situação + "até dd/mm/aaaa", título, categoria e o link "Saiba mais ›" para `/editais/{slug}`.
   - **Vitrine vazia:** mostra "Nenhum edital com inscrições abertas no momento. Volte em breve."

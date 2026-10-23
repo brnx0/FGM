@@ -56,8 +56,14 @@ Esta primeira entrega cobre só **o portal público e o login**. Tudo o mais (ca
 
 Ordem das faixas (largura total, sem cantos arredondados, a troca de cor é o divisor):
 
-1. **Topo fixo** branco translúcido (blur): marca "Mapa Cultura", links Editais · Eventos · A FGM · Dúvidas, botão pílula "Entrar com gov.br". Logado: nome do usuário + "Sair".
-2. **Abertura (branco):** título "Sua cultura começa aqui.", subtítulo sobre inscrição em editais da FGM com gov.br, botões "Entrar com gov.br" e "Ver editais" (âncora para a vitrine).
+0. **Elementos herdados do FPS-SEMOP** (pedido do usuário em 2026-10-23, iguais ao https://fps-semop.techpulseglobal.com.br/):
+   - Link "Pular para o conteúdo" (visível só no foco por teclado).
+   - **Barra institucional** fina no topo, fundo azul profundo #0A2747, com ícone de escudo e o texto "Site oficial da Prefeitura de Salvador · Fundação Gregório de Mattos". À direita ficam os controles de acessibilidade **A-**, **A**, **A+** (tamanho da fonte em 3 níveis: 90%, 100% e 115%) e **Alto contraste**. As preferências ficam salvas no navegador.
+   - **Logo** no topo: logo da FGM + logo "Salvador Prefeitura". *(Arquivos oficiais pendentes; enquanto não chegam, usar marca em texto "Fundação Gregório de Mattos" + "Mapa Cultura".)*
+   - **Abertura com imagem de fundo** (`public/images/hero-salvador.jpg`) em largura total, com sobreposição azul da família Prefeitura e texto branco. A borda inferior é em onda.
+   - **Aviso de cookies** em cartão flutuante na parte de baixo, com botão "Entendi" e fechar, e link para Privacidade. Ao ser dispensado, não aparece mais.
+1. **Topo fixo** branco translúcido (blur), logo abaixo da barra institucional: logo, links Editais · Eventos · A FGM · Dúvidas, botão pílula "Entrar com gov.br". Logado: nome do usuário + "Sair".
+2. **Abertura (imagem de Salvador com sobreposição azul, texto branco):** título "Sua cultura começa aqui.", subtítulo sobre inscrição em editais da FGM com gov.br, botões "Entrar com gov.br" e "Ver editais" (âncora para a vitrine).
 3. **Editais (faixa azul Prefeitura #004D9F, texto branco):** número grande de editais abertos + "editais com inscrições abertas." + cards brancos (situação Aberto/Em breve, nome, prazo, "Saiba mais ›").
 4. **"Já aconteceu." (azul-névoa #ECF6FF):** grade de eventos realizados com foto, nome e data.
 5. **Rodapé (parchment #F5F5F7):** FGM, endereço (Ladeira da Barroquinha, 02 — Salvador/BA), links do portal, Aviso de privacidade (LGPD), Termos de uso.
@@ -73,7 +79,8 @@ Base: `DESIGN-apple.md` (linguagem Apple — estrutura) copiado para a raiz do p
 - **Tipografia:** Inter (mesma do FPS-SEMOP, https://fps-semop.techpulseglobal.com.br/). Títulos **peso 800** com tracking negativo (≈ -0.025em); corpo 400 a 17px; 600 para ênfase.
 - **Cor de ação:** azul Prefeitura **#004D9F** (substitui o #0066cc da Apple) para links, botões e foco. Família: #0C427B (pressionado/escuro), #0A2747 (profundo), #D6EAFF/#ECF6FF (claros).
 - **Exceção:** botão "Entrar com gov.br" em **#1351B4** (azul oficial gov.br).
-- **Sem preto:** nada de barra preta nem faixas pretas. Texto em #1D1D1F.
+- **Sem preto:** nada de barra preta nem faixas pretas. Texto em #1D1D1F. A barra institucional usa azul profundo #0A2747, que não é preto.
+- **Alto contraste:** o modo troca os tokens de cor (fundo escuro, texto branco, ações em amarelo #FFD700, bordas visíveis) e mantém o layout.
 - Regras Apple mantidas: botões pílula, cards 18px com borda fina, sem sombras/degradês decorativos, `scale(.95)` ao pressionar, responsivo até 360px, alvos de toque ≥ 44px.
 - Acessibilidade: contraste AA, foco visível, navegação por teclado, textos alternativos.
 
