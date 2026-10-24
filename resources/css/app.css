@@ -245,11 +245,13 @@ html.alto-contraste .faixa-editais {
     }
 }
 
-/* Trilho do carrossel: rola na horizontal sem barra visível, dentro da largura do conteúdo
-   (max-w-6xl), com margens iguais dos dois lados. O recuo é só o respiro para o card
-   ampliado no hover não ser cortado; o trilho compensa com margem negativa (-mx-2). */
+/* Trilho do carrossel: ocupa a largura toda da tela e rola na horizontal sem barra visível,
+   com a mesma margem pequena dos dois lados (1rem no celular, 1.5rem a partir de sm). */
 @utility trilho-carrossel {
-    --recuo-trilho: 0.5rem;
+    --recuo-trilho: 1rem;
+    @variant sm {
+        --recuo-trilho: 1.5rem;
+    }
     padding-inline: var(--recuo-trilho);
     scroll-padding-inline: var(--recuo-trilho);
     scroll-snap-type: x mandatory;
