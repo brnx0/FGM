@@ -6,7 +6,7 @@ import PortalLayout from './Layouts/PortalLayout.vue';
 type PaginaVue = { default: DefineComponent & { layout?: Component } };
 
 createInertiaApp({
-    title: (title) => (title ? `${title} · Mapa Cultura` : 'Mapa Cultura'),
+    title: (title) => (title ? `${title} · FGM` : 'FGM'),
     resolve: (name) => {
         const pages = import.meta.glob<PaginaVue>('./Pages/**/*.vue', { eager: true });
         const page = pages[`./Pages/${name}.vue`];

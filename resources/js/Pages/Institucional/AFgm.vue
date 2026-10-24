@@ -15,9 +15,9 @@ import PaginaInstitucional from '../../Components/PaginaInstitucional.vue';
             <li>Cuida da memória, do patrimônio e das tradições da cidade.</li>
             <li>Opera na cidade os recursos de políticas nacionais, como a Política Nacional Aldir Blanc.</li>
         </ul>
-        <h2>O Mapa Cultura</h2>
+        <h2>O portal</h2>
         <p>
-            O Mapa Cultura é o portal da FGM para quem faz cultura em Salvador. Aqui você acompanha os editais,
+            Este é o portal da FGM para quem faz cultura em Salvador. Aqui você acompanha os editais,
             se inscreve com sua conta gov.br e vê o que a cultura da cidade já realizou.
         </p>
         <h2>Endereço</h2>

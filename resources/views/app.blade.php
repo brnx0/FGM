@@ -4,7 +4,7 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
-        <title inertia>{{ config('app.name', 'Mapa Cultura') }}</title>
+        <title inertia>{{ config('app.name', 'FGM') }}</title>
 
         {{-- Reaplica as preferências de acessibilidade e o tema antes da primeira pintura. --}}
         <script nonce="{{ Vite::cspNonce() }}">

@@ -3,7 +3,7 @@ import PaginaInstitucional from '../../Components/PaginaInstitucional.vue';
 
 const perguntas = [
     {
-        pergunta: 'Preciso criar uma senha no Mapa Cultura?',
+        pergunta: 'Preciso criar uma senha neste portal?',
         resposta: 'Não. O acesso é feito só com a sua conta gov.br, a mesma usada em outros serviços públicos. O portal não guarda senhas.',
     },
     {
@@ -12,7 +12,7 @@ const perguntas = [
     },
     {
         pergunta: 'Esqueci a senha do gov.br.',
-        resposta: 'A senha é do gov.br, não do Mapa Cultura. Recupere-a na própria página de login do gov.br.',
+        resposta: 'A senha é do gov.br, não do portal da FGM. Recupere-a na própria página de login do gov.br.',
     },
     {
         pergunta: 'Quem pode se inscrever nos editais?',

@@ -6,7 +6,7 @@ import PaginaInstitucional from '../../Components/PaginaInstitucional.vue';
 <template>
     <PaginaInstitucional titulo="Termos de uso">
         <p class="text-[1.1875rem]">
-            O Mapa Cultura é um serviço da Fundação Gregório de Mattos, da Prefeitura Municipal de Salvador, para
+            Este portal é um serviço da Fundação Gregório de Mattos, da Prefeitura Municipal de Salvador, para
             divulgação de editais culturais e inscrição de proponentes.
         </p>
         <h2>Acesso</h2>

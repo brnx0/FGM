@@ -5,7 +5,7 @@ import PaginaInstitucional from '../../Components/PaginaInstitucional.vue';
 <template>
     <PaginaInstitucional titulo="Aviso de privacidade">
         <p class="text-[1.1875rem]">
-            Este aviso explica quais dados o Mapa Cultura usa e por quê, de acordo com a Lei Geral de Proteção de
+            Este aviso explica quais dados o portal da FGM usa e por quê, de acordo com a Lei Geral de Proteção de
             Dados (Lei nº 13.709/2018).
         </p>
         <h2>Dados que recebemos do gov.br</h2>
