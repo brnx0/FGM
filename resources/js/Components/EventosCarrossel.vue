@@ -143,53 +143,55 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <div>
-        <!-- O trilho recebe foco para rolar pelo teclado (setas, Home e End). O respiro
-             vertical evita cortar o card ampliado e a sombra do hover. -->
-        <ul
-            :id="ID_TRILHO"
-            ref="trilho"
-            tabindex="0"
-            aria-label="Eventos realizados"
-            class="trilho-carrossel flex gap-5 overflow-x-auto pt-4 pb-10 focus-visible:outline-offset-[-2px]"
-            @scroll.passive="aoRolar"
-            @keydown="aoTeclar"
-        >
-            <li
-                v-for="(evento, i) in eventos"
-                :key="`${i}-${evento.titulo}`"
-                class="h-[400px] w-[280px] shrink-0 snap-start sm:h-[440px] sm:w-[320px] lg:h-[500px] lg:w-[372px]"
+    <div class="px-4">
+        <div class="mx-auto max-w-6xl">
+            <!-- O trilho recebe foco para rolar pelo teclado (setas, Home e End). O respiro
+                 vertical evita cortar o card ampliado e a sombra do hover. -->
+            <ul
+                :id="ID_TRILHO"
+                ref="trilho"
+                tabindex="0"
+                aria-label="Eventos realizados"
+                class="trilho-carrossel -mx-2 flex gap-5 overflow-x-auto pt-4 pb-10 focus-visible:outline-offset-[-2px]"
+                @scroll.passive="aoRolar"
+                @keydown="aoTeclar"
             >
-                <EventoCard :evento="evento" :posicao="i + 1" :total="eventos.length" />
-            </li>
-        </ul>
-
-        <div v-show="!cabeTudo" class="-mt-4 px-4">
-            <div class="mx-auto flex max-w-6xl justify-end gap-4">
-                <button
-                    type="button"
-                    class="seta-carrossel pressionavel inline-flex size-11 items-center justify-center rounded-pill bg-seta text-seta-icone backdrop-blur-sm hover:bg-seta-hover aria-disabled:cursor-default aria-disabled:opacity-40 aria-disabled:hover:bg-seta"
-                    aria-label="Eventos anteriores"
-                    :aria-controls="ID_TRILHO"
-                    :aria-disabled="noInicio ? 'true' : 'false'"
-                    @click="rolar(-1)"
+                <li
+                    v-for="(evento, i) in eventos"
+                    :key="`${i}-${evento.titulo}`"
+                    class="h-[400px] w-[280px] shrink-0 snap-start sm:h-[440px] sm:w-[320px] lg:h-[500px] lg:w-[372px]"
                 >
-                    <svg aria-hidden="true" viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="m14.5 6-6 6 6 6" />
-                    </svg>
-                </button>
-                <button
-                    type="button"
-                    class="seta-carrossel pressionavel inline-flex size-11 items-center justify-center rounded-pill bg-seta text-seta-icone backdrop-blur-sm hover:bg-seta-hover aria-disabled:cursor-default aria-disabled:opacity-40 aria-disabled:hover:bg-seta"
-                    aria-label="Próximos eventos"
-                    :aria-controls="ID_TRILHO"
-                    :aria-disabled="noFim ? 'true' : 'false'"
-                    @click="rolar(1)"
-                >
-                    <svg aria-hidden="true" viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="m9.5 6 6 6-6 6" />
-                    </svg>
-                </button>
+                    <EventoCard :evento="evento" :posicao="i + 1" :total="eventos.length" />
+                </li>
+            </ul>
+    
+            <div v-show="!cabeTudo" class="-mt-4">
+                <div class="flex justify-end gap-4">
+                    <button
+                        type="button"
+                        class="seta-carrossel pressionavel inline-flex size-11 items-center justify-center rounded-pill bg-seta text-seta-icone backdrop-blur-sm hover:bg-seta-hover aria-disabled:cursor-default aria-disabled:opacity-40 aria-disabled:hover:bg-seta"
+                        aria-label="Eventos anteriores"
+                        :aria-controls="ID_TRILHO"
+                        :aria-disabled="noInicio ? 'true' : 'false'"
+                        @click="rolar(-1)"
+                    >
+                        <svg aria-hidden="true" viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m14.5 6-6 6 6 6" />
+                        </svg>
+                    </button>
+                    <button
+                        type="button"
+                        class="seta-carrossel pressionavel inline-flex size-11 items-center justify-center rounded-pill bg-seta text-seta-icone backdrop-blur-sm hover:bg-seta-hover aria-disabled:cursor-default aria-disabled:opacity-40 aria-disabled:hover:bg-seta"
+                        aria-label="Próximos eventos"
+                        :aria-controls="ID_TRILHO"
+                        :aria-disabled="noFim ? 'true' : 'false'"
+                        @click="rolar(1)"
+                    >
+                        <svg aria-hidden="true" viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m9.5 6 6 6-6 6" />
+                        </svg>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
