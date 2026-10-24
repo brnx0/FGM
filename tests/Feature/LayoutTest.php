@@ -8,7 +8,7 @@ use Tests\TestCase;
 
 class LayoutTest extends TestCase
 {
-    // A home consulta editais e eventos.
+    // A home consulta os editais.
     use RefreshDatabase;
 
     public function test_home_usa_inertia_com_props_compartilhadas(): void

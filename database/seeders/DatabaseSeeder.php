@@ -16,7 +16,6 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             EditalSeeder::class,
-            EventoSeeder::class,
         ]);
     }
 }

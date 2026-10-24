@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Edital;
-use App\Models\Evento;
+use App\Support\EventosMock;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -25,12 +25,10 @@ class PortalTest extends TestCase
         ]);
         Edital::factory()->create(['inscricoes_inicio' => '2026-11-05', 'inscricoes_fim' => '2026-11-30']);
         Edital::factory()->create(['inscricoes_inicio' => '2026-12-01', 'inscricoes_fim' => '2026-12-20']);
-        Evento::factory()->create([
-            'titulo' => 'Jornada do Patrimônio',
-            'data_realizacao' => '2026-08-15',
-            'local' => 'Centro Histórico',
+        $this->usarEventos([
+            $this->evento('Jornada do Patrimônio', '2026-08-15', 'Centro Histórico'),
+            $this->evento('Dois de Julho', '2026-07-01'),
         ]);
-        Evento::factory()->create(['data_realizacao' => '2026-07-01']);
 
         $this->get('/')->assertOk()->assertInertia(fn (Assert $p) => $p
             ->component('Home')
@@ -57,13 +55,25 @@ class PortalTest extends TestCase
 
     public function test_home_limita_eventos_a_seis(): void
     {
-        Evento::factory()->count(8)->create();
+        $this->usarEventos(array_map(
+            fn (int $mes) => $this->evento("Evento {$mes}", sprintf('2025-%02d-10', $mes)),
+            range(1, 8),
+        ));
 
+        $this->get('/')->assertInertia(fn (Assert $p) => $p
+            ->has('eventos', 6)
+            ->where('eventos.0.titulo', 'Evento 8'));
+    }
+
+    public function test_home_usa_os_eventos_de_exemplo(): void
+    {
         $this->get('/')->assertInertia(fn (Assert $p) => $p->has('eventos', 6));
     }
 
     public function test_home_vazia_nao_quebra(): void
     {
+        $this->usarEventos([]);
+
         $this->get('/')->assertOk()->assertInertia(fn (Assert $p) => $p
             ->where('totalAbertos', 0)->has('editais', 0)->has('eventos', 0));
     }
@@ -110,5 +120,24 @@ class PortalTest extends TestCase
         ] as $url => $componente) {
             $this->get($url)->assertOk()->assertInertia(fn (Assert $p) => $p->component($componente));
         }
+    }
+
+    /** @param list<array<string, mixed>> $eventos */
+    private function usarEventos(array $eventos): void
+    {
+        $this->app->instance(EventosMock::class, new EventosMock($eventos));
+    }
+
+    /** @return array<string, mixed> */
+    private function evento(string $titulo, string $data, ?string $local = 'Salvador/BA'): array
+    {
+        return [
+            'titulo' => $titulo,
+            'resumo' => 'Resumo do evento.',
+            'data_realizacao' => $data,
+            'local' => $local,
+            'imagem' => null,
+            'publicado' => true,
+        ];
     }
 }
