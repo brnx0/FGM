@@ -8,6 +8,8 @@ Este documento parte do `DESIGN-apple.md` (linguagem Apple, usada como estrutura
 - **Nada de preto:** sem barras ou faixas pretas. Texto em #1D1D1F.
 - **Mantido da Apple:** botões pílula, cards de 18px com borda fina, sem sombras nem degradês decorativos, `scale(.95)` ao pressionar, responsivo até 360px, alvos de toque ≥ 44px.
 - **Acessibilidade:** contraste AA, foco visível, navegação por teclado, textos alternativos.
+- **Exceção aprovada — hover dos cards do carrossel "Já aconteceu.":** em dispositivos com mouse (`@media (hover:hover)`) e no foco do teclado, o card cresce para `scale(1.02)` em ~300ms (curva Apple), ganha a sombra `0 12px 32px rgba(0,0,0,.12)` (mais escura no modo noturno; no alto contraste, contorno em vez de sombra) e a foto/ilustração aproxima `scale(1.04)`. Sem transformações com `prefers-reduced-motion`. É a única sombra de interface do portal.
+- **Modo noturno:** azul-marinho (#0B1526), nunca preto; o alto contraste sempre prevalece.
 
 ---
 version: alpha

@@ -59,7 +59,37 @@ const rolarPara = (posicao: 'inicio' | 'fim'): void => {
     el.scrollTo({ left: posicao === 'inicio' ? 0 : el.scrollWidth, behavior: comportamento() });
 };
 
+/** Com o foco num card, ← → / Home / End movem o foco entre os cards (que rolam junto). */
+const focarCard = (atual: HTMLElement, tecla: string): boolean => {
+    const itens = Array.from(trilho.value?.querySelectorAll<HTMLElement>(':scope > li > article') ?? []);
+    const indice = itens.indexOf(atual);
+    if (indice < 0) return false;
+    let destino: number;
+    switch (tecla) {
+        case 'ArrowRight':
+            destino = Math.min(indice + 1, itens.length - 1);
+            break;
+        case 'ArrowLeft':
+            destino = Math.max(indice - 1, 0);
+            break;
+        case 'Home':
+            destino = 0;
+            break;
+        case 'End':
+            destino = itens.length - 1;
+            break;
+        default:
+            return false;
+    }
+    itens[destino]?.focus();
+    return true;
+};
+
 const aoTeclar = (evento: KeyboardEvent): void => {
+    if (evento.target instanceof HTMLElement && evento.target !== trilho.value) {
+        if (focarCard(evento.target, evento.key)) evento.preventDefault();
+        return;
+    }
     switch (evento.key) {
         case 'ArrowRight':
             rolar(1);
@@ -114,13 +144,14 @@ onBeforeUnmount(() => {
 
 <template>
     <div>
-        <!-- O trilho recebe foco para rolar pelo teclado (setas, Home e End). -->
+        <!-- O trilho recebe foco para rolar pelo teclado (setas, Home e End). O respiro
+             vertical evita cortar o card ampliado e a sombra do hover. -->
         <ul
             :id="ID_TRILHO"
             ref="trilho"
             tabindex="0"
             aria-label="Eventos realizados"
-            class="trilho-carrossel flex gap-5 overflow-x-auto focus-visible:outline-offset-[-2px]"
+            class="trilho-carrossel flex gap-5 overflow-x-auto pt-4 pb-10 focus-visible:outline-offset-[-2px]"
             @scroll.passive="aoRolar"
             @keydown="aoTeclar"
         >
@@ -133,7 +164,7 @@ onBeforeUnmount(() => {
             </li>
         </ul>
 
-        <div v-show="!cabeTudo" class="mt-6 px-4">
+        <div v-show="!cabeTudo" class="-mt-4 px-4">
             <div class="mx-auto flex max-w-6xl justify-end gap-4">
                 <button
                     type="button"

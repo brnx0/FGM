@@ -71,17 +71,17 @@ const textoAbertos = computed(() =>
 
     <section
         id="eventos"
-        class="scroll-mt-20 bg-nevoa py-16"
+        class="scroll-mt-20 bg-parchment pt-16 pb-12 sm:pt-20"
         aria-labelledby="eventos-titulo"
         :aria-roledescription="eventos.length ? 'carrossel' : undefined"
     >
         <div class="px-4">
             <div class="mx-auto max-w-6xl">
-                <h2 id="eventos-titulo" class="text-[1.75rem] sm:text-[2.5rem]">Já aconteceu.</h2>
+                <h2 id="eventos-titulo" class="text-[2rem] sm:text-[2.5rem] lg:text-[3rem]">Já aconteceu.</h2>
                 <p class="mt-2 text-tinta-suave">O que a cultura de Salvador viveu nos últimos meses.</p>
                 <p v-if="!eventos.length" class="mt-8 text-[1.1875rem]">Nenhum evento publicado ainda.</p>
             </div>
         </div>
-        <EventosCarrossel v-if="eventos.length" :eventos="eventos" class="mt-10" />
+        <EventosCarrossel v-if="eventos.length" :eventos="eventos" class="mt-6" />
     </section>
 </template>

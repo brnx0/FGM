@@ -35,13 +35,20 @@
     --color-aviso-fundo: #fef3c7;
     --color-aviso-texto: #78350f;
 
-    /* Carrossel "Já aconteceu": setas translúcidas (Apple) e cores dos cards sem foto. */
+    /* Carrossel "Já aconteceu": setas translúcidas (Apple). */
     --color-seta: rgba(210, 210, 215, 0.64);
-    --color-seta-hover: rgba(223, 223, 227, 0.8);
+    --color-seta-hover: rgba(190, 190, 196, 0.8);
     --color-seta-icone: #1d1d1f;
-    --color-cartao-1: #004d9f;
-    --color-cartao-2: #0a2747;
-    --color-cartao-3: #0c427b;
+
+    /* Ilustração dos cards sem foto: pares fundo/ícone inspirados nas fitas do Bonfim. */
+    --color-ilustra-azul: #e3eefa;
+    --color-ilustra-azul-icone: #004d9f;
+    --color-ilustra-amarelo: #fbefc8;
+    --color-ilustra-amarelo-icone: #8a6100;
+    --color-ilustra-verde: #ddf2e7;
+    --color-ilustra-verde-icone: #17794f;
+    --color-ilustra-vermelho: #fbe3e3;
+    --color-ilustra-vermelho-icone: #b83232;
 
     --radius-sm: 8px;
     --radius-card: 18px;
@@ -86,9 +93,15 @@ html.escuro {
     --color-seta: rgba(184, 194, 211, 0.2);
     --color-seta-hover: rgba(184, 194, 211, 0.3);
     --color-seta-icone: #f5f5f7;
-    --color-cartao-1: #0c427b;
-    --color-cartao-2: #1a3a66;
-    --color-cartao-3: #12305a;
+    --color-ilustra-azul: #17365f;
+    --color-ilustra-azul-icone: #8dbbff;
+    --color-ilustra-amarelo: #3a3114;
+    --color-ilustra-amarelo-icone: #f2c230;
+    --color-ilustra-verde: #123a2c;
+    --color-ilustra-verde-icone: #5fd39e;
+    --color-ilustra-vermelho: #45202a;
+    --color-ilustra-vermelho-icone: #ff8f8f;
+    --sombra-cartao: 0 12px 32px rgba(3, 8, 18, 0.55);
 }
 
 /* Véu da abertura mais fechado à noite, terminando no azul da faixa de editais. */
@@ -111,9 +124,15 @@ html.alto-contraste {
     --color-seta: #000000;
     --color-seta-hover: #000000;
     --color-seta-icone: #ffffff;
-    --color-cartao-1: #000000;
-    --color-cartao-2: #000000;
-    --color-cartao-3: #000000;
+    --color-ilustra-azul: #000000;
+    --color-ilustra-azul-icone: #ffd700;
+    --color-ilustra-amarelo: #000000;
+    --color-ilustra-amarelo-icone: #ffd700;
+    --color-ilustra-verde: #000000;
+    --color-ilustra-verde-icone: #ffd700;
+    --color-ilustra-vermelho: #000000;
+    --color-ilustra-vermelho-icone: #ffd700;
+    --sombra-cartao: none;
     --color-fundo: #000000;
     --color-tinta: #ffffff;
     --color-tinta-suave: #ffffff;
@@ -133,6 +152,7 @@ html.alto-contraste a {
 
 html.alto-contraste .barra-institucional,
 html.alto-contraste .cartao-evento,
+html.alto-contraste .cartao-ilustracao,
 html.alto-contraste .seta-carrossel {
     border: 1px solid var(--color-hairline);
 }
@@ -237,6 +257,63 @@ html.alto-contraste .faixa-editais {
 
     &::-webkit-scrollbar {
         display: none;
+    }
+}
+
+/* Cards do carrossel: ao passar o mouse (ou com foco do teclado) o card cresce um pouco,
+   ganha sombra e a foto/ilustração aproxima. Exceção aprovada à regra "sem sombras"
+   (DESIGN.md › Adaptações). No alto contraste não há sombra: aparece um contorno. */
+:root {
+    --sombra-cartao: 0 12px 32px rgba(0, 0, 0, 0.12);
+    --curva-apple: cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.cartao-evento {
+    transition:
+        transform 0.3s var(--curva-apple),
+        box-shadow 0.3s var(--curva-apple);
+}
+
+.cartao-evento .cartao-midia {
+    transition: transform 0.4s var(--curva-apple);
+}
+
+.cartao-evento:focus-visible {
+    transform: scale(1.02);
+    box-shadow: var(--sombra-cartao);
+}
+
+.cartao-evento:focus-visible .cartao-midia {
+    transform: scale(1.04);
+}
+
+@media (hover: hover) {
+    .cartao-evento:hover {
+        transform: scale(1.02);
+        box-shadow: var(--sombra-cartao);
+    }
+
+    .cartao-evento:hover .cartao-midia {
+        transform: scale(1.04);
+    }
+
+    html.alto-contraste .cartao-evento:hover {
+        outline: 2px solid var(--color-acao);
+        outline-offset: 2px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cartao-evento,
+    .cartao-evento .cartao-midia {
+        transition: none;
+    }
+
+    .cartao-evento:hover,
+    .cartao-evento:focus-visible,
+    .cartao-evento:hover .cartao-midia,
+    .cartao-evento:focus-visible .cartao-midia {
+        transform: none;
     }
 }
 
