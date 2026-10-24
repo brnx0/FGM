@@ -164,7 +164,7 @@ onBeforeUnmount(() => {
             </li>
         </ul>
 
-        <div v-show="!cabeTudo" class="-mt-4 px-4 sm:px-6">
+        <div v-show="!cabeTudo" class="-mt-4 px-4 sm:px-8 lg:px-16">
             <div class="flex justify-end gap-4">
                 <button
                     type="button"

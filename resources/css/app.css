@@ -245,15 +245,22 @@ html.alto-contraste .faixa-editais {
     }
 }
 
-/* Trilho do carrossel: ocupa a largura toda da tela e rola na horizontal sem barra visível,
-   com a mesma margem pequena dos dois lados (1rem no celular, 1.5rem a partir de sm). */
+/* Trilho do carrossel: rola na horizontal sem barra visível, com a mesma margem visível dos
+   dois lados (1rem no celular, 2rem a partir de sm, 4rem a partir de lg) — os cards são
+   cortados nessa margem, não na borda da tela. Os 0.5rem de respiro interno evitam cortar
+   o card ampliado no hover. */
 @utility trilho-carrossel {
     --recuo-trilho: 1rem;
+    --respiro-trilho: 0.5rem;
     @variant sm {
-        --recuo-trilho: 1.5rem;
+        --recuo-trilho: 2rem;
     }
-    padding-inline: var(--recuo-trilho);
-    scroll-padding-inline: var(--recuo-trilho);
+    @variant lg {
+        --recuo-trilho: 4rem;
+    }
+    margin-inline: calc(var(--recuo-trilho) - var(--respiro-trilho));
+    padding-inline: var(--respiro-trilho);
+    scroll-padding-inline: var(--respiro-trilho);
     scroll-snap-type: x mandatory;
     overscroll-behavior-x: contain;
     scrollbar-width: none;
