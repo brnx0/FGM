@@ -20,7 +20,13 @@ Route::controller(PaginaController::class)->group(function () {
     Route::get('/termos', 'termos')->name('paginas.termos');
 });
 
-Route::get('/cadastro', [CadastroController::class, 'completar'])->middleware('auth')->name('cadastro');
+Route::middleware('auth')->controller(CadastroController::class)->group(function () {
+    Route::get('/cadastro', 'completar')->name('cadastro');
+    Route::post('/cadastro', 'salvar')->name('cadastro.salvar');
+    Route::get('/cadastro/pessoa-fisica', 'pessoaFisica')->name('cadastro.pessoa-fisica');
+    Route::get('/cadastro/pessoa-juridica', 'pessoaJuridica')->name('cadastro.pessoa-juridica');
+});
+
 Route::post('/logout', LogoutController::class)->name('logout');
 
 // Limitador 'govbr' (AppServiceProvider): 10/min por rota e por IP.

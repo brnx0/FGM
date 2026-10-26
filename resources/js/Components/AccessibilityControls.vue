@@ -16,8 +16,9 @@ import { computed, onBeforeUnmount, onMounted } from 'vue';
 
 withDefaults(
     defineProps<{
-        // 'barra': faixa institucional (A- / A / A+ e rótulos); 'pilula': topo da home, só ícones.
-        variante?: 'barra' | 'pilula';
+        // 'barra': faixa institucional (A- / A / A+ e rótulos); 'pilula': topo da home, só ícones;
+        // 'painel': lista com rótulos sobre fundo claro (botão de acessibilidade do portal do proponente).
+        variante?: 'barra' | 'pilula' | 'painel';
     }>(),
     { variante: 'barra' },
 );
@@ -176,6 +177,75 @@ onBeforeUnmount(() => {
                 <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
             </svg>
         </button>
+    </div>
+
+    <div v-else-if="variante === 'painel'" class="flex flex-col gap-4" role="group" aria-label="Acessibilidade">
+        <div class="flex flex-col gap-2">
+            <p class="text-[0.8125rem] font-semibold text-tinta-suave">Tamanho do texto</p>
+            <div class="grid grid-cols-3 gap-1 rounded-pill bg-parchment p-1" role="group" aria-label="Tamanho do texto">
+                <button
+                    v-for="t in tamanhos"
+                    :key="t.valor"
+                    type="button"
+                    class="pressionavel inline-flex min-h-11 items-center justify-center rounded-pill text-[0.9375rem] font-bold"
+                    :class="fonte === t.valor ? 'bg-superficie text-acao ring-1 ring-hairline' : 'text-tinta-suave hover:text-home-tinta'"
+                    :aria-label="t.rotulo"
+                    :title="t.rotulo"
+                    :aria-pressed="fonte === t.valor ? 'true' : 'false'"
+                    @click="aplicarFonte(t.valor)"
+                >
+                    {{ t.texto }}
+                </button>
+            </div>
+        </div>
+
+        <div class="flex flex-col divide-y divide-hairline border-t border-hairline">
+            <button
+                type="button"
+                class="flex min-h-12 items-center justify-between gap-4 py-3 text-left font-semibold"
+                :aria-pressed="contraste ? 'true' : 'false'"
+                @click="alternarContraste"
+            >
+                <span class="flex items-start gap-3">
+                    <svg aria-hidden="true" viewBox="0 0 24 24" class="mt-0.5 size-5 shrink-0 text-acao" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <circle cx="12" cy="12" r="9" />
+                        <path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none" />
+                    </svg>
+                    <span class="flex flex-col">
+                        Alto contraste
+                        <span class="text-[0.8125rem] font-normal text-tinta-suave">Texto claro sobre fundo preto</span>
+                    </span>
+                </span>
+                <span aria-hidden="true" class="relative inline-flex h-6 w-10 shrink-0 rounded-pill transition-colors motion-reduce:transition-none" :class="contraste ? 'bg-acao' : 'bg-hairline'">
+                    <span
+                        class="absolute top-0.5 left-0.5 size-5 rounded-full border border-hairline bg-superficie transition-transform motion-reduce:transition-none"
+                        :class="{ 'translate-x-4': contraste }"
+                    ></span>
+                </span>
+            </button>
+            <button
+                type="button"
+                class="flex min-h-12 items-center justify-between gap-4 py-3 text-left font-semibold"
+                :aria-pressed="escuro ? 'true' : 'false'"
+                @click="alternarEscuro"
+            >
+                <span class="flex items-start gap-3">
+                    <svg aria-hidden="true" viewBox="0 0 24 24" class="mt-0.5 size-5 shrink-0 text-acao" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" />
+                    </svg>
+                    <span class="flex flex-col">
+                        Modo noturno
+                        <span class="text-[0.8125rem] font-normal text-tinta-suave">Cores escuras, para pouca luz</span>
+                    </span>
+                </span>
+                <span aria-hidden="true" class="relative inline-flex h-6 w-10 shrink-0 rounded-pill transition-colors motion-reduce:transition-none" :class="escuro ? 'bg-acao' : 'bg-hairline'">
+                    <span
+                        class="absolute top-0.5 left-0.5 size-5 rounded-full border border-hairline bg-superficie transition-transform motion-reduce:transition-none"
+                        :class="{ 'translate-x-4': escuro }"
+                    ></span>
+                </span>
+            </button>
+        </div>
     </div>
 
     <div v-else class="flex items-center" role="group" aria-label="Acessibilidade">
