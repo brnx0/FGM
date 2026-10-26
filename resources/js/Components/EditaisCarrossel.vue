@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { Link } from '@inertiajs/vue3';
 import type { EditalResumo, SituacaoEdital } from '../types';
 
 const props = defineProps<{
@@ -13,6 +12,8 @@ const INTERVALO_MS = 7000;
 const CARDS_NO_LEQUE = 5;
 // Deslocamento horizontal mínimo para o gesto contar como troca de slide.
 const ARRASTO_MINIMO_PX = 50;
+// Enquanto os editais não têm PDF próprio, todos baixam este modelo (Edital 008/2026 – Salcine 2).
+const PDF_MODELO = '/documentos/edital-modelo.pdf';
 
 // Fotos da vitrine (anexo portal-fgm.html). São decorativas e vão para os cards pela posição na roda.
 const fotos: { src: string; enquadramento: string }[] = [
@@ -254,7 +255,7 @@ onBeforeUnmount(() => {
                     />
                     <div
                         aria-hidden="true"
-                        class="home-veu absolute inset-0 bg-[linear-gradient(0deg,rgba(8,10,16,0.94)_0%,rgba(8,10,16,0.62)_42%,rgba(8,10,16,0)_72%)]"
+                        class="home-veu absolute inset-0 bg-[linear-gradient(0deg,rgba(4,26,56,0.94)_0%,rgba(4,26,56,0.62)_42%,rgba(4,26,56,0)_72%)]"
                     ></div>
                     <button
                         v-if="posicao(i) !== 0"
@@ -290,16 +291,18 @@ onBeforeUnmount(() => {
                             </div>
                         </dl>
                         <div class="slide-acao mt-1.5">
-                            <Link
-                                :href="`/editais/${edital.slug}`"
+                            <a
+                                :href="PDF_MODELO"
+                                :download="`edital-${edital.slug}.pdf`"
+                                type="application/pdf"
                                 class="pressionavel inline-flex min-h-[46px] items-center gap-3 rounded-pill px-[22px] text-[0.8125rem] font-bold tracking-[0.12em] uppercase no-underline md:min-h-[54px] md:px-8"
                                 :class="edital.situacao === 'aberto' ? 'botao-claro bg-white text-home-azul' : 'vidro text-white'"
                             >
-                                {{ edital.situacao === 'aberto' ? 'Ver edital' : 'Conhecer o edital' }}<span class="sr-only">: {{ edital.titulo }}</span>
+                                Baixar edital<span class="sr-only">: {{ edital.titulo }} (PDF)</span>
                                 <svg aria-hidden="true" viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M5 12h14M13 6l6 6-6 6" />
+                                    <path d="M12 4v11M7 10l5 5 5-5M5 20h14" />
                                 </svg>
-                            </Link>
+                            </a>
                         </div>
                     </div>
                 </article>
@@ -311,7 +314,7 @@ onBeforeUnmount(() => {
         <div v-if="podeRodar" class="flex justify-center">
             <button
                 type="button"
-                class="pressionavel inline-flex min-h-11 items-center gap-2 rounded-pill px-4 text-[0.75rem] font-bold tracking-[0.12em] text-tinta-suave uppercase hover:text-tinta"
+                class="pressionavel inline-flex min-h-11 items-center gap-2 rounded-pill px-4 text-[0.75rem] font-bold tracking-[0.12em] text-tinta-suave uppercase hover:text-home-tinta"
                 @click="pausado = !pausado"
             >
                 <svg v-if="pausado" aria-hidden="true" viewBox="0 0 24 24" class="size-4" fill="currentColor">
