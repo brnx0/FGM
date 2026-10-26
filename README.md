@@ -55,7 +55,7 @@ A homologação não exige domínio oficial. A produção exige (Portaria SGD/MG
 
 ### Trocar do login simulado para o real
 
-O padrão local é `GOVBR_DRIVER=fake`, que oferece contas de teste. Para o login real:
+O padrão local é `GOVBR_DRIVER=fake`: uma tela que imita o login do gov.br, com o CPF de uma conta de teste e uma senha já preenchidos (a senha não é conferida nem enviada). As contas de teste ficam em `fake_accounts`, no `config/govbr.php`. Para o login real:
 
 ```env
 GOVBR_DRIVER=govbr

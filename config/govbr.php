@@ -28,7 +28,7 @@ return [
         'logout' => '/logout',
     ],
 
-    // Contas oferecidas no login simulado.
+    // Contas do login simulado: o CPF digitado escolhe a conta, e o login devolve o nome e o e-mail dela.
     'fake_accounts' => [
         ['cpf' => '52998224725', 'nome' => 'Maria Proponente Teste', 'email' => 'maria.teste@example.com'],
         ['cpf' => '11144477735', 'nome' => 'João Preposto Teste', 'email' => 'joao.teste@example.com'],
