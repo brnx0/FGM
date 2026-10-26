@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Support\Cpf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -26,18 +27,23 @@ class FakeGovBrController extends Controller
         ]);
     }
 
+    /** Como no gov.br real, o CPF escolhe a conta e os dados vêm dela. A senha da tela não chega aqui. */
     public function store(Request $request, LoginGovBrUser $login): RedirectResponse
     {
         $dados = $request->validate([
             'cpf' => ['required', 'string', fn ($attr, $valor, $fail) => Cpf::valido((string) $valor) ?: $fail('CPF inválido.')],
-            'nome' => ['required', 'string', 'max:120'],
-            'email' => ['nullable', 'email', 'max:255'],
         ]);
 
+        $conta = collect(config('govbr.fake_accounts'))->firstWhere('cpf', Cpf::normalizar($dados['cpf']));
+
+        if ($conta === null) {
+            throw ValidationException::withMessages(['cpf' => 'Este CPF não está entre as contas de teste.']);
+        }
+
         $user = $login->handle(new GovBrIdentity(
-            cpf: Cpf::normalizar($dados['cpf']),
-            nome: $dados['nome'],
-            email: $dados['email'] ?: null,
+            cpf: $conta['cpf'],
+            nome: $conta['nome'],
+            email: $conta['email'] ?? null,
             emailVerificado: false,
             telefone: null,
         ));

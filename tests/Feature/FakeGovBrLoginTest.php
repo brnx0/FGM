@@ -27,11 +27,27 @@ class FakeGovBrLoginTest extends TestCase
         config(['govbr.driver' => 'fake']);
 
         $this->get('/auth/govbr/redirect')->assertRedirect('/auth/govbr/fake');
-        $this->post('/auth/govbr/fake', ['cpf' => '529.982.247-25', 'nome' => 'Maria Teste', 'email' => ''])
+        $this->post('/auth/govbr/fake', ['cpf' => '529.982.247-25'])
             ->assertRedirect('/cadastro');
 
         $this->assertAuthenticated();
         $this->assertSame('52998224725', auth()->user()->cpf);
+    }
+
+    public function test_login_simulado_devolve_nome_e_email_da_conta_de_teste(): void
+    {
+        $this->app['env'] = 'local';
+        config(['govbr.driver' => 'fake', 'govbr.fake_accounts' => [
+            ['cpf' => '11144477735', 'nome' => 'João Preposto Teste', 'email' => 'joao.teste@example.com'],
+        ]]);
+
+        $this->post('/auth/govbr/fake', ['cpf' => '111.444.777-35'])->assertRedirect('/cadastro');
+
+        $this->assertDatabaseHas('users', [
+            'cpf' => '11144477735',
+            'name' => 'João Preposto Teste',
+            'email' => 'joao.teste@example.com',
+        ]);
     }
 
     public function test_formulario_lista_contas_simuladas(): void
@@ -49,7 +65,7 @@ class FakeGovBrLoginTest extends TestCase
         $this->app['env'] = 'local';
         config(['govbr.driver' => 'fake']);
 
-        $this->post('/auth/govbr/fake', ['cpf' => '123', 'nome' => 'Maria'])
+        $this->post('/auth/govbr/fake', ['cpf' => '123'])
             ->assertSessionHasErrors('cpf');
         $this->assertGuest();
     }
@@ -59,30 +75,23 @@ class FakeGovBrLoginTest extends TestCase
         $this->app['env'] = 'local';
         config(['govbr.driver' => 'fake']);
 
-        $this->post('/auth/govbr/fake', ['cpf' => '5299822472500', 'nome' => 'Maria'])
+        $this->post('/auth/govbr/fake', ['cpf' => '5299822472500'])
             ->assertSessionHasErrors('cpf');
         $this->assertGuest();
     }
 
-    public function test_nome_obrigatorio_e_email_valido(): void
+    public function test_cpf_valido_fora_das_contas_de_teste_e_recusado(): void
     {
         $this->app['env'] = 'local';
-        config(['govbr.driver' => 'fake']);
+        config(['govbr.driver' => 'fake', 'govbr.fake_accounts' => [
+            ['cpf' => '52998224725', 'nome' => 'Maria Proponente Teste', 'email' => null],
+        ]]);
 
-        $this->post('/auth/govbr/fake', ['cpf' => '52998224725', 'nome' => '', 'email' => 'x'])
-            ->assertSessionHasErrors(['nome', 'email']);
+        $this->post('/auth/govbr/fake', ['cpf' => '111.444.777-35'])
+            ->assertSessionHasErrors(['cpf' => 'Este CPF não está entre as contas de teste.']);
+
         $this->assertGuest();
-    }
-
-    public function test_nome_e_email_acima_do_limite_sao_recusados(): void
-    {
-        $this->app['env'] = 'local';
-        config(['govbr.driver' => 'fake']);
-
-        $this->post('/auth/govbr/fake', [
-            'cpf' => '52998224725', 'nome' => str_repeat('N', 121), 'email' => str_repeat('e', 250).'@example.com',
-        ])->assertSessionHasErrors(['nome', 'email']);
-        $this->assertGuest();
+        $this->assertDatabaseCount('users', 0);
     }
 
     public function test_simulado_404_em_producao(): void
@@ -91,7 +100,7 @@ class FakeGovBrLoginTest extends TestCase
         $this->app['env'] = 'production';
 
         $this->get('/auth/govbr/fake')->assertNotFound();
-        $this->post('/auth/govbr/fake', ['cpf' => '52998224725', 'nome' => 'X'])->assertNotFound();
+        $this->post('/auth/govbr/fake', ['cpf' => '52998224725'])->assertNotFound();
         $this->assertGuest();
     }
 
