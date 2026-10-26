@@ -17,27 +17,28 @@ const navegacao: { href: string; texto: string; pagina?: boolean }[] = [
 
 <template>
     <!-- Começa por baixo da curva da faixa de eventos (margem negativa e padding maior). -->
-    <footer class="relative z-0 -mt-[130px] bg-superficie px-6 pt-[210px] text-tinta">
+    <footer class="relative z-0 -mt-[130px] bg-superficie px-6 pt-[210px] text-home-tinta">
         <div class="mx-auto flex max-w-[1200px] flex-col gap-16">
             <div class="flex flex-wrap items-end justify-between gap-x-12 gap-y-7 border-b border-hairline pb-14">
                 <div class="flex max-w-[620px] flex-col gap-[18px]">
                     <h2 class="font-barlow text-[clamp(2.6rem,5vw,4.4rem)] leading-[0.92] font-extrabold tracking-[0.01em] uppercase">
                         Cultura que<br />move Salvador
                     </h2>
-                    <div aria-hidden="true" class="h-1 w-[72px] bg-tinta"></div>
+                    <div aria-hidden="true" class="h-1 w-[72px] bg-home-tinta"></div>
                 </div>
                 <div class="flex flex-wrap gap-3.5">
                     <Link
                         v-if="usuario"
                         href="/cadastro"
-                        class="pressionavel inline-flex min-h-14 items-center gap-3 rounded-pill bg-tinta px-8 text-[0.8125rem] font-bold tracking-[0.12em] text-fundo uppercase no-underline shadow-[0_18px_36px_-16px_rgba(11,17,28,0.45)]"
+                        class="pressionavel inline-flex min-h-14 items-center gap-3 rounded-pill bg-home-tinta px-8 text-[0.8125rem] font-bold tracking-[0.12em] text-fundo uppercase no-underline shadow-[0_18px_36px_-16px_rgba(6,36,74,0.45)]"
                     >
                         Continuar meu cadastro
                     </Link>
                     <a
                         v-else
                         href="/auth/govbr/redirect"
-                        class="pressionavel inline-flex min-h-14 items-center gap-3 rounded-pill bg-tinta px-8 text-[0.8125rem] font-bold tracking-[0.12em] text-fundo uppercase no-underline shadow-[0_18px_36px_-16px_rgba(11,17,28,0.45)]"
+                        data-iris
+                        class="pressionavel inline-flex min-h-14 items-center gap-3 rounded-pill bg-home-tinta px-8 text-[0.8125rem] font-bold tracking-[0.12em] text-fundo uppercase no-underline shadow-[0_18px_36px_-16px_rgba(6,36,74,0.45)]"
                     >
                         Cadastre-se<span class="sr-only"> com a conta gov.br</span>
                         <svg aria-hidden="true" viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -46,7 +47,7 @@ const navegacao: { href: string; texto: string; pagina?: boolean }[] = [
                     </a>
                     <a
                         href="#editais"
-                        class="pressionavel inline-flex min-h-14 items-center rounded-pill border-2 border-tinta px-8 text-[0.8125rem] font-bold tracking-[0.12em] uppercase no-underline"
+                        class="pressionavel inline-flex min-h-14 items-center rounded-pill border-2 border-home-tinta px-8 text-[0.8125rem] font-bold tracking-[0.12em] uppercase no-underline"
                     >
                         Ver editais abertos
                     </a>
@@ -89,12 +90,12 @@ const navegacao: { href: string; texto: string; pagina?: boolean }[] = [
                         </li>
                         <template v-else>
                             <li>
-                                <a href="/auth/govbr/redirect" class="inline-flex min-h-11 items-center text-[0.9375rem] font-medium no-underline hover:underline">
+                                <a href="/auth/govbr/redirect" data-iris class="inline-flex min-h-11 items-center text-[0.9375rem] font-medium no-underline hover:underline">
                                     Cadastre-se<span class="sr-only"> com a conta gov.br</span>
                                 </a>
                             </li>
                             <li>
-                                <a href="/auth/govbr/redirect" class="inline-flex min-h-11 items-center text-[0.9375rem] font-medium no-underline hover:underline">
+                                <a href="/auth/govbr/redirect" data-iris class="inline-flex min-h-11 items-center text-[0.9375rem] font-medium no-underline hover:underline">
                                     Entrar<span class="sr-only"> com gov.br</span>
                                 </a>
                             </li>
@@ -119,12 +120,12 @@ const navegacao: { href: string; texto: string; pagina?: boolean }[] = [
         >
             <p>© {{ ano }} FGM – Fundação Gregório de Mattos. Todos os direitos reservados.</p>
             <nav aria-label="Informações legais" class="flex flex-wrap gap-x-5">
-                <Link href="/privacidade" class="inline-flex min-h-11 items-center hover:text-tinta hover:underline">Aviso de privacidade</Link>
-                <Link href="/termos" class="inline-flex min-h-11 items-center hover:text-tinta hover:underline">Termos de uso</Link>
+                <Link href="/privacidade" class="inline-flex min-h-11 items-center hover:text-home-tinta hover:underline">Aviso de privacidade</Link>
+                <Link href="/termos" class="inline-flex min-h-11 items-center hover:text-home-tinta hover:underline">Termos de uso</Link>
             </nav>
             <a
                 href="#topo"
-                class="pressionavel inline-flex min-h-11 items-center gap-2.5 rounded-pill border-2 border-tinta px-5 text-[0.75rem] font-bold tracking-[0.12em] text-tinta uppercase no-underline"
+                class="pressionavel inline-flex min-h-11 items-center gap-2.5 rounded-pill border-2 border-home-tinta px-5 text-[0.75rem] font-bold tracking-[0.12em] text-home-tinta uppercase no-underline"
             >
                 Voltar ao topo
                 <svg aria-hidden="true" viewBox="0 0 24 24" class="size-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

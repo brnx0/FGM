@@ -71,7 +71,7 @@ const iluminarVidro = (evento: PointerEvent): void => {
                             fetchpriority="high"
                         />
                         <div
-                            class="home-veu absolute inset-0 bg-[linear-gradient(90deg,rgba(8,10,16,0.82)_0%,rgba(8,10,16,0.62)_32%,rgba(8,10,16,0.18)_62%,rgba(8,10,16,0)_100%),linear-gradient(180deg,rgba(8,10,16,0.45)_0%,rgba(8,10,16,0)_22%,rgba(8,10,16,0)_75%,rgba(8,10,16,0.35)_100%)]"
+                            class="home-veu absolute inset-0 bg-[linear-gradient(90deg,rgba(4,26,56,0.82)_0%,rgba(4,26,56,0.62)_32%,rgba(4,26,56,0.18)_62%,rgba(4,26,56,0)_100%),linear-gradient(180deg,rgba(4,26,56,0.45)_0%,rgba(4,26,56,0)_22%,rgba(4,26,56,0)_75%,rgba(4,26,56,0.35)_100%)]"
                         ></div>
                     </div>
 
@@ -99,6 +99,7 @@ const iluminarVidro = (evento: PointerEvent): void => {
                             <a
                                 v-else
                                 href="/auth/govbr/redirect"
+                                data-iris
                                 class="botao-claro pressionavel inline-flex min-h-12 items-center gap-3 rounded-pill bg-white px-[22px] text-[0.75rem] font-bold tracking-[0.12em] text-home-azul uppercase no-underline shadow-[0_20px_40px_-16px_rgba(0,0,0,0.45)] md:min-h-[58px] md:px-9 md:text-[0.875rem]"
                             >
                                 Cadastre-se<span class="sr-only"> com a conta gov.br</span>
@@ -133,7 +134,7 @@ const iluminarVidro = (evento: PointerEvent): void => {
 
                 <section
                     id="editais"
-                    class="home-curva relative z-[2] -mt-16 rounded-[50%/64px] bg-superficie px-6 pt-24 pb-[220px] text-tinta md:-mt-[130px] md:rounded-[50%/130px] md:pt-[150px]"
+                    class="home-curva relative z-[2] -mt-16 rounded-[50%/64px] bg-superficie px-6 pt-24 pb-[220px] text-home-tinta md:-mt-[130px] md:rounded-[50%/130px] md:pt-[150px]"
                     aria-labelledby="editais-titulo"
                 >
                     <div class="mx-auto flex max-w-[1200px] flex-col gap-16">
@@ -143,7 +144,7 @@ const iluminarVidro = (evento: PointerEvent): void => {
                                 <h2 id="editais-titulo" class="font-barlow text-[clamp(3rem,6vw,5.2rem)] leading-[0.92] font-extrabold tracking-[0.01em] uppercase">
                                     Editais
                                 </h2>
-                                <div aria-hidden="true" class="h-1 w-[72px] bg-tinta"></div>
+                                <div aria-hidden="true" class="h-1 w-[72px] bg-home-tinta"></div>
                             </div>
                             <div class="flex max-w-[460px] flex-col items-start gap-[18px]">
                                 <p class="text-[1.125rem] leading-[1.7] text-tinta-suave">
@@ -175,7 +176,7 @@ const iluminarVidro = (evento: PointerEvent): void => {
                     <img src="/images/vitrine-elenco-branco.jpg" alt="" class="home-foto absolute inset-0 size-full object-cover opacity-40" loading="lazy" decoding="async" />
                     <div
                         aria-hidden="true"
-                        class="home-veu absolute inset-0 bg-[linear-gradient(90deg,rgba(11,17,28,0.97)_0%,rgba(11,17,28,0.9)_42%,rgba(11,17,28,0.78)_100%)]"
+                        class="home-veu absolute inset-0 bg-[linear-gradient(90deg,rgba(6,36,74,0.97)_0%,rgba(6,36,74,0.9)_42%,rgba(6,36,74,0.78)_100%)]"
                     ></div>
 
                     <div class="relative mx-auto flex max-w-[1200px] flex-col gap-14">

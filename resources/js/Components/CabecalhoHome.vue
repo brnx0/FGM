@@ -27,7 +27,7 @@ onUnmounted(pararDeOuvir);
 <template>
     <!-- Fica sobre a foto da abertura e rola com a página (não é fixo, como no anexo). -->
     <header
-        class="home-escuro absolute inset-x-0 top-0 z-20 border-b border-white/15 bg-[linear-gradient(180deg,rgba(8,10,16,0.42)_0%,rgba(8,10,16,0.18)_100%)] px-6 text-white backdrop-blur-md"
+        class="home-escuro absolute inset-x-0 top-0 z-20 border-b border-white/15 bg-[linear-gradient(180deg,rgba(4,26,56,0.42)_0%,rgba(4,26,56,0.18)_100%)] px-6 text-white backdrop-blur-md"
         :class="{ 'bg-noite/95': menuAberto }"
         @keydown.esc="menuAberto = false"
     >
@@ -80,6 +80,7 @@ onUnmounted(pararDeOuvir);
                 <a
                     v-else
                     href="/auth/govbr/redirect"
+                    data-iris
                     class="botao-claro pressionavel inline-flex min-h-11 items-center rounded-pill bg-white px-4 text-[0.8125rem] font-bold tracking-[0.12em] whitespace-nowrap text-home-azul uppercase no-underline md:px-[26px]"
                 >
                     Entrar<span class="sr-only"> com gov.br</span>
