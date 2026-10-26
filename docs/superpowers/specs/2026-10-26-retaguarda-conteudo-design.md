@@ -44,9 +44,10 @@ A FGM precisa de uma área interna (retaguarda) onde a equipe gerencia o que o p
 
 ## 7. Usuários, papéis e primeiro gestor
 
-- Gestores são registros da tabela `users` existente. Mudanças: `password` (nullable — proponentes continuam sem senha), `email` passa a ser **único quando preenchido**, campo `ativo` (bool, padrão verdadeiro). Gestor exige **nome, e-mail e CPF** (CPF para poder entrar pelo gov.br).
+- Gestores são registros da tabela `users` existente. Mudanças: `password` (nullable — proponentes continuam sem senha), `email` passa a ser **único quando preenchido**, campo `ativo` (bool, padrão verdadeiro). Gestor exige **nome e e-mail**; o **CPF é opcional** e, quando preenchido, permite entrar pelo gov.br. Como `users.cpf` hoje é obrigatório, a coluna passa a aceitar nulo (continua única quando preenchida).
 - Tabelas `roles` (`id`, `nome`, `slug` único) e `role_user` (pivô). Papel inicial: **Administrador** (`administrador`). `User::temPapel(string $slug): bool` e `User::ehGestor(): bool` (tem algum papel e está ativo).
-- **Seeder do primeiro gestor** (`PrimeiroGestorSeeder`, chamado pelo `DatabaseSeeder`): cria o papel Administrador e um usuário com esse papel a partir de variáveis do `.env` — `GESTOR_NOME`, `GESTOR_EMAIL`, `GESTOR_CPF`, `GESTOR_SENHA` (documentadas no `.env.example` com valores vazios/placeholder). Sem as variáveis, o seeder avisa e não cria nada. Idempotente.
+- **Seeder do primeiro gestor** (`PrimeiroGestorSeeder`, chamado pelo `DatabaseSeeder`): cria o papel Administrador e o usuário **`admin@admin`**, senha **`123456`**, nome "Administrador", com esse papel — valores fixos no seeder, sem `.env` (decisão do usuário). Esse usuário **não tem CPF** (entra só por e-mail e senha); por isso o CPF passa a ser opcional para gestores — obrigatório apenas para quem quiser entrar pelo gov.br. Idempotente (não recria nem redefine a senha se o usuário já existe).
+- *(decisão do Claude, por segurança)* O seeder do admin **não roda com `APP_ENV=production`** — em produção o primeiro administrador é criado de outra forma, a combinar. A senha `123456` vale para local e homologação.
 - **Tela Gestores:** listar (nome, e-mail, CPF mascarado, papel, ativo), criar (nome, e-mail, CPF, senha inicial, papel), editar (inclusive trocar senha), ativar/desativar. Um gestor não pode desativar a si mesmo nem remover o próprio papel. Sem exclusão definitiva.
 
 ## 8. Editais na retaguarda
