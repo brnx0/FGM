@@ -8,7 +8,7 @@ Este documento parte do `DESIGN-apple.md` (linguagem Apple, usada como estrutura
 - **Nada de preto:** sem barras ou faixas pretas. Texto em #1D1D1F.
 - **Mantido da Apple:** botões pílula, cards de 18px com borda fina, sem sombras nem degradês decorativos, `scale(.95)` ao pressionar, responsivo até 360px, alvos de toque ≥ 44px.
 - **Acessibilidade:** contraste AA, foco visível, navegação por teclado, textos alternativos.
-- **Exceção aprovada — hover dos cards do carrossel "Já aconteceu.":** em dispositivos com mouse (`@media (hover:hover)`) e no foco do teclado, o card cresce para `scale(1.02)` em ~300ms (curva Apple), ganha a sombra `0 12px 32px rgba(0,0,0,.12)` (mais escura no modo noturno; no alto contraste, contorno em vez de sombra) e a foto/ilustração aproxima `scale(1.04)`. Sem transformações com `prefers-reduced-motion`. É a única sombra de interface do portal.
+- **Exceção aprovada — página inicial (anexo `portal-fgm.html`, out/2026):** a home tem desenho próprio. Montserrat no texto e Barlow Semi Condensed nos títulos (caixa alta, peso 800); azul `#005ca9` no texto dos botões brancos e faixa de eventos em `#0b111c`; foto em tela cheia sob véu escuro na abertura; vidro translúcido (`.vidro`) em botões e selos sobre foto; carrossel de editais em leque 3D, com troca a cada 7 s que pode ser pausada e não acontece com `prefers-reduced-motion`; faixas sobrepostas com bordas em curva; sombras nos slides e nos botões claros. Topo e rodapé são da própria página (`CabecalhoHome`, `RodapeHome`); as demais páginas seguem com Inter, `SiteHeader` e `SiteFooter`. No alto contraste a home fica sem fotos, véus, vidro e sombras.
 - **Modo noturno:** azul-marinho (#0B1526), nunca preto; o alto contraste sempre prevalece.
 
 ---

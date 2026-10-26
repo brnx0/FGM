@@ -47,10 +47,10 @@ class PortalTest extends TestCase
             ->has('eventos', 2)
             ->has('eventos.0', fn (Assert $e) => $e
                 ->where('titulo', 'Jornada do Patrimônio')
-                ->where('dataRealizacao', 'agosto de 2026')
+                ->where('mes', 'agosto')
+                ->where('ano', '2026')
                 ->where('local', 'Centro Histórico')
-                ->has('resumo')
-                ->where('imagem', null)));
+                ->has('resumo')));
     }
 
     public function test_home_limita_eventos_a_seis(): void

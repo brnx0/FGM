@@ -1,5 +1,26 @@
+<script lang="ts">
+import { ref } from 'vue';
+
+type Tema = 'claro' | 'escuro';
+
+// Estado do módulo, compartilhado entre instâncias: a home tem uma no topo e outra no menu.
+const fonte = ref<string>('100');
+const contraste = ref<boolean>(false);
+const escuro = ref<boolean>(false);
+// Escolha feita nesta página quando o armazenamento não está disponível.
+let temaEscolhido: Tema | null = null;
+</script>
+
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted } from 'vue';
+
+withDefaults(
+    defineProps<{
+        // 'barra': faixa institucional (A- / A / A+ e rótulos); 'pilula': topo da home, só ícones.
+        variante?: 'barra' | 'pilula';
+    }>(),
+    { variante: 'barra' },
+);
 
 // Mesmas chaves lidas pelo script de app.blade.php antes da primeira pintura.
 const CHAVE_FONTE = 'a11yFonte';
@@ -13,13 +34,6 @@ const tamanhos: { valor: string; texto: string; rotulo: string }[] = [
     { valor: '115', texto: 'A+', rotulo: 'A+, aumentar tamanho do texto' },
 ];
 
-const fonte = ref<string>('100');
-const contraste = ref<boolean>(false);
-const escuro = ref<boolean>(false);
-
-type Tema = 'claro' | 'escuro';
-// Escolha feita nesta página quando o armazenamento não está disponível.
-let temaEscolhido: Tema | null = null;
 let consultaSistema: MediaQueryList | null = null;
 
 const salvar = (chave: string, valor: string): void => {
@@ -63,6 +77,15 @@ const aplicarFonte = (valor: string): void => {
     salvar(CHAVE_FONTE, valor);
 };
 
+// A pílula só tem A− e A+: cada toque anda um passo na mesma escala de tamanhos.
+const escala = tamanhos.map((t) => t.valor);
+const noMinimo = computed<boolean>(() => fonte.value === escala[0]);
+const noMaximo = computed<boolean>(() => fonte.value === escala[escala.length - 1]);
+const passoFonte = (direcao: 1 | -1): void => {
+    const destino = escala[escala.indexOf(fonte.value) + direcao];
+    if (destino) aplicarFonte(destino);
+};
+
 const alternarContraste = (): void => {
     contraste.value = !contraste.value;
     document.documentElement.classList.toggle('alto-contraste', contraste.value);
@@ -98,7 +121,64 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <div class="flex items-center" role="group" aria-label="Acessibilidade">
+    <div
+        v-if="variante === 'pilula'"
+        class="flex items-center gap-0.5 rounded-pill border border-white/15 bg-white/10 px-1 text-white"
+        role="group"
+        aria-label="Acessibilidade"
+    >
+        <button
+            type="button"
+            class="pressionavel inline-flex size-11 items-center justify-center rounded-pill text-[0.8125rem] font-semibold hover:bg-white/10 aria-disabled:cursor-default aria-disabled:opacity-50 aria-disabled:hover:bg-transparent"
+            aria-label="A−, diminuir tamanho do texto"
+            title="A−, diminuir tamanho do texto"
+            :aria-disabled="noMinimo ? 'true' : 'false'"
+            @click="passoFonte(-1)"
+        >
+            A−
+        </button>
+        <button
+            type="button"
+            class="pressionavel inline-flex size-11 items-center justify-center rounded-pill text-[0.9375rem] font-semibold hover:bg-white/10 aria-disabled:cursor-default aria-disabled:opacity-50 aria-disabled:hover:bg-transparent"
+            aria-label="A+, aumentar tamanho do texto"
+            title="A+, aumentar tamanho do texto"
+            :aria-disabled="noMaximo ? 'true' : 'false'"
+            @click="passoFonte(1)"
+        >
+            A+
+        </button>
+        <button
+            type="button"
+            class="pressionavel inline-flex size-11 items-center justify-center rounded-pill hover:bg-white/10"
+            :aria-pressed="contraste ? 'true' : 'false'"
+            aria-label="Alto contraste"
+            title="Alto contraste"
+            @click="alternarContraste"
+        >
+            <svg aria-hidden="true" viewBox="0 0 24 24" class="size-[18px]" fill="none" stroke="currentColor" stroke-width="1.8">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none" />
+            </svg>
+        </button>
+        <button
+            type="button"
+            class="pressionavel inline-flex size-11 items-center justify-center rounded-pill hover:bg-white/10"
+            :aria-pressed="escuro ? 'true' : 'false'"
+            aria-label="Modo noturno"
+            title="Modo noturno"
+            @click="alternarEscuro"
+        >
+            <svg v-if="!escuro" aria-hidden="true" viewBox="0 0 24 24" class="size-[18px]" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+            </svg>
+            <svg v-else aria-hidden="true" viewBox="0 0 24 24" class="size-[18px]" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                <circle cx="12" cy="12" r="4" />
+                <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+            </svg>
+        </button>
+    </div>
+
+    <div v-else class="flex items-center" role="group" aria-label="Acessibilidade">
         <button
             v-for="t in tamanhos"
             :key="t.valor"

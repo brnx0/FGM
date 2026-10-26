@@ -34,9 +34,10 @@ export interface EditalDetalhe extends EditalResumo {
 export interface Evento {
     titulo: string;
     resumo: string;
-    dataRealizacao: string;
+    /** Nome do mês em minúsculas ("agosto"). */
+    mes: string;
+    ano: string;
     local: string | null;
-    imagem: string | null;
 }
 
 export interface ContaFake {

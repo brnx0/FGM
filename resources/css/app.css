@@ -1,4 +1,7 @@
 @import '@fontsource-variable/inter';
+@import '@fontsource-variable/montserrat';
+@import '@fontsource/barlow-semi-condensed/700.css';
+@import '@fontsource/barlow-semi-condensed/800.css';
 @import 'tailwindcss';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
@@ -7,6 +10,10 @@
 /* Tokens do Mapa Cultura (DESIGN.md › Adaptações Mapa Cultura). */
 @theme {
     --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+
+    /* Página inicial (anexo portal-fgm.html): Montserrat no texto, Barlow Semi Condensed nos títulos. */
+    --font-montserrat: 'Montserrat Variable', ui-sans-serif, system-ui, sans-serif;
+    --font-barlow: 'Barlow Semi Condensed', 'Arial Narrow', ui-sans-serif, sans-serif;
 
     --color-acao: #004d9f;
     --color-acao-escuro: #0c427b;
@@ -22,11 +29,9 @@
     --color-sobre-acao: #ffffff;
     --color-tinta-suave: #4a4a4f;
 
-    /* Cards e painéis sobre o fundo; botão gov.br; faixa azul dos editais. */
+    /* Cards e painéis sobre o fundo; botão gov.br. */
     --color-superficie: #ffffff;
     --color-sobre-govbr: #ffffff;
-    --color-faixa: #004d9f;
-    --color-sobre-faixa: #ffffff;
 
     /* Mensagens: erro (flash) e aviso (ambiente de teste, texto provisório). */
     --color-erro-fundo: #fdecec;
@@ -35,24 +40,16 @@
     --color-aviso-fundo: #fef3c7;
     --color-aviso-texto: #78350f;
 
-    /* Carrossel "Já aconteceu": setas translúcidas (Apple). */
-    --color-seta: rgba(210, 210, 215, 0.64);
-    --color-seta-hover: rgba(190, 190, 196, 0.8);
-    --color-seta-icone: #1d1d1f;
-
-    /* Ilustração dos cards sem foto: pares fundo/ícone inspirados nas fitas do Bonfim. */
-    --color-ilustra-azul: #e3eefa;
-    --color-ilustra-azul-icone: #004d9f;
-    --color-ilustra-amarelo: #fbefc8;
-    --color-ilustra-amarelo-icone: #8a6100;
-    --color-ilustra-verde: #ddf2e7;
-    --color-ilustra-verde-icone: #17794f;
-    --color-ilustra-vermelho: #fbe3e3;
-    --color-ilustra-vermelho-icone: #b83232;
+    /* Página inicial: texto dos botões brancos, faixa escura de eventos e situação dos editais.
+       Ficam sobre fotos ou fundos escuros, por isso não mudam no modo noturno. */
+    --color-home-azul: #005ca9;
+    --color-noite: #0b111c;
+    --color-situacao-aberto: #1f9d57;
+    --color-situacao-em-breve: #d48a12;
+    --color-situacao-encerrado: #8a93a3;
 
     --radius-sm: 8px;
     --radius-card: 18px;
-    --radius-cartao: 24px;
     --radius-pill: 9999px;
 
     /* Corpo em 17px; em rem para acompanhar os controles A- / A / A+. */
@@ -62,8 +59,14 @@
     /* Abaixo daqui o topo vira menu hambúrguer. */
     --breakpoint-nav: 834px;
 
-    /* Grades da home: 3 colunas a partir de 1068px (em rem para ordenar junto com sm/md/lg). */
-    --breakpoint-grade3: 66.75rem;
+    /* Aproximação lenta da foto da abertura da home. */
+    --animate-zoom-lento: zoom-lento 30s ease-in-out infinite alternate;
+
+    @keyframes zoom-lento {
+        to {
+            transform: scale(1.07);
+        }
+    }
 }
 
 /* Modo noturno: azul-marinho em vez de preto. Vem antes do alto contraste, que
@@ -83,30 +86,11 @@ html.escuro {
     --color-profundo: #0a2747;
     --color-govbr: #1351b4;
     --color-sobre-govbr: #ffffff;
-    --color-faixa: #0c427b;
-    --color-sobre-faixa: #f5f5f7;
     --color-erro-fundo: #3a1820;
     --color-erro-borda: #7a2e38;
     --color-erro-texto: #ffd6d6;
     --color-aviso-fundo: #3b2f12;
     --color-aviso-texto: #fde68a;
-    --color-seta: rgba(184, 194, 211, 0.2);
-    --color-seta-hover: rgba(184, 194, 211, 0.3);
-    --color-seta-icone: #f5f5f7;
-    --color-ilustra-azul: #17365f;
-    --color-ilustra-azul-icone: #8dbbff;
-    --color-ilustra-amarelo: #3a3114;
-    --color-ilustra-amarelo-icone: #f2c230;
-    --color-ilustra-verde: #123a2c;
-    --color-ilustra-verde-icone: #5fd39e;
-    --color-ilustra-vermelho: #45202a;
-    --color-ilustra-vermelho-icone: #ff8f8f;
-    --sombra-cartao: 0 12px 32px rgba(3, 8, 18, 0.55);
-}
-
-/* Véu da abertura mais fechado à noite, terminando no azul da faixa de editais. */
-html.escuro:not(.alto-contraste) .abertura-veu {
-    background-image: linear-gradient(180deg, rgba(11, 21, 38, 0.7), rgba(12, 66, 123, 0.9));
 }
 
 /* Modo de acessibilidade: a regra "nada de preto" não se aplica aqui. */
@@ -114,25 +98,11 @@ html.alto-contraste {
     color-scheme: dark;
     --color-superficie: #000000;
     --color-sobre-govbr: #000000;
-    --color-faixa: #000000;
-    --color-sobre-faixa: #ffffff;
     --color-erro-fundo: #fdecec;
     --color-erro-borda: #f5c2c0;
     --color-erro-texto: #8a1c1c;
     --color-aviso-fundo: #fef3c7;
     --color-aviso-texto: #78350f;
-    --color-seta: #000000;
-    --color-seta-hover: #000000;
-    --color-seta-icone: #ffffff;
-    --color-ilustra-azul: #000000;
-    --color-ilustra-azul-icone: #ffd700;
-    --color-ilustra-amarelo: #000000;
-    --color-ilustra-amarelo-icone: #ffd700;
-    --color-ilustra-verde: #000000;
-    --color-ilustra-verde-icone: #ffd700;
-    --color-ilustra-vermelho: #000000;
-    --color-ilustra-vermelho-icone: #ffd700;
-    --sombra-cartao: none;
     --color-fundo: #000000;
     --color-tinta: #ffffff;
     --color-tinta-suave: #ffffff;
@@ -150,52 +120,8 @@ html.alto-contraste a {
     text-decoration: underline;
 }
 
-html.alto-contraste .barra-institucional,
-html.alto-contraste .cartao-evento,
-html.alto-contraste .cartao-ilustracao,
-html.alto-contraste .seta-carrossel {
-    border: 1px solid var(--color-hairline);
-}
-
 html.alto-contraste .barra-institucional {
-    border-width: 0 0 1px;
-}
-
-/* Abertura da home: ilustração de Salvador sob véu azul (única exceção à regra de
-   "sem degradês", porque serve à legibilidade do texto sobre a imagem). */
-.abertura {
-    background-color: var(--color-profundo);
-}
-
-.abertura-veu {
-    background-image: linear-gradient(180deg, rgba(10, 39, 71, 0.55), rgba(0, 77, 159, 0.8));
-}
-
-/* A onda é pintada com a cor da faixa seguinte (editais). */
-.abertura .onda {
-    fill: var(--color-faixa);
-}
-
-/* Foco branco sobre o azul da abertura. */
-.abertura :focus-visible {
-    outline-color: #ffffff;
-}
-
-/* Alto contraste: sem imagem, fundo sólido; faixa de editais em preto com borda. */
-html.alto-contraste .abertura {
-    background-color: var(--color-fundo);
-}
-
-html.alto-contraste .abertura-imagem,
-html.alto-contraste .abertura-veu,
-html.alto-contraste .abertura .onda {
-    display: none;
-}
-
-html.alto-contraste .faixa-editais {
-    background-color: var(--color-fundo);
-    color: var(--color-tinta);
-    border-block: 1px solid var(--color-hairline);
+    border-bottom: 1px solid var(--color-hairline);
 }
 
 @layer base {
@@ -245,91 +171,250 @@ html.alto-contraste .faixa-editais {
     }
 }
 
-/* Trilho do carrossel: rola na horizontal sem barra visível, com a mesma margem visível dos
-   dois lados (1rem no celular, 2rem a partir de sm, 4rem a partir de lg) — os cards são
-   cortados nessa margem, não na borda da tela. Os 0.5rem de respiro interno evitam cortar
-   o card ampliado no hover. */
-@utility trilho-carrossel {
-    --recuo-trilho: 1rem;
-    --respiro-trilho: 0.5rem;
-    @variant sm {
-        --recuo-trilho: 2rem;
-    }
-    @variant lg {
-        --recuo-trilho: 4rem;
-    }
-    margin-inline: calc(var(--recuo-trilho) - var(--respiro-trilho));
-    padding-inline: var(--respiro-trilho);
-    scroll-padding-inline: var(--respiro-trilho);
-    scroll-snap-type: x mandatory;
-    overscroll-behavior-x: contain;
-    scrollbar-width: none;
+/* Página inicial (anexo portal-fgm.html). Fotos sob véus escuros, vidro translúcido,
+   sombras e faixas sobrepostas em curva são exceções aprovadas (DESIGN.md › Adaptações). */
 
-    &::-webkit-scrollbar {
-        display: none;
+@media (prefers-reduced-motion: no-preference) {
+    html:has(.home) {
+        scroll-behavior: smooth;
     }
 }
 
-/* Cards do carrossel: ao passar o mouse (ou com foco do teclado) o card cresce um pouco,
-   ganha sombra e a foto/ilustração aproxima. Exceção aprovada à regra "sem sombras"
-   (DESIGN.md › Adaptações). No alto contraste não há sombra: aparece um contorno. */
-:root {
-    --sombra-cartao: 0 12px 32px rgba(0, 0, 0, 0.12);
-    --curva-apple: cubic-bezier(0.25, 0.1, 0.25, 1);
+/* Sobre as fotos e a faixa escura o anel azul some: usa branco. */
+.home-escuro :focus-visible {
+    outline-color: #ffffff;
 }
 
-.cartao-evento {
-    transition:
-        transform 0.3s var(--curva-apple),
-        box-shadow 0.3s var(--curva-apple);
-}
-
-.cartao-evento .cartao-midia {
-    transition: transform 0.4s var(--curva-apple);
-}
-
-.cartao-evento:focus-visible {
-    transform: scale(1.02);
-    box-shadow: var(--sombra-cartao);
-}
-
-.cartao-evento:focus-visible .cartao-midia {
-    transform: scale(1.04);
-}
-
-@media (hover: hover) {
-    .cartao-evento:hover {
-        transform: scale(1.02);
-        box-shadow: var(--sombra-cartao);
+@layer components {
+    /* Vidro: botões e selos translúcidos sobre foto. O brilho segue o ponteiro (--mx e --my,
+       definidas em Home.vue) e a borda é um degradê recortado por máscara. */
+    .vidro {
+        position: relative;
+        isolation: isolate;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.17) 0%, rgba(255, 255, 255, 0.05) 55%, rgba(255, 255, 255, 0.1) 100%);
+        -webkit-backdrop-filter: blur(18px) saturate(180%);
+        backdrop-filter: blur(18px) saturate(180%);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.5),
+            inset 0 -1px 1px rgba(255, 255, 255, 0.1),
+            inset 0 0 24px rgba(255, 255, 255, 0.05),
+            0 18px 40px -18px rgba(0, 0, 0, 0.55);
     }
 
-    .cartao-evento:hover .cartao-midia {
-        transform: scale(1.04);
+    .vidro::before,
+    .vidro::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        border-radius: inherit;
+        pointer-events: none;
     }
 
-    html.alto-contraste .cartao-evento:hover {
-        outline: 2px solid var(--color-acao);
-        outline-offset: 2px;
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .cartao-evento,
-    .cartao-evento .cartao-midia {
-        transition: none;
+    .vidro::before {
+        background: radial-gradient(180px 110px at var(--mx, 22%) var(--my, 0%), rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0) 70%);
+        opacity: 0.7;
+        transition: opacity 0.35s ease;
     }
 
-    .cartao-evento:hover,
-    .cartao-evento:focus-visible,
-    .cartao-evento:hover .cartao-midia,
-    .cartao-evento:focus-visible .cartao-midia {
+    .vidro::after {
+        padding: 1px;
+        background: linear-gradient(155deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.1) 36%, rgba(255, 255, 255, 0) 60%, rgba(255, 255, 255, 0.32));
+        -webkit-mask:
+            linear-gradient(#000 0 0) content-box,
+            linear-gradient(#000 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+    }
+
+    .vidro:hover::before {
+        opacity: 1;
+    }
+
+    .vidro-escuro {
+        background: linear-gradient(135deg, rgba(18, 24, 38, 0.46), rgba(18, 24, 38, 0.22));
+    }
+
+    :is(a, button).vidro:hover {
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0.1));
+    }
+
+    .vidro-pilula {
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.45),
+            0 6px 16px -8px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Só o Chromium aplica filtro SVG no backdrop-filter: refração do #lente-vidro (Home.vue). */
+    .lente .vidro {
+        backdrop-filter: url(#lente-vidro) blur(12px) saturate(180%);
+    }
+
+    @media (prefers-reduced-transparency: reduce) {
+        .vidro,
+        .lente .vidro {
+            -webkit-backdrop-filter: none;
+            backdrop-filter: none;
+            background: rgba(18, 24, 38, 0.88);
+        }
+    }
+
+    @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+        .vidro {
+            background: rgba(18, 24, 38, 0.72);
+        }
+    }
+
+    /* Carrossel de editais em leque 3D. data-posicao é a distância até o slide do centro
+       (EditaisCarrossel.vue); "fora" fica escondido atrás dele. */
+    .slide-edital {
+        transform: translate(-50%, -50%) scale(0.7);
+        opacity: 0;
+        z-index: 1;
+        transition:
+            transform 1s cubic-bezier(0.2, 0.7, 0.2, 1),
+            filter 1s ease,
+            opacity 1s ease;
+    }
+
+    .slide-edital[data-posicao='0'] {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+        z-index: 5;
+    }
+
+    .slide-edital:is([data-posicao='1'], [data-posicao='-1']) {
+        opacity: 1;
+        z-index: 4;
+        filter: brightness(0.6) saturate(0.9);
+    }
+
+    .slide-edital[data-posicao='1'] {
+        transform: translate(28%, -50%) perspective(1600px) rotateY(-16deg) scale(0.86);
+    }
+
+    .slide-edital[data-posicao='-1'] {
+        transform: translate(-128%, -50%) perspective(1600px) rotateY(16deg) scale(0.86);
+    }
+
+    .slide-edital:is([data-posicao='2'], [data-posicao='-2']) {
+        opacity: 1;
+        z-index: 3;
+        filter: brightness(0.42) saturate(0.85);
+    }
+
+    .slide-edital[data-posicao='2'] {
+        transform: translate(82%, -50%) perspective(1600px) rotateY(-22deg) scale(0.72);
+    }
+
+    .slide-edital[data-posicao='-2'] {
+        transform: translate(-182%, -50%) perspective(1600px) rotateY(22deg) scale(0.72);
+    }
+
+    /* No celular os vizinhos ficam mais perto do centro (os de ±2 nem aparecem). */
+    @media (width < 48rem) {
+        .slide-edital[data-posicao='1'] {
+            transform: translate(14%, -50%) perspective(1400px) rotateY(-20deg) scale(0.84);
+        }
+
+        .slide-edital[data-posicao='-1'] {
+            transform: translate(-114%, -50%) perspective(1400px) rotateY(20deg) scale(0.84);
+        }
+    }
+
+    /* No slide do centro a foto se aproxima devagar, o texto sobe e o botão aparece. */
+    .slide-edital .slide-foto {
+        transform: scale(1.12);
+        transition: transform 7.5s cubic-bezier(0.2, 0.6, 0.3, 1);
+    }
+
+    .slide-edital .slide-texto {
+        opacity: 0.9;
+        transform: translateY(12px);
+        transition:
+            opacity 0.8s ease 0.2s,
+            transform 1s cubic-bezier(0.2, 0.7, 0.2, 1) 0.2s;
+    }
+
+    .slide-edital[data-posicao='0'] :is(.slide-foto, .slide-texto) {
+        opacity: 1;
         transform: none;
     }
+
+    .slide-edital:not([data-posicao='0']) .slide-acao {
+        visibility: hidden;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .slide-edital,
+        .slide-edital :is(.slide-foto, .slide-texto) {
+            transition: none;
+        }
+    }
+
+    /* Linha da agenda de eventos: no hover vira um cartão de vidro. */
+    .linha-evento {
+        transition:
+            background 0.35s ease,
+            box-shadow 0.35s ease,
+            border-radius 0.35s ease;
+    }
+
+    @media (hover: hover) {
+        .linha-evento:hover {
+            border-radius: 20px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.02));
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.22),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+            -webkit-backdrop-filter: blur(10px) saturate(160%);
+            backdrop-filter: blur(10px) saturate(160%);
+        }
+    }
 }
 
-/* Seta do carrossel no fim do trilho: continua focável, mas não "afunda" ao clicar. */
-.seta-carrossel[aria-disabled='true']:active {
-    transform: none;
+/* Alto contraste na home: sem fotos, véus, vidro e sombras; fundos pretos e contornos brancos.
+   Fora de camada para vencer as classes utilitárias de cor. */
+html.alto-contraste .home-foto,
+html.alto-contraste .home-veu {
+    display: none;
+}
+
+html.alto-contraste .home-escuro {
+    background-color: var(--color-fundo);
+}
+
+html.alto-contraste .home-curva,
+html.alto-contraste .slide-edital {
+    border: 1px solid var(--color-hairline);
+}
+
+html.alto-contraste .home-curva-baixo {
+    border-bottom: 1px solid var(--color-hairline);
+}
+
+html.alto-contraste .slide-edital {
+    filter: none;
+}
+
+html.alto-contraste .vidro {
+    background: var(--color-fundo);
+    border-color: var(--color-hairline);
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+}
+
+html.alto-contraste .vidro::before,
+html.alto-contraste .vidro::after {
+    display: none;
+}
+
+html.alto-contraste .botao-claro {
+    background-color: var(--color-acao);
+    color: var(--color-sobre-acao);
+    box-shadow: none;
 }
 
 /* Texto corrido das páginas institucionais. */
