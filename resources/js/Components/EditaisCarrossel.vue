@@ -9,10 +9,12 @@ const props = defineProps<{
 
 const ID_SLIDES = 'editais-slides';
 const INTERVALO_MS = 7000;
+// O leque do anexo tem cinco cards (o do centro e dois de cada lado).
+const CARDS_NO_LEQUE = 5;
 // Deslocamento horizontal mínimo para o gesto contar como troca de slide.
 const ARRASTO_MINIMO_PX = 50;
 
-// Fotos da vitrine (anexo portal-fgm.html). São decorativas e vão para os editais pela posição.
+// Fotos da vitrine (anexo portal-fgm.html). São decorativas e vão para os cards pela posição na roda.
 const fotos: { src: string; enquadramento: string }[] = [
     { src: '/images/vitrine-boca-de-brasa.jpg', enquadramento: 'center' },
     { src: '/images/vitrine-plateia-danca.jpg', enquadramento: 'center' },
@@ -30,8 +32,31 @@ const situacoes: Record<SituacaoEdital, { cor: string; rotulo?: string }> = {
 };
 
 const regiao = ref<HTMLElement | null>(null);
-const ativo = ref<number>(0);
 const total = computed(() => props.editais.length);
+
+/** Menor número de voltas da lista para editais e fotos fecharem o ciclo juntos na roda. */
+const voltasAteFecharFotos = (n: number): number => {
+    let voltas = 1;
+    while ((voltas * n) % fotos.length !== 0) voltas++;
+    return voltas;
+};
+
+// Com menos editais que cards no leque, a lista se repete na roda para as laterais não ficarem vazias;
+// fechando o ciclo junto com o das fotos, os cards à vista nunca repetem foto.
+const slides = computed(() => {
+    const copias = total.value > 1 && total.value < CARDS_NO_LEQUE ? voltasAteFecharFotos(total.value) : 1;
+
+    return Array.from({ length: total.value * copias }, (_, i) => ({
+        edital: props.editais[i % total.value],
+        indiceEdital: i % total.value,
+        chave: `${props.editais[i % total.value].slug}-${Math.floor(i / total.value)}`,
+    }));
+});
+const tamanhoRoda = computed(() => slides.value.length);
+
+// Índice em slides, não em editais.
+const ativo = ref<number>(0);
+const editalAtivo = computed(() => slides.value[ativo.value]?.indiceEdital ?? 0);
 
 // Abaixo de md só o vizinho de cada lado aparece; com movimento reduzido não há troca automática.
 const estreito = ref<boolean>(false);
@@ -39,12 +64,23 @@ const reduzMovimento = ref<boolean>(false);
 
 /** Distância até o slide ativo pelo caminho mais curto da roda: 0 no centro, ±1 e ±2 nas laterais. */
 const posicao = (indice: number): number => {
-    const n = total.value;
+    const n = tamanhoRoda.value;
     let distancia = (((indice - ativo.value) % n) + n) % n;
     if (distancia > n / 2) distancia -= n;
     return distancia;
 };
 const visivel = (indice: number): boolean => Math.abs(posicao(indice)) <= (estreito.value ? 1 : 2);
+
+/** Para leitores de tela cada edital aparece uma vez só: na cópia mais perto do centro (a do centro é sempre ela). */
+const principais = computed(() => {
+    const escolhidos = new Map<number, number>();
+    slides.value.forEach((slide, i) => {
+        const atual = escolhidos.get(slide.indiceEdital);
+        if (atual === undefined || Math.abs(posicao(i)) < Math.abs(posicao(atual))) escolhidos.set(slide.indiceEdital, i);
+    });
+
+    return new Set(escolhidos.values());
+});
 
 // Troca automática (anexo: 7 s), parada pelo botão Pausar e suspensa com o mouse ou o foco no carrossel.
 const pausado = ref<boolean>(false);
@@ -65,8 +101,8 @@ const reiniciarRelogio = (): void => {
 
 const irPara = (indice: number, automatico = false): void => {
     if (!total.value) return;
-    ativo.value = ((indice % total.value) + total.value) % total.value;
-    if (!automatico) anuncio.value = `Edital ${ativo.value + 1} de ${total.value}: ${props.editais[ativo.value].titulo}`;
+    ativo.value = ((indice % tamanhoRoda.value) + tamanhoRoda.value) % tamanhoRoda.value;
+    if (!automatico) anuncio.value = `Edital ${editalAtivo.value + 1} de ${total.value}: ${props.editais[editalAtivo.value].titulo}`;
     reiniciarRelogio();
 };
 
@@ -130,8 +166,8 @@ const lerMidia = (): void => {
 };
 
 watch(rodando, reiniciarRelogio);
-watch(total, () => {
-    if (ativo.value >= total.value) ativo.value = 0;
+watch(tamanhoRoda, () => {
+    if (ativo.value >= tamanhoRoda.value) ativo.value = 0;
     reiniciarRelogio();
 });
 
@@ -199,13 +235,14 @@ onBeforeUnmount(() => {
 
             <div :id="ID_SLIDES">
                 <article
-                    v-for="(edital, i) in editais"
-                    :key="edital.slug"
+                    v-for="({ edital, indiceEdital, chave }, i) in slides"
+                    :key="chave"
                     class="slide-edital home-escuro absolute top-1/2 left-1/2 grid w-[300px] max-w-[80%] overflow-hidden rounded-[28px] bg-[#0d1117] text-white shadow-[0_50px_90px_-40px_rgba(10,20,40,0.6)] md:w-[500px]"
                     :data-posicao="visivel(i) ? posicao(i) : 'fora'"
                     :inert="!visivel(i)"
+                    :aria-hidden="principais.has(i) ? undefined : 'true'"
                     aria-roledescription="slide"
-                    :aria-label="`${i + 1} de ${total}: ${edital.titulo}`"
+                    :aria-label="`${indiceEdital + 1} de ${total}: ${edital.titulo}`"
                 >
                     <img
                         :src="foto(i).src"
@@ -223,6 +260,7 @@ onBeforeUnmount(() => {
                         v-if="posicao(i) !== 0"
                         type="button"
                         class="absolute inset-0 z-[5] cursor-pointer"
+                        :tabindex="principais.has(i) ? undefined : -1"
                         :aria-label="`Mostrar ${edital.titulo}`"
                         @click="escolher(i)"
                     ></button>
