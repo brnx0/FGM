@@ -1,0 +1,193 @@
+<script setup lang="ts">
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { Link, router, usePage } from '@inertiajs/vue3';
+import AccessibilityControls from '../Components/AccessibilityControls.vue';
+import CookieNotice from '../Components/CookieNotice.vue';
+import SkipLink from '../Components/SkipLink.vue';
+import TestEnvBanner from '../Components/TestEnvBanner.vue';
+import VidroLiquido from '../Components/VidroLiquido.vue';
+
+const page = usePage();
+const ambienteTeste = computed(() => page.props.ambienteTeste);
+const usuario = computed(() => page.props.auth?.user);
+
+// "Maria Proponente Teste" → "MT", para o avatar.
+const iniciais = computed(() => {
+    const nomes = usuario.value?.nome.trim().split(/\s+/) ?? [];
+    return ((nomes[0]?.[0] ?? '') + (nomes.length > 1 ? (nomes.at(-1)?.[0] ?? '') : '')).toUpperCase();
+});
+
+// Token do <meta> de app.blade.php, como no CabecalhoHome.
+const csrf = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
+const ano = new Date().getFullYear();
+
+const linksRodape: { href: string; texto: string }[] = [
+    { href: '/', texto: 'Voltar ao site' },
+    { href: '/duvidas', texto: 'Dúvidas' },
+    { href: '/privacidade', texto: 'Aviso de privacidade' },
+    { href: '/termos', texto: 'Termos de uso' },
+];
+
+// Painel de acessibilidade do botão ao lado de "Sair": fecha com Esc, com o ×, com clique fora,
+// quando o foco sai dele pelo teclado e ao trocar de página.
+const acessibilidadeAberta = ref<boolean>(false);
+const botaoAcessibilidade = ref<HTMLButtonElement | null>(null);
+const painelAcessibilidade = ref<HTMLElement | null>(null);
+
+const dentroDaAcessibilidade = (alvo: Node | null): boolean =>
+    alvo !== null && (!!botaoAcessibilidade.value?.contains(alvo) || !!painelAcessibilidade.value?.contains(alvo));
+
+const fecharAoClicarFora = (evento: PointerEvent): void => {
+    if (!dentroDaAcessibilidade(evento.target as Node)) acessibilidadeAberta.value = false;
+};
+
+// Sem relatedTarget (clique numa área sem foco) quem decide é o clique fora.
+const fecharAoSairDoFoco = (evento: FocusEvent): void => {
+    const destino = evento.relatedTarget as Node | null;
+    if (destino && !dentroDaAcessibilidade(destino)) acessibilidadeAberta.value = false;
+};
+
+const fecharEVoltarAoBotao = (): void => {
+    if (!acessibilidadeAberta.value) return;
+    acessibilidadeAberta.value = false;
+    botaoAcessibilidade.value?.focus();
+};
+
+watch(acessibilidadeAberta, (aberto) => {
+    if (aberto) document.addEventListener('pointerdown', fecharAoClicarFora);
+    else document.removeEventListener('pointerdown', fecharAoClicarFora);
+});
+
+const pararDeOuvir = router.on('navigate', () => {
+    acessibilidadeAberta.value = false;
+});
+
+onBeforeUnmount(() => {
+    pararDeOuvir();
+    document.removeEventListener('pointerdown', fecharAoClicarFora);
+});
+</script>
+
+<template>
+    <!-- Portal do proponente: identidade da home (Montserrat, Barlow, azul-marinho e vidro) num layout de aplicativo.
+         Cada página abre com a FaixaPortal (saudação e etapas), e os cartões sobem sobre ela. -->
+    <div class="flex min-h-screen flex-col">
+        <SkipLink />
+        <TestEnvBanner v-if="ambienteTeste" />
+        <VidroLiquido class="flex flex-1 flex-col bg-parchment text-home-tinta">
+            <!-- Sem home-escuro: o anel de foco branco fica só nos controles do topo, e não no painel claro de acessibilidade. -->
+            <header class="border-b border-white/10 bg-noite text-white [html.alto-contraste_&]:bg-fundo">
+                <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3.5">
+                    <Link href="/" class="block min-w-0 py-1 focus-visible:outline-white">
+                        <img
+                            src="/images/logo-fgm-prefeitura-branco.png"
+                            alt="FGM – Fundação Gregório de Mattos e Prefeitura de Salvador (voltar ao site)"
+                            width="1395"
+                            height="210"
+                            class="block h-7 w-auto max-w-full md:h-9"
+                        />
+                    </Link>
+
+                    <div class="relative flex shrink-0 items-center gap-2 md:gap-4" @keydown.esc="fecharEVoltarAoBotao">
+                        <p v-if="usuario" class="mr-1 flex items-center gap-2.5">
+                            <span aria-hidden="true" class="inline-flex size-9 items-center justify-center rounded-full bg-white/15 text-[0.8125rem] font-bold">
+                                {{ iniciais }}
+                            </span>
+                            <span class="sr-only md:not-sr-only md:max-w-56 md:truncate md:text-[0.9375rem] md:font-semibold">{{ usuario.nome }}</span>
+                        </p>
+
+                        <!-- Só o ícone no celular e no tablet; a partir de lg, também o texto e a seta. -->
+                        <button
+                            ref="botaoAcessibilidade"
+                            type="button"
+                            class="vidro pressionavel group inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-pill px-2.5 text-white focus-visible:outline-white aria-expanded:bg-white/25 aria-expanded:ring-2 aria-expanded:ring-white/60 lg:pr-3.5 lg:pl-3"
+                            :aria-expanded="acessibilidadeAberta ? 'true' : 'false'"
+                            aria-controls="painel-acessibilidade"
+                            title="Acessibilidade"
+                            @click="acessibilidadeAberta = !acessibilidadeAberta"
+                            @focusout="fecharAoSairDoFoco"
+                        >
+                            <!-- Figura do acesso universal: pessoa de braços abertos. -->
+                            <svg aria-hidden="true" viewBox="0 0 24 24" class="size-6 shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="4.5" r="2.2" fill="currentColor" stroke="none" />
+                                <path d="M4.5 8.6c2.5.9 5 1.3 7.5 1.3s5-.4 7.5-1.3M12 9.9v4.6m0 0-3.2 6.5m3.2-6.5 3.2 6.5" />
+                            </svg>
+                            <span class="sr-only lg:not-sr-only lg:text-[0.75rem] lg:font-bold lg:tracking-[0.12em] lg:uppercase">Acessibilidade</span>
+                            <svg
+                                aria-hidden="true"
+                                viewBox="0 0 24 24"
+                                class="hidden size-4 transition-transform group-aria-expanded:rotate-180 motion-reduce:transition-none lg:block"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2.2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                <path d="m6 9 6 6 6-6" />
+                            </svg>
+                        </button>
+
+                        <!-- Logo depois do botão: pelo teclado, o Tab entra no painel antes de chegar ao "Sair". -->
+                        <Transition
+                            enter-active-class="transition duration-150 ease-out motion-reduce:transition-none"
+                            enter-from-class="-translate-y-1 scale-[0.98] opacity-0"
+                            leave-active-class="transition duration-100 ease-in motion-reduce:transition-none"
+                            leave-to-class="-translate-y-1 scale-[0.98] opacity-0"
+                        >
+                            <div
+                                v-show="acessibilidadeAberta"
+                                id="painel-acessibilidade"
+                                ref="painelAcessibilidade"
+                                class="absolute top-full right-0 z-50 mt-3 w-[min(20rem,calc(100vw-2rem))] origin-top-right rounded-[20px] border border-hairline bg-superficie p-5 text-home-tinta shadow-[0_24px_60px_-24px_rgba(6,36,74,0.5)]"
+                                @focusout="fecharAoSairDoFoco"
+                            >
+                                <div class="mb-3 flex items-center justify-between gap-3">
+                                    <p class="font-bold">Acessibilidade</p>
+                                    <button
+                                        type="button"
+                                        class="pressionavel -mr-2.5 inline-flex size-11 items-center justify-center rounded-full text-tinta-suave hover:bg-parchment hover:text-home-tinta"
+                                        aria-label="Fechar acessibilidade"
+                                        @click="fecharEVoltarAoBotao"
+                                    >
+                                        <svg aria-hidden="true" viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                                            <path d="M6 6l12 12M18 6 6 18" />
+                                        </svg>
+                                    </button>
+                                </div>
+                                <AccessibilityControls variante="painel" />
+                            </div>
+                        </Transition>
+
+                        <form method="post" action="/logout">
+                            <input type="hidden" name="_token" :value="csrf" />
+                            <button
+                                type="submit"
+                                class="botao-claro pressionavel inline-flex min-h-11 items-center rounded-pill bg-white px-5 text-[0.75rem] font-bold tracking-[0.12em] text-home-azul uppercase focus-visible:outline-white"
+                            >
+                                Sair
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </header>
+
+            <main id="conteudo" tabindex="-1" class="flex-1 focus:outline-none">
+                <slot />
+            </main>
+
+            <footer class="border-t border-hairline bg-superficie">
+                <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-8 gap-y-1 px-4 py-5 text-[0.8125rem] text-tinta-suave">
+                    <p class="py-3">© {{ ano }} FGM – Fundação Gregório de Mattos · Prefeitura de Salvador</p>
+                    <nav aria-label="Rodapé">
+                        <ul class="flex flex-wrap gap-x-5">
+                            <li v-for="link in linksRodape" :key="link.href">
+                                <Link :href="link.href" class="inline-flex min-h-11 items-center hover:text-home-tinta hover:underline">{{ link.texto }}</Link>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            </footer>
+        </VidroLiquido>
+        <CookieNotice />
+    </div>
+</template>

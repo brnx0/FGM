@@ -6,7 +6,7 @@ use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 
 /**
- * Eventos de exemplo, em código, para a seção "Já aconteceu" da home.
+ * Eventos de exemplo, em código, para a seção "Eventos" da home.
  * Não há tabela de eventos por enquanto: quando o painel do gestor existir,
  * esta lista dá lugar ao banco.
  *

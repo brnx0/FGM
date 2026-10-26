@@ -44,6 +44,14 @@ final class Cpf
         return true;
     }
 
+    /** 52998224725 → 529.982.247-25 */
+    public static function formatar(string $cpf): string
+    {
+        $cpf = self::normalizar($cpf);
+
+        return substr($cpf, 0, 3).'.'.substr($cpf, 3, 3).'.'.substr($cpf, 6, 3).'-'.substr($cpf, 9, 2);
+    }
+
     /** 52998224725 → ***.982.247-** */
     public static function mascarar(string $cpf): string
     {

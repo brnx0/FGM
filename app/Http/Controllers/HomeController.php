@@ -25,14 +25,18 @@ class HomeController extends Controller
                 'inscricoesInicio' => $edital->inscricoes_inicio->format('d/m/Y'),
                 'inscricoesFim' => $edital->inscricoes_fim->format('d/m/Y'),
             ])->all(),
-            'eventos' => array_map(fn (array $evento) => [
-                'titulo' => $evento['titulo'],
-                'resumo' => $evento['resumo'],
-                // "agosto de 2026"
-                'dataRealizacao' => CarbonImmutable::parse($evento['data_realizacao'])->locale('pt_BR')->translatedFormat('F \d\e Y'),
-                'local' => $evento['local'],
-                'imagem' => $evento['imagem'],
-            ], $eventos->realizados(self::LIMITE_EVENTOS)),
+            'eventos' => array_map(function (array $evento): array {
+                $data = CarbonImmutable::parse($evento['data_realizacao'])->locale('pt_BR');
+
+                return [
+                    'titulo' => $evento['titulo'],
+                    'resumo' => $evento['resumo'],
+                    // "agosto" e "2026": a home mostra "AGO / 2026".
+                    'mes' => $data->translatedFormat('F'),
+                    'ano' => $data->format('Y'),
+                    'local' => $evento['local'],
+                ];
+            }, $eventos->realizados(self::LIMITE_EVENTOS)),
         ]);
     }
 }
