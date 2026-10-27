@@ -5,6 +5,8 @@ export type SituacaoEdital = 'em_breve' | 'aberto' | 'encerrado';
 export interface UsuarioAutenticado {
     nome: string;
     cpfMascarado: string;
+    /** Ativo e com pelo menos um papel: pode entrar na retaguarda. */
+    ehGestor: boolean;
 }
 
 /** Props compartilhadas, vindas de App\Http\Middleware\HandleInertiaRequests. */

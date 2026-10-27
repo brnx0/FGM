@@ -42,6 +42,11 @@ class AppServiceProvider extends ServiceProvider
             ($request->route()?->getName() ?? $request->method().':'.$request->path()).'|'.$request->ip()
         ));
 
+        // 5/min por e-mail (normalizado) e IP, contra tentativa de senha na retaguarda.
+        RateLimiter::for('retaguarda-login', fn (Request $request) => Limit::perMinute(5)->by(
+            mb_strtolower(trim((string) $request->input('email'))).'|'.$request->ip()
+        ));
+
         // Atrás de um proxy que termina o TLS, honra X-Forwarded-Proto; sem isso
         // isSecure() fica falso e o HSTS (SecurityHeaders) nunca é enviado.
         $proxies = trim((string) config('app.trusted_proxies'));

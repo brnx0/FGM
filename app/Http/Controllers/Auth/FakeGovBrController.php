@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Actions\EntrarNaRetaguardaPorGovBr;
 use App\Actions\LoginGovBrUser;
 use App\Auth\GovBr\FakeLoginGate;
 use App\Auth\GovBr\GovBrIdentity;
@@ -28,7 +29,7 @@ class FakeGovBrController extends Controller
     }
 
     /** Como no gov.br real, o CPF escolhe a conta e os dados vêm dela. A senha da tela não chega aqui. */
-    public function store(Request $request, LoginGovBrUser $login): RedirectResponse
+    public function store(Request $request, LoginGovBrUser $login, EntrarNaRetaguardaPorGovBr $entrarNaRetaguarda): RedirectResponse
     {
         $dados = $request->validate([
             'cpf' => ['required', 'string', fn ($attr, $valor, $fail) => Cpf::valido((string) $valor) ?: $fail('CPF inválido.')],
@@ -38,6 +39,13 @@ class FakeGovBrController extends Controller
 
         if ($conta === null) {
             throw ValidationException::withMessages(['cpf' => 'Este CPF não está entre as contas de teste.']);
+        }
+
+        // Consumido só após a conta ser aceita: erro de digitação no formulário mantém o destino.
+        if ($request->session()->pull('govbr.destino') === 'retaguarda') {
+            return $entrarNaRetaguarda->handle($conta['cpf']) !== null
+                ? redirect()->route('retaguarda.inicio')
+                : redirect()->route('retaguarda.login')->with('erro', 'Seu CPF não tem acesso à retaguarda.');
         }
 
         $user = $login->handle(new GovBrIdentity(

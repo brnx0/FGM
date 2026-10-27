@@ -19,6 +19,15 @@ class User extends Authenticatable
     use HasFactory;
 
     /**
+     * Mesmo padrão do banco, para que um usuário recém-criado (ainda não relido) já responda ehGestor().
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'ativo' => true,
+    ];
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array

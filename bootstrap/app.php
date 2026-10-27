@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\GarantirGestor;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
@@ -19,7 +20,14 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleInertiaRequests::class,
         ]);
 
-        $middleware->redirectGuestsTo('/');
+        $middleware->alias([
+            'gestor' => GarantirGestor::class,
+        ]);
+
+        // Visitante da retaguarda vai ao login dela; no portal do proponente, à home.
+        $middleware->redirectGuestsTo(
+            fn (Request $request) => $request->is('retaguarda', 'retaguarda/*') ? route('retaguarda.login') : '/'
+        );
 
         // Proxies confiáveis (TRUSTED_PROXIES) são aplicados no AppServiceProvider,
         // a partir de config('app.trusted_proxies'), para funcionar com config:cache.

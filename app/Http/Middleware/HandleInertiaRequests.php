@@ -41,7 +41,11 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'auth' => [
                 'user' => fn () => $request->user()
-                    ? ['nome' => $request->user()->name, 'cpfMascarado' => Cpf::mascarar($request->user()->cpf)]
+                    ? [
+                        'nome' => $request->user()->name,
+                        'cpfMascarado' => Cpf::mascarar($request->user()->cpf),
+                        'ehGestor' => $request->user()->ehGestor(),
+                    ]
                     : null,
             ],
             'ambienteTeste' => FakeLoginGate::bannerVisivel(),

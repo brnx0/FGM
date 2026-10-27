@@ -43,3 +43,5 @@ Route::middleware('throttle:govbr')->group(function () {
         Route::post('/auth/govbr/fake', 'store');
     });
 });
+
+require __DIR__.'/retaguarda.php';
