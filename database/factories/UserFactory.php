@@ -2,7 +2,9 @@
 
 namespace Database\Factories;
 
+use App\Models\Role;
 use App\Models\User;
+use App\Support\Cpf;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -27,5 +29,31 @@ class UserFactory extends Factory
     public function cadastroCompleto(): static
     {
         return $this->state(fn () => ['profile_completed_at' => now()]);
+    }
+
+    public function gestor(): static
+    {
+        return $this
+            ->state(fn () => [
+                'cpf' => $this->cpfValido(),
+                'email' => fake()->unique()->userName().'@gestor.test',
+                'password' => '123456',
+            ])
+            ->afterCreating(function (User $user) {
+                $papel = Role::firstOrCreate(
+                    ['slug' => Role::ADMINISTRADOR],
+                    ['nome' => 'Administrador'],
+                );
+                $user->papeis()->syncWithoutDetaching([$papel->id]);
+            });
+    }
+
+    private function cpfValido(): string
+    {
+        do {
+            $cpf = fake()->unique()->numerify('###########');
+        } while (! Cpf::valido($cpf));
+
+        return $cpf;
     }
 }

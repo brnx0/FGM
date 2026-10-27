@@ -38,6 +38,19 @@ class LoginGovBrUserTest extends TestCase
         $this->assertNull($user->email);
     }
 
+    public function test_email_de_outro_usuario_nao_derruba_o_login(): void
+    {
+        $outro = User::factory()->create(['cpf' => '11144477735', 'email' => 'ana@exemplo.com']);
+
+        $user = app(LoginGovBrUser::class)->handle(
+            new GovBrIdentity('52998224725', 'Ana', 'Ana@Exemplo.com ', true, null),
+        );
+
+        $this->assertAuthenticatedAs($user);
+        $this->assertNull($user->fresh()->email);
+        $this->assertSame('ana@exemplo.com', $outro->fresh()->email);
+    }
+
     public function test_cpf_com_zero_a_esquerda_casa_usuario_existente(): void
     {
         User::factory()->create(['cpf' => '01234567890']);
