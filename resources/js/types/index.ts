@@ -214,6 +214,65 @@ export interface OrganizacaoFormProps {
     representanteInicial: { cpf: string; nome: string } | null;
 }
 
+/** Representante como o formulário o edita: tudo texto, vazio quando não informado; CPF e telefone com máscara. */
+export interface RepresentanteEdicao {
+    cpf: string;
+    nome: string;
+    tipo_documento: string;
+    numero_documento: string;
+    cargo: string;
+    telefone: string;
+    email: string;
+    origem: string;
+    origem_descricao: string;
+}
+
+/** Endereço da sede como o formulário o edita (CEP com máscara). */
+export interface EnderecoSede {
+    cep: string;
+    logradouro: string;
+    numero: string;
+    sem_numero: boolean;
+    complemento: string;
+    bairro: string;
+    cidade: string;
+    uf: string;
+}
+
+/** Município da lista com busca (/cadastro/consultas/municipios). */
+export interface MunicipioBusca {
+    codigo: string;
+    nome: string;
+    uf: string;
+}
+
+/** Dados públicos do CNPJ (/cadastro/consultas/cnpj/{cnpj}). Telefone e CEP só com números, data em aaaa-mm-dd. */
+export interface DadosPublicosCnpj {
+    razao_social: string | null;
+    nome_fantasia: string | null;
+    natureza_juridica: string | null;
+    finalidade_lucrativa: boolean | null;
+    mei: boolean;
+    porte: string | null;
+    data_fundacao: string | null;
+    telefone: string | null;
+    cep: string | null;
+    logradouro: string | null;
+    numero: string | null;
+    sem_numero: boolean;
+    complemento: string | null;
+    bairro: string | null;
+    cidade: string | null;
+    uf: string | null;
+    municipio: MunicipioBusca | null;
+}
+
+export type RespostaConsultaCnpj = { jaCadastrado: true } | { encontrado: false } | { encontrado: true; dados: DadosPublicosCnpj };
+
+export type RespostaConsultaCep =
+    | { encontrado: false }
+    | { encontrado: true; dados: { logradouro: string | null; bairro: string | null; cidade: string | null; uf: string | null } };
+
 /** Link de paginação do LengthAwarePaginator do Laravel. */
 export interface LinkPaginacao {
     url: string | null;
