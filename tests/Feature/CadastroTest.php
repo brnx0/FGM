@@ -239,7 +239,7 @@ class CadastroTest extends TestCase
 
         $this->actingAs($user)->post('/cadastro', $this->dadosValidos())
             ->assertRedirect(route('cadastro.organizacao'))
-            ->assertSessionHas('sucesso', 'Dados salvos. Você também pode cadastrar uma organização.');
+            ->assertSessionHas('sucesso', 'Dados salvos. Você também pode cadastrar uma Pessoa Jurídica.');
     }
 
     public function test_aviso_do_middleware_chega_a_tela_de_dados(): void
@@ -249,7 +249,7 @@ class CadastroTest extends TestCase
         $this->actingAs($user)->followingRedirects()->get('/cadastro/organizacao')
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Cadastro/Completar')
-                ->where('flash.aviso', 'Complete seus dados de pessoa física antes de cadastrar uma organização.'));
+                ->where('flash.aviso', 'Complete seus dados de Pessoa Física antes de cadastrar uma Pessoa Jurídica.'));
     }
 
     public function test_primeiro_salvamento_mostra_o_sucesso_na_etapa_da_organizacao(): void
@@ -260,7 +260,7 @@ class CadastroTest extends TestCase
         $this->actingAs($user)->followingRedirects()->post('/cadastro', $this->dadosValidos())
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Cadastro/Organizacao')
-                ->where('flash.sucesso', 'Dados salvos. Você também pode cadastrar uma organização.'));
+                ->where('flash.sucesso', 'Dados salvos. Você também pode cadastrar uma Pessoa Jurídica.'));
     }
 
     public function test_salvamentos_seguintes_voltam_para_a_home(): void
@@ -291,7 +291,7 @@ class CadastroTest extends TestCase
 
         $this->actingAs($user)->get('/cadastro/organizacao')
             ->assertRedirect(route('cadastro'))
-            ->assertSessionHas('aviso', 'Complete seus dados de pessoa física antes de cadastrar uma organização.');
+            ->assertSessionHas('aviso', 'Complete seus dados de Pessoa Física antes de cadastrar uma Pessoa Jurídica.');
     }
 
     public function test_etapa_da_organizacao_exige_login(): void

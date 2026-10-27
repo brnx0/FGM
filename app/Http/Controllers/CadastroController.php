@@ -80,7 +80,7 @@ class CadastroController extends Controller
         $user->save();
 
         if ($primeiroCadastro) {
-            return redirect()->route('cadastro.organizacao')->with('sucesso', 'Dados salvos. Você também pode cadastrar uma organização.');
+            return redirect()->route('cadastro.organizacao')->with('sucesso', 'Dados salvos. Você também pode cadastrar uma Pessoa Jurídica.');
         }
 
         return redirect()->route('home')->with('sucesso', 'Cadastro salvo. Agora você já pode se inscrever nos editais.');

@@ -102,7 +102,7 @@ class SalvarOrganizacaoRequest extends FormRequest
             'telefone.digits_between' => 'Digite o telefone com DDD.',
             'representantes.*.telefone.digits_between' => 'Digite o telefone com DDD.',
             'cep.digits' => 'Digite os 8 números do CEP.',
-            'cnpj.unique' => 'Esta organização já está cadastrada. Peça ao responsável por ela para vincular você.',
+            'cnpj.unique' => 'Esta Pessoa Jurídica já está cadastrada. Peça ao responsável por ela para vincular você.',
             'logo.image' => 'Envie uma imagem JPG, PNG ou WEBP.',
             'logo.mimes' => 'Envie uma imagem JPG, PNG ou WEBP.',
             'logo.uploaded' => 'Não foi possível enviar o arquivo. Ele deve ter no máximo 5 MB.',

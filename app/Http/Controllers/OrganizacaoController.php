@@ -96,7 +96,7 @@ class OrganizacaoController extends Controller
             throw $erro;
         }
 
-        return redirect()->route('organizacoes.index')->with('sucesso', 'Organização salva.');
+        return redirect()->route('organizacoes.index')->with('sucesso', 'Pessoa Jurídica salva.');
     }
 
     public function update(SalvarOrganizacaoRequest $request, Organizacao $organizacao): RedirectResponse
@@ -129,7 +129,7 @@ class OrganizacaoController extends Controller
             throw $erro;
         }
 
-        return redirect()->route('organizacoes.index')->with('sucesso', 'Organização salva.');
+        return redirect()->route('organizacoes.index')->with('sucesso', 'Pessoa Jurídica salva.');
     }
 
     /**

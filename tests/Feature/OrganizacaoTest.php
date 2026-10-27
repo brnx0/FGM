@@ -66,7 +66,7 @@ class OrganizacaoTest extends TestCase
                 ['cpf' => self::OUTRO_CPF_REPRESENTANTE, 'nome' => 'João'],
             ],
         ]))->assertRedirect(route('organizacoes.index'))
-            ->assertSessionHas('sucesso', 'Organização salva.');
+            ->assertSessionHas('sucesso', 'Pessoa Jurídica salva.');
 
         $organizacao = Organizacao::sole();
         $this->assertSame(self::CNPJ, $organizacao->cnpj);
@@ -101,7 +101,7 @@ class OrganizacaoTest extends TestCase
         Organizacao::factory()->create(['cnpj' => self::CNPJ]);
 
         $this->actingAs($this->usuario())->post('/organizacoes', $this->dadosValidos())
-            ->assertSessionHasErrors(['cnpj' => 'Esta organização já está cadastrada. Peça ao responsável por ela para vincular você.']);
+            ->assertSessionHasErrors(['cnpj' => 'Esta Pessoa Jurídica já está cadastrada. Peça ao responsável por ela para vincular você.']);
 
         $this->assertDatabaseCount('organizacoes', 1);
         $this->assertDatabaseCount('representantes_legais', 0);
@@ -241,7 +241,7 @@ class OrganizacaoTest extends TestCase
 
         $this->actingAs($user)->put("/organizacoes/{$organizacao->id}", $this->dadosValidos(['razao_social' => 'Novo Nome']))
             ->assertRedirect(route('organizacoes.index'))
-            ->assertSessionHas('sucesso', 'Organização salva.');
+            ->assertSessionHas('sucesso', 'Pessoa Jurídica salva.');
 
         $this->assertSame('Novo Nome', $organizacao->fresh()->razao_social);
         $this->assertSame([self::CPF_REPRESENTANTE], $organizacao->representantes()->pluck('cpf')->all());

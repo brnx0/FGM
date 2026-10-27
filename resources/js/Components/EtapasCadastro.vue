@@ -4,7 +4,7 @@ defineProps<{
     atual: number;
 }>();
 
-const etapas = ['Conta gov.br', 'Seus dados', 'Organização (opcional)', 'Inscrição nos editais'];
+const etapas = ['Conta gov.br', 'Seus dados', 'Pessoa Jurídica (opcional)', 'Inscrição nos editais'];
 </script>
 
 <template>
