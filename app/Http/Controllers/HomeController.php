@@ -19,6 +19,7 @@ class HomeController extends Controller
             'editais' => Edital::naVitrine()->get()->map(fn (Edital $edital) => [
                 'titulo' => $edital->titulo,
                 'slug' => $edital->slug,
+                'pdf' => $edital->pdfUrl(),
                 'categoria' => $edital->categoria,
                 'situacao' => $edital->situacao()->value,
                 'situacaoRotulo' => $edital->situacao()->rotulo(),

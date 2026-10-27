@@ -6,6 +6,7 @@ use App\Models\Edital;
 use App\Support\EventosMock;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -37,6 +38,7 @@ class PortalTest extends TestCase
             ->has('editais.0', fn (Assert $e) => $e
                 ->where('titulo', 'PNAB Salvador — Ciclo II')
                 ->where('slug', 'pnab-ii')
+                ->where('pdf', route('editais.pdf', 'pnab-ii'))
                 ->where('categoria', 'Fomento')
                 ->where('situacao', 'aberto')
                 ->where('situacaoRotulo', 'Aberto')
@@ -100,7 +102,60 @@ class PortalTest extends TestCase
                 ->where('situacao', 'aberto')
                 ->where('situacaoRotulo', 'Aberto')
                 ->where('inscricoesInicio', '05/11/2026')
-                ->where('inscricoesFim', '30/11/2026')));
+                ->where('inscricoesFim', '30/11/2026')
+                ->where('pdf', route('editais.pdf', 'salcine-2'))));
+    }
+
+    public function test_baixa_o_pdf_do_edital(): void
+    {
+        Storage::fake('local')->put('editais/teste.pdf', '%PDF-1.4');
+        Edital::factory()->create(['slug' => 'com-pdf', 'pdf' => 'editais/teste.pdf']);
+
+        $this->get('/editais/com-pdf/pdf')
+            ->assertOk()
+            ->assertDownload('edital-com-pdf.pdf')
+            ->assertStreamedContent('%PDF-1.4');
+    }
+
+    public function test_edital_sem_pdf_da_404_na_pagina(): void
+    {
+        Edital::factory()->semPdf()->create(['slug' => 'sem-pdf-pagina']);
+
+        $this->get('/editais/sem-pdf-pagina')->assertNotFound();
+    }
+
+    public function test_pdf_ausente_no_disco_da_404(): void
+    {
+        Storage::fake('local');
+        Edital::factory()->create(['slug' => 'arquivo-sumiu', 'pdf' => 'editais/inexistente.pdf']);
+
+        $this->get('/editais/arquivo-sumiu/pdf')->assertNotFound();
+    }
+
+    public function test_edital_sem_pdf_nao_aparece_no_portal(): void
+    {
+        Edital::factory()->semPdf()->create(['slug' => 'sem-pdf']);
+
+        $this->get('/')->assertInertia(fn (Assert $p) => $p
+            ->where('totalAbertos', 0)->has('editais', 0));
+        $this->get('/editais/sem-pdf/pdf')->assertNotFound();
+    }
+
+    public function test_edital_excluido_da_404_na_pagina_e_no_pdf(): void
+    {
+        Storage::fake('local')->put('editais/teste.pdf', '%PDF-1.4');
+        Edital::factory()->create(['slug' => 'excluido'])->delete();
+
+        $this->get('/editais/excluido')->assertNotFound();
+        $this->get('/editais/excluido/pdf')->assertNotFound();
+    }
+
+    public function test_pdf_de_edital_despublicado_da_404(): void
+    {
+        Storage::fake('local')->put('editais/teste.pdf', '%PDF-1.4');
+        Edital::factory()->create(['slug' => 'oculto-pdf', 'publicado' => false]);
+
+        $this->get('/editais/oculto-pdf/pdf')->assertNotFound();
     }
 
     public function test_edital_despublicado_da_404(): void

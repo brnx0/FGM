@@ -21,6 +21,8 @@ export interface SharedProps {
 export interface EditalResumo {
     titulo: string;
     slug: string;
+    /** URL do PDF do edital (rota editais.pdf). */
+    pdf: string;
     categoria: string;
     situacao: SituacaoEdital;
     situacaoRotulo: string;
@@ -29,8 +31,9 @@ export interface EditalResumo {
 }
 
 /** Edital em EditalController@show. */
-export interface EditalDetalhe extends EditalResumo {
+export interface EditalDetalhe extends Omit<EditalResumo, 'pdf'> {
     resumo: string;
+    pdf: string | null;
 }
 
 export interface Evento {

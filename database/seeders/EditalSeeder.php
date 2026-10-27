@@ -4,12 +4,15 @@ namespace Database\Seeders;
 
 use App\Models\Edital;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Storage;
 
 class EditalSeeder extends Seeder
 {
     public function run(): void
     {
         $hoje = now()->startOfDay();
+
+        $modelo = file_get_contents(__DIR__.'/arquivos/edital-modelo.pdf');
 
         $editais = [
             [
@@ -47,10 +50,19 @@ class EditalSeeder extends Seeder
         ];
 
         foreach ($editais as $dados) {
-            Edital::updateOrCreate(
-                ['slug' => $dados['slug']],
-                $dados + ['imagem' => null, 'publicado' => true],
-            );
+            $edital = Edital::withTrashed()->firstOrNew(['slug' => $dados['slug']]);
+
+            if (! $edital->exists) {
+                $edital->fill($dados + ['imagem' => null, 'publicado' => true]);
+            }
+
+            // Nunca sobrescreve um PDF enviado pela retaguarda.
+            if ($edital->pdf === null) {
+                $edital->pdf = "editais/{$dados['slug']}.pdf";
+                Storage::disk('local')->put($edital->pdf, $modelo);
+            }
+
+            $edital->save();
         }
     }
 }

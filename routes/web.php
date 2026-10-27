@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
 Route::get('/editais/{edital:slug}', [EditalController::class, 'show'])->name('editais.show');
+Route::get('/editais/{edital:slug}/pdf', [EditalController::class, 'pdf'])->name('editais.pdf');
 
 Route::controller(PaginaController::class)->group(function () {
     Route::get('/a-fgm', 'aFgm')->name('paginas.a-fgm');

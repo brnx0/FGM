@@ -14,6 +14,7 @@ docker compose up -d --build
 docker compose exec app composer install
 docker compose exec app php artisan key:generate
 docker compose exec app php artisan migrate --seed
+# o container do app já roda "php artisan storage:link" ao subir (imagens públicas em /storage; PDFs dos editais ficam privados)
 npm i
 npm run dev                     # ou "npm run build" para o bundle de produção
 ```

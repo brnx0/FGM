@@ -25,6 +25,18 @@ class EditalScopesTest extends TestCase
         $this->assertSame(1, Edital::contarAbertos());
     }
 
+    public function test_vitrine_e_contagem_ignoram_sem_pdf_e_excluidos(): void
+    {
+        $this->travelTo(Carbon::parse('2026-11-10 10:00', 'America/Bahia'));
+        $dias = ['inscricoes_inicio' => '2026-11-01', 'inscricoes_fim' => '2026-11-30'];
+        Edital::factory()->create($dias);
+        Edital::factory()->semPdf()->create($dias);
+        Edital::factory()->create($dias)->delete();
+
+        $this->assertCount(1, Edital::naVitrine()->get());
+        $this->assertSame(1, Edital::contarAbertos());
+    }
+
     public function test_sem_editais_publicados_contagem_zero(): void
     {
         $this->assertSame(0, Edital::contarAbertos());

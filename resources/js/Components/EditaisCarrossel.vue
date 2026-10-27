@@ -12,8 +12,6 @@ const INTERVALO_MS = 7000;
 const CARDS_NO_LEQUE = 5;
 // Deslocamento horizontal mínimo para o gesto contar como troca de slide.
 const ARRASTO_MINIMO_PX = 50;
-// Enquanto os editais não têm PDF próprio, todos baixam este modelo (Edital 008/2026 – Salcine 2).
-const PDF_MODELO = '/documentos/edital-modelo.pdf';
 
 // Fotos da vitrine (anexo portal-fgm.html). São decorativas e vão para os cards pela posição na roda.
 const fotos: { src: string; enquadramento: string }[] = [
@@ -292,7 +290,7 @@ onBeforeUnmount(() => {
                         </dl>
                         <div class="slide-acao mt-1.5">
                             <a
-                                :href="PDF_MODELO"
+                                :href="edital.pdf"
                                 :download="`edital-${edital.slug}.pdf`"
                                 type="application/pdf"
                                 class="pressionavel inline-flex min-h-[46px] items-center gap-3 rounded-pill px-[22px] text-[0.8125rem] font-bold tracking-[0.12em] uppercase no-underline md:min-h-[54px] md:px-8"

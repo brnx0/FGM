@@ -10,19 +10,22 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 
 class Edital extends Model
 {
     /** @use HasFactory<EditalFactory> */
     use HasFactory;
 
+    use SoftDeletes;
     use UsaDiaCivil;
 
     protected $table = 'editais';
 
     protected $fillable = [
         'titulo', 'slug', 'resumo', 'categoria',
-        'inscricoes_inicio', 'inscricoes_fim', 'imagem', 'publicado',
+        'inscricoes_inicio', 'inscricoes_fim', 'imagem', 'pdf', 'publicado',
     ];
 
     protected function casts(): array
@@ -60,14 +63,36 @@ class Edital extends Model
         };
     }
 
+    /** URL da rota que entrega o PDF; nula enquanto o edital não tem arquivo. */
+    public function pdfUrl(): ?string
+    {
+        return $this->pdf ? route('editais.pdf', $this) : null;
+    }
+
+    public function imagemUrl(): ?string
+    {
+        return $this->imagem ? Storage::disk('public')->url($this->imagem) : null;
+    }
+
     public function scopePublicados(Builder $query): void
     {
         $query->where('publicado', true);
     }
 
+    /** Visível no portal: publicado e com PDF. */
+    public function scopeVisiveis(Builder $query): void
+    {
+        $query->publicados()->whereNotNull('pdf');
+    }
+
+    public function estaVisivel(): bool
+    {
+        return $this->publicado && filled($this->pdf);
+    }
+
     public function scopeNaVitrine(Builder $query, ?CarbonInterface $agora = null): void
     {
-        $query->publicados()
+        $query->visiveis()
             ->where('inscricoes_fim', '>=', self::hoje($agora)->toDateString())
             ->orderBy('inscricoes_inicio');
     }
@@ -76,7 +101,7 @@ class Edital extends Model
     {
         $hoje = self::hoje($agora);
 
-        return static::query()->publicados()
+        return static::query()->visiveis()
             ->where('inscricoes_inicio', '<', $hoje->addDay()->toDateString())
             ->where('inscricoes_fim', '>=', $hoje->toDateString())
             ->count();
