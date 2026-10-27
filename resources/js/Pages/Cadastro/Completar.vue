@@ -16,7 +16,7 @@ const props = defineProps<CadastroCompletarProps>();
 const primeiroNome = computed(() => props.govbr.nome.split(' ')[0] ?? '');
 
 // Com o tipo de cadastro escolhido, esta tela é a opção "Cadastro" do menu: consulta e edição.
-const finalizado = computed(() => usePage().props.auth.user?.tipoCadastro != null);
+const finalizado = computed(() => !!usePage().props.auth.user?.tiposCadastro.length);
 
 // (71) 99999-9999 para celular e (71) 3333-3333 para fixo, enquanto a pessoa digita.
 const formatarTelefone = (valor: string): string => {

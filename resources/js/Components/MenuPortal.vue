@@ -10,13 +10,16 @@ const editais: ItemMenu = { href: '/portal/editais', texto: 'Editais', ativoEm: 
 const projetos: ItemMenu = { href: '/portal/projetos', texto: 'Projetos', ativoEm: ['/portal/projetos'] };
 
 const page = usePage();
-const tipoCadastro = computed(() => page.props.auth.user?.tipoCadastro ?? null);
+const tiposCadastro = computed(() => page.props.auth.user?.tiposCadastro ?? []);
 
-// Cadastro é comum aos dois tipos; Editais é do proponente e Projetos, do patrocinador.
+// Cadastro é comum a todos; Editais é do proponente e Projetos, do patrocinador. Quem marcou os dois vê os dois.
 const itens = computed<ItemMenu[]>(() => {
-    if (tipoCadastro.value === 'proponente') return [cadastro, editais];
-    if (tipoCadastro.value === 'patrocinador') return [cadastro, projetos];
-    return [];
+    if (!tiposCadastro.value.length) return [];
+    return [
+        cadastro,
+        ...(tiposCadastro.value.includes('proponente') ? [editais] : []),
+        ...(tiposCadastro.value.includes('patrocinador') ? [projetos] : []),
+    ];
 });
 
 const atual = (item: ItemMenu): boolean =>
@@ -26,7 +29,7 @@ const atual = (item: ItemMenu): boolean =>
 <template>
     <!-- Só depois do cadastro finalizado (tipo escolhido na etapa 4). -->
     <nav v-if="itens.length" aria-label="Portal">
-        <ul class="flex gap-1 text-[0.8125rem] font-semibold tracking-[0.12em] uppercase md:gap-2">
+        <ul class="flex flex-wrap gap-1 text-[0.8125rem] font-semibold tracking-[0.12em] uppercase md:gap-2">
             <li v-for="item in itens" :key="item.href">
                 <Link
                     :href="item.href"

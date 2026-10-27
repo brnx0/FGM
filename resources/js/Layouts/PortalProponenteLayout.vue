@@ -80,8 +80,9 @@ onBeforeUnmount(() => {
             <!-- Sem home-escuro: o anel de foco branco fica só nos controles do topo, e não no painel claro de acessibilidade. -->
             <header class="border-b border-white/10 bg-noite text-white [html.alto-contraste_&]:bg-fundo">
                 <!-- Logo e controles sempre na mesma linha; o menu do portal fica entre eles a partir de xl
-                     (como o menu da home) e, abaixo disso, numa linha própria. -->
-                <div class="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 px-4 py-3.5 xl:grid-cols-[auto_minmax(0,1fr)_auto]">
+                     (como o menu da home) e, abaixo disso, numa linha própria. Quando o menu tem os três itens
+                     (proponente e patrocinador), quem cede espaço é o nome da pessoa, que encurta com reticências. -->
+                <div class="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 px-4 py-3.5 xl:grid-cols-[auto_auto_minmax(0,1fr)]">
                     <Link href="/" class="block min-w-0 justify-self-start py-1 focus-visible:outline-white">
                         <img
                             src="/images/logo-fgm-prefeitura-branco.png"
@@ -94,9 +95,9 @@ onBeforeUnmount(() => {
 
                     <MenuPortal class="col-span-2 row-start-2 xl:col-span-1 xl:col-start-2 xl:row-start-1 xl:ml-8" />
 
-                    <div class="relative flex shrink-0 items-center gap-2 justify-self-end md:gap-4" @keydown.esc="fecharEVoltarAoBotao">
-                        <p v-if="usuario" class="mr-1 flex items-center gap-2.5">
-                            <span aria-hidden="true" class="inline-flex size-9 items-center justify-center rounded-full bg-white/15 text-[0.8125rem] font-bold">
+                    <div class="relative flex w-full min-w-0 items-center justify-end gap-2 md:gap-4" @keydown.esc="fecharEVoltarAoBotao">
+                        <p v-if="usuario" class="mr-1 flex min-w-0 items-center gap-2.5">
+                            <span aria-hidden="true" class="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-white/15 text-[0.8125rem] font-bold">
                                 {{ iniciais }}
                             </span>
                             <span class="sr-only md:not-sr-only md:max-w-56 md:truncate md:text-[0.9375rem] md:font-semibold">{{ usuario.nome }}</span>

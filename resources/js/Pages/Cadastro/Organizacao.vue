@@ -7,7 +7,7 @@ import PortalProponenteLayout from '../../Layouts/PortalProponenteLayout.vue';
 
 defineOptions({ layout: PortalProponenteLayout });
 
-const finalizado = computed(() => usePage().props.auth.user?.tipoCadastro != null);
+const finalizado = computed(() => !!usePage().props.auth.user?.tiposCadastro.length);
 </script>
 
 <template>

@@ -78,6 +78,7 @@ class LoginGovBrUserTest extends TestCase
 
         $this->assertSame(route('portal.editais'), $acao->destinoPosLogin(User::factory()->proponente()->create()));
         $this->assertSame(route('portal.projetos'), $acao->destinoPosLogin(User::factory()->patrocinador()->create()));
+        $this->assertSame(route('portal.editais'), $acao->destinoPosLogin(User::factory()->proponenteEPatrocinador()->create()));
     }
 
     public function test_dados_do_govbr_acima_do_limite_nao_estouram_a_coluna(): void

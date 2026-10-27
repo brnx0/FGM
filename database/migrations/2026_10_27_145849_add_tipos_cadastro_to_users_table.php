@@ -9,15 +9,15 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            // App\Enums\TipoCadastro; nulo enquanto o cadastro não é finalizado.
-            $table->string('tipo_cadastro', 20)->nullable();
+            // Lista de App\Enums\TipoCadastro em JSON (um tipo ou os dois); nula enquanto o cadastro não é finalizado.
+            $table->string('tipos_cadastro', 40)->nullable();
         });
     }
 
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn('tipo_cadastro');
+            $table->dropColumn('tipos_cadastro');
         });
     }
 };

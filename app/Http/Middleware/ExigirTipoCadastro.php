@@ -7,7 +7,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-/** Telas do menu do portal: só para quem finalizou o cadastro com o tipo da rota (tipo-cadastro:proponente). */
+/** Telas do menu do portal: só para quem finalizou o cadastro marcando o tipo da rota (tipo-cadastro:proponente). */
 class ExigirTipoCadastro
 {
     public const AVISO = 'Finalize seu cadastro escolhendo o tipo de cadastro.';
@@ -17,15 +17,15 @@ class ExigirTipoCadastro
      */
     public function handle(Request $request, Closure $next, string $tipo): Response
     {
-        $tipoDoUsuario = $request->user()?->tipo_cadastro;
+        $user = $request->user();
 
-        if ($tipoDoUsuario === null) {
+        if (! $user?->cadastroFinalizado()) {
             return redirect()->route('cadastro.tipo')->with('aviso', self::AVISO);
         }
 
-        // Quem trocou de tipo (ou abriu um link antigo) vai para a tela do próprio tipo.
-        if ($tipoDoUsuario !== TipoCadastro::from($tipo)) {
-            return redirect()->route($tipoDoUsuario->rotaInicial());
+        // Quem desmarcou este tipo (ou abriu um link antigo) vai para a tela de um tipo que tem.
+        if (! $user->temTipoCadastro(TipoCadastro::from($tipo))) {
+            return redirect()->route($user->rotaInicialDoPortal());
         }
 
         return $next($request);

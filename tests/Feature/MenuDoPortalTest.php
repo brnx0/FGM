@@ -56,6 +56,18 @@ class MenuDoPortalTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page->component('Portal/Projetos'));
     }
 
+    public function test_com_os_dois_tipos_ve_editais_e_projetos(): void
+    {
+        $user = User::factory()->proponenteEPatrocinador()->create();
+
+        $this->actingAs($user)->get('/portal/editais')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->component('Portal/Editais'));
+        $this->actingAs($user)->get('/portal/projetos')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->component('Portal/Projetos'));
+    }
+
     public function test_cada_tipo_e_levado_a_propria_tela(): void
     {
         $this->actingAs(User::factory()->patrocinador()->create())->get('/portal/editais')

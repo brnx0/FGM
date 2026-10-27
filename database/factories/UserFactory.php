@@ -35,13 +35,19 @@ class UserFactory extends Factory
     /** Cadastro finalizado como proponente. */
     public function proponente(): static
     {
-        return $this->cadastroCompleto()->state(fn () => ['tipo_cadastro' => TipoCadastro::Proponente]);
+        return $this->cadastroCompleto()->state(fn () => ['tipos_cadastro' => [TipoCadastro::Proponente]]);
     }
 
     /** Cadastro finalizado como patrocinador. */
     public function patrocinador(): static
     {
-        return $this->cadastroCompleto()->state(fn () => ['tipo_cadastro' => TipoCadastro::Patrocinador]);
+        return $this->cadastroCompleto()->state(fn () => ['tipos_cadastro' => [TipoCadastro::Patrocinador]]);
+    }
+
+    /** Cadastro finalizado com os dois tipos marcados. */
+    public function proponenteEPatrocinador(): static
+    {
+        return $this->cadastroCompleto()->state(fn () => ['tipos_cadastro' => [TipoCadastro::Proponente, TipoCadastro::Patrocinador]]);
     }
 
     public function gestor(): static

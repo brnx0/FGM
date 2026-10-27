@@ -37,7 +37,7 @@ const props = defineProps<OrganizacaoFormProps>();
 
 const salvo = props.organizacao;
 const editando = salvo !== null;
-const finalizado = computed(() => usePage().props.auth.user?.tipoCadastro != null);
+const finalizado = computed(() => !!usePage().props.auth.user?.tiposCadastro.length);
 
 const LIMITE_REPRESENTANTES = 10;
 const LIMITE_LOGO = 5 * 1024 * 1024;

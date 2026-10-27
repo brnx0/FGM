@@ -7,7 +7,7 @@ use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-/** Última etapa do cadastro: Proponente ou Patrocinador. */
+/** Última etapa do cadastro: Proponente, Patrocinador ou os dois. */
 class SalvarTipoCadastroRequest extends FormRequest
 {
     public function authorize(): bool
@@ -21,7 +21,8 @@ class SalvarTipoCadastroRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'tipo_cadastro' => ['required', Rule::enum(TipoCadastro::class)],
+            // Com a regra array, o in confere cada item da lista.
+            'tipos_cadastro' => ['required', 'array', Rule::in(array_column(TipoCadastro::cases(), 'value'))],
         ];
     }
 
@@ -33,7 +34,7 @@ class SalvarTipoCadastroRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'tipo_cadastro' => 'Selecione o tipo de cadastro.',
+            'tipos_cadastro' => 'Selecione pelo menos um tipo de cadastro.',
         ];
     }
 }

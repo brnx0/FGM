@@ -61,10 +61,10 @@ class LoginGovBrUser
             return route('retaguarda.inicio');
         }
 
-        if ($user->tipo_cadastro === null) {
+        if (! $user->cadastroFinalizado()) {
             return route('cadastro');
         }
 
-        return route($user->tipo_cadastro->rotaInicial());
+        return route($user->rotaInicialDoPortal());
     }
 }

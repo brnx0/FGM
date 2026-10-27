@@ -268,7 +268,7 @@ class CadastroTest extends TestCase
     {
         Storage::fake('local');
         $cadastro = PessoaFisica::factory()->create();
-        $cadastro->user->forceFill(['profile_completed_at' => now(), 'tipo_cadastro' => TipoCadastro::Proponente, 'email' => 'maria@example.com', 'phone' => '71998765432'])->save();
+        $cadastro->user->forceFill(['profile_completed_at' => now(), 'tipos_cadastro' => [TipoCadastro::Proponente], 'email' => 'maria@example.com', 'phone' => '71998765432'])->save();
 
         $this->actingAs($cadastro->user)->post('/cadastro', [
             ...$this->dadosValidos(),

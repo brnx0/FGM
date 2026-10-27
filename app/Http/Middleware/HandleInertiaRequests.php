@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Auth\GovBr\FakeLoginGate;
+use App\Enums\TipoCadastro;
 use App\Support\Cpf;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -45,8 +46,8 @@ class HandleInertiaRequests extends Middleware
                         'nome' => $request->user()->name,
                         'cpfMascarado' => Cpf::mascarar($request->user()->cpf),
                         'ehGestor' => $request->user()->ehGestor(),
-                        // Nulo até a última etapa do cadastro; define o menu do portal.
-                        'tipoCadastro' => $request->user()->tipo_cadastro?->value,
+                        // Vazio até a última etapa do cadastro; define o menu do portal (um tipo ou os dois).
+                        'tiposCadastro' => $request->user()->tipos_cadastro?->map(fn (TipoCadastro $tipo): string => $tipo->value)->all() ?? [],
                     ]
                     : null,
             ],

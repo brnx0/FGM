@@ -10,20 +10,21 @@ defineOptions({ layout: PortalProponenteLayout });
 
 const props = defineProps<CadastroTipoProps>();
 
-// Já escolhido antes: a etapa serve para trocar o tipo, e o menu do portal muda junto.
-const finalizado = props.tipoAtual !== null;
+// Já escolhido antes: a etapa serve para trocar os tipos, e o menu do portal muda junto.
+const finalizado = props.tiposAtuais.length > 0;
 
 const descricoes: Record<TipoCadastro, string> = {
     proponente: 'Quero inscrever meus projetos culturais nos editais de fomento.',
     patrocinador: 'Quero conhecer os projetos dos proponentes e encontrar oportunidades de patrocínio.',
 };
 
-const form = useForm<{ tipo_cadastro: TipoCadastro | '' }>({ tipo_cadastro: props.tipoAtual ?? '' });
+// Dá para marcar os dois: o menu do portal mostra as telas de cada tipo marcado.
+const form = useForm<{ tipos_cadastro: TipoCadastro[] }>({ tipos_cadastro: [...props.tiposAtuais] });
 
 const finalizar = (): void => {
     form.post('/cadastro/tipo', {
         preserveScroll: true,
-        onError: () => nextTick(() => document.querySelector<HTMLInputElement>('input[name="tipo_cadastro"]')?.focus()),
+        onError: () => nextTick(() => document.querySelector<HTMLInputElement>('input[name="tipos_cadastro"]')?.focus()),
     });
 };
 </script>
@@ -48,8 +49,9 @@ const finalizar = (): void => {
                 class="rounded-[24px] border border-hairline bg-superficie p-6 shadow-[0_24px_60px_-34px_rgba(6,36,74,0.45)] md:p-10"
                 @submit.prevent="finalizar"
             >
-                <fieldset :aria-describedby="form.errors.tipo_cadastro ? 'tipo-cadastro-erro' : undefined">
+                <fieldset :aria-describedby="form.errors.tipos_cadastro ? 'tipo-cadastro-dica tipo-cadastro-erro' : 'tipo-cadastro-dica'">
                     <legend class="text-[1.25rem] leading-tight font-bold text-home-tinta md:text-[1.375rem]">Qual tipo de cadastro deseja realizar?</legend>
+                    <p id="tipo-cadastro-dica" class="mt-2 text-[0.9375rem] text-tinta-suave">Marque um ou os dois.</p>
 
                     <div class="mt-6 grid gap-4 sm:grid-cols-2">
                         <label
@@ -58,13 +60,13 @@ const finalizar = (): void => {
                             class="flex cursor-pointer items-start gap-4 rounded-[18px] border border-hairline p-5 transition-colors hover:border-acao has-checked:border-acao has-checked:bg-nevoa has-checked:ring-2 has-checked:ring-acao/25 has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-acao motion-reduce:transition-none"
                         >
                             <input
-                                v-model="form.tipo_cadastro"
-                                type="radio"
-                                name="tipo_cadastro"
+                                v-model="form.tipos_cadastro"
+                                type="checkbox"
+                                name="tipos_cadastro"
                                 :value="opcao.valor"
                                 class="mt-0.5 size-5 shrink-0 cursor-pointer accent-acao focus-visible:outline-none"
-                                :aria-invalid="form.errors.tipo_cadastro ? 'true' : undefined"
-                                @change="form.clearErrors('tipo_cadastro')"
+                                :aria-invalid="form.errors.tipos_cadastro ? 'true' : undefined"
+                                @change="form.clearErrors('tipos_cadastro')"
                             />
                             <span class="flex flex-col gap-1">
                                 <span class="text-[1.0625rem] font-bold text-home-tinta">{{ opcao.rotulo }}</span>
@@ -73,12 +75,12 @@ const finalizar = (): void => {
                         </label>
                     </div>
 
-                    <p v-if="form.errors.tipo_cadastro" id="tipo-cadastro-erro" class="mt-3 flex items-start gap-1.5 text-[0.875rem] font-semibold text-erro-texto">
+                    <p v-if="form.errors.tipos_cadastro" id="tipo-cadastro-erro" class="mt-3 flex items-start gap-1.5 text-[0.875rem] font-semibold text-erro-texto">
                         <svg aria-hidden="true" viewBox="0 0 24 24" class="mt-0.5 size-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                             <circle cx="12" cy="12" r="9" />
                             <path d="m15 9-6 6M9 9l6 6" />
                         </svg>
-                        {{ form.errors.tipo_cadastro }}
+                        {{ form.errors.tipos_cadastro }}
                     </p>
                 </fieldset>
 

@@ -10,8 +10,8 @@ export interface UsuarioAutenticado {
     cpfMascarado: string;
     /** Ativo e com pelo menos um papel: pode entrar na retaguarda. */
     ehGestor: boolean;
-    /** Nulo até a última etapa do cadastro; define o menu do portal. */
-    tipoCadastro: TipoCadastro | null;
+    /** Vazio até a última etapa do cadastro; define o menu do portal (um tipo ou os dois). */
+    tiposCadastro: TipoCadastro[];
 }
 
 /** Props compartilhadas, vindas de App\Http\Middleware\HandleInertiaRequests. */
@@ -312,7 +312,7 @@ export interface EditalRetaguarda {
 
 /** Etapa 4 do cadastro (CadastroController@tipo). */
 export interface CadastroTipoProps {
-    tipoAtual: TipoCadastro | null;
+    tiposAtuais: TipoCadastro[];
     opcoes: { valor: TipoCadastro; rotulo: string }[];
 }
 

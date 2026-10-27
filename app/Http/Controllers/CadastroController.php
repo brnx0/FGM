@@ -81,7 +81,7 @@ class CadastroController extends Controller
         $user->save();
 
         // Enquanto o tipo de cadastro não é escolhido, o cadastro segue pelas etapas seguintes.
-        if ($user->tipo_cadastro === null) {
+        if (! $user->cadastroFinalizado()) {
             return redirect()->route('cadastro.organizacao')->with('sucesso', 'Dados salvos. Você também pode cadastrar uma Pessoa Jurídica.');
         }
 
@@ -94,11 +94,11 @@ class CadastroController extends Controller
         return Inertia::render('Cadastro/Organizacao');
     }
 
-    /** Última etapa: Proponente ou Patrocinador. Pode ser trocado depois, e o menu do portal acompanha. */
+    /** Última etapa: Proponente, Patrocinador ou os dois. Pode ser trocado depois, e o menu do portal acompanha. */
     public function tipo(Request $request): Response
     {
         return Inertia::render('Cadastro/Tipo', [
-            'tipoAtual' => $request->user()->tipo_cadastro?->value,
+            'tiposAtuais' => $request->user()->tipos_cadastro?->map(fn (TipoCadastro $tipo): string => $tipo->value)->all() ?? [],
             'opcoes' => self::opcoes(TipoCadastro::cases()),
         ]);
     }
@@ -106,10 +106,15 @@ class CadastroController extends Controller
     public function salvarTipo(SalvarTipoCadastroRequest $request): RedirectResponse
     {
         $user = $request->user();
-        $user->tipo_cadastro = TipoCadastro::from($request->validated('tipo_cadastro'));
+        $marcados = $request->validated('tipos_cadastro');
+        // Guardados na ordem do enum: a tela em que o portal abre não depende da ordem das marcações.
+        $user->tipos_cadastro = array_values(array_filter(
+            TipoCadastro::cases(),
+            fn (TipoCadastro $tipo): bool => in_array($tipo->value, $marcados, true),
+        ));
         $user->save();
 
-        return redirect()->route($user->tipo_cadastro->rotaInicial())->with('sucesso', 'Cadastro finalizado.');
+        return redirect()->route($user->rotaInicialDoPortal())->with('sucesso', 'Cadastro finalizado.');
     }
 
     /**

@@ -2,7 +2,7 @@
 
 namespace App\Enums;
 
-/** Escolhido na última etapa do cadastro; define o menu do portal. */
+/** Escolhido na última etapa do cadastro (um ou os dois); define o menu do portal. */
 enum TipoCadastro: string
 {
     case Proponente = 'proponente';
