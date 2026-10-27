@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\GovBrController;
 use App\Http\Controllers\Auth\GovBrRedirectController;
 use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\CadastroController;
+use App\Http\Controllers\ConsultaCadastroController;
 use App\Http\Controllers\EditalController;
 use App\Http\Controllers\EventoController;
 use App\Http\Controllers\HomeController;
@@ -28,6 +29,13 @@ Route::middleware(['auth', 'nao-gestor'])->controller(CadastroController::class)
     Route::post('/cadastro', 'salvar')->name('cadastro.salvar');
     Route::get('/cadastro/pessoa-fisica', 'pessoaFisica')->name('cadastro.pessoa-fisica');
     Route::get('/cadastro/pessoa-juridica', 'pessoaJuridica')->name('cadastro.pessoa-juridica');
+});
+
+// Limitador 'consultas' (AppServiceProvider): 30/min por usuário.
+Route::middleware(['auth', 'nao-gestor', 'throttle:consultas'])->controller(ConsultaCadastroController::class)->group(function () {
+    Route::get('/cadastro/consultas/cnpj/{cnpj}', 'cnpj')->name('consultas.cnpj');
+    Route::get('/cadastro/consultas/cep/{cep}', 'cep')->name('consultas.cep');
+    Route::get('/cadastro/consultas/municipios', 'municipios')->name('consultas.municipios');
 });
 
 Route::post('/logout', LogoutController::class)->name('logout');
