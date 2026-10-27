@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\TipoCadastro;
 use App\Models\Role;
 use App\Models\User;
 use App\Support\Cpf;
@@ -29,6 +30,18 @@ class UserFactory extends Factory
     public function cadastroCompleto(): static
     {
         return $this->state(fn () => ['profile_completed_at' => now()]);
+    }
+
+    /** Cadastro finalizado como proponente. */
+    public function proponente(): static
+    {
+        return $this->cadastroCompleto()->state(fn () => ['tipo_cadastro' => TipoCadastro::Proponente]);
+    }
+
+    /** Cadastro finalizado como patrocinador. */
+    public function patrocinador(): static
+    {
+        return $this->cadastroCompleto()->state(fn () => ['tipo_cadastro' => TipoCadastro::Patrocinador]);
     }
 
     public function gestor(): static

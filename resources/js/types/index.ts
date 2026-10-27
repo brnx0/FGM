@@ -2,11 +2,16 @@
 
 export type SituacaoEdital = 'em_breve' | 'aberto' | 'encerrado';
 
+/** App\Enums\TipoCadastro. */
+export type TipoCadastro = 'proponente' | 'patrocinador';
+
 export interface UsuarioAutenticado {
     nome: string;
     cpfMascarado: string;
     /** Ativo e com pelo menos um papel: pode entrar na retaguarda. */
     ehGestor: boolean;
+    /** Nulo até a última etapa do cadastro; define o menu do portal. */
+    tipoCadastro: TipoCadastro | null;
 }
 
 /** Props compartilhadas, vindas de App\Http\Middleware\HandleInertiaRequests. */
@@ -303,6 +308,30 @@ export interface EditalRetaguarda {
     situacaoRotulo: string;
     publicado: boolean;
     temPdf: boolean;
+}
+
+/** Etapa 4 do cadastro (CadastroController@tipo). */
+export interface CadastroTipoProps {
+    tipoAtual: TipoCadastro | null;
+    opcoes: { valor: TipoCadastro; rotulo: string }[];
+}
+
+/** Edital na tela Editais do portal (PortalController@editais). */
+export interface EditalPortal {
+    slug: string;
+    titulo: string;
+    categoria: string;
+    periodo: string;
+    situacao: SituacaoEdital;
+    situacaoRotulo: string;
+    /** URL do PDF do edital (rota editais.pdf). */
+    pdf: string;
+}
+
+export interface PortalEditaisProps {
+    editais: Paginado<EditalPortal>;
+    filtros: { busca: string; situacao: SituacaoEdital | '' };
+    situacoes: { valor: SituacaoEdital; rotulo: string }[];
 }
 
 export interface RetaguardaEditaisIndexProps {

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\TipoCadastro;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -38,6 +39,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'ativo' => 'boolean',
             'profile_completed_at' => 'datetime',
+            'tipo_cadastro' => TipoCadastro::class,
             'last_login_at' => 'datetime',
         ];
     }

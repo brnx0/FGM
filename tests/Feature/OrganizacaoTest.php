@@ -65,7 +65,7 @@ class OrganizacaoTest extends TestCase
                 ['cpf' => '529.982.247-25', 'nome' => 'Maria', 'origem' => 'procuracao', 'tipo_documento' => 'rg'],
                 ['cpf' => self::OUTRO_CPF_REPRESENTANTE, 'nome' => 'João'],
             ],
-        ]))->assertRedirect(route('organizacoes.index'))
+        ]))->assertRedirect(route('cadastro.tipo'))
             ->assertSessionHas('sucesso', 'Pessoa Jurídica salva.');
 
         $organizacao = Organizacao::sole();
@@ -86,6 +86,17 @@ class OrganizacaoTest extends TestCase
         $this->assertSame($user->cpf, $vinculo->cpf);
         $this->assertSame($user->name, $vinculo->nome);
         $this->assertTrue($vinculo->responsavel);
+    }
+
+    public function test_store_com_cadastro_finalizado_volta_para_minhas_pessoas_juridicas(): void
+    {
+        $user = User::factory()->proponente()->create();
+
+        $this->actingAs($user)->post('/organizacoes', $this->dadosValidos())
+            ->assertRedirect(route('organizacoes.index'))
+            ->assertSessionHas('sucesso', 'Pessoa Jurídica salva.');
+
+        $this->assertModelExists(Organizacao::sole());
     }
 
     public function test_cnpj_alfanumerico_em_minusculas_e_aceito_e_normalizado(): void

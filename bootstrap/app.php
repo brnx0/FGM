@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\BloquearGestorNoCadastro;
 use App\Http\Middleware\ExigirCadastroCompleto;
+use App\Http\Middleware\ExigirTipoCadastro;
 use App\Http\Middleware\GarantirGestor;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\SecurityHeaders;
@@ -33,6 +34,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'gestor' => GarantirGestor::class,
             'nao-gestor' => BloquearGestorNoCadastro::class,
             'cadastro-completo' => ExigirCadastroCompleto::class,
+            'tipo-cadastro' => ExigirTipoCadastro::class,
         ]);
 
         // Visitante da retaguarda vai ao login dela; no portal do proponente, à home.

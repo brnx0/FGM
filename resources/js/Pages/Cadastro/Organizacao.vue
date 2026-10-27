@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { Head, Link } from '@inertiajs/vue3';
+import { computed } from 'vue';
+import { Head, Link, usePage } from '@inertiajs/vue3';
 import EtapasCadastro from '../../Components/EtapasCadastro.vue';
 import FaixaPortal from '../../Components/FaixaPortal.vue';
 import PortalProponenteLayout from '../../Layouts/PortalProponenteLayout.vue';
 
 defineOptions({ layout: PortalProponenteLayout });
+
+const finalizado = computed(() => usePage().props.auth.user?.tipoCadastro != null);
 </script>
 
 <template>
@@ -18,7 +21,7 @@ defineOptions({ layout: PortalProponenteLayout });
                     Você representa uma Pessoa Jurídica?
                 </h1>
             </div>
-            <EtapasCadastro :atual="3" />
+            <EtapasCadastro :atual="3" :navegavel="finalizado" />
         </FaixaPortal>
 
         <div class="relative mx-auto -mt-20 max-w-6xl px-4 pb-16 md:-mt-24">
@@ -44,8 +47,9 @@ defineOptions({ layout: PortalProponenteLayout });
                     >
                         Cadastrar Pessoa Jurídica
                     </Link>
+                    <!-- Pula para a última etapa (tipo de cadastro). -->
                     <Link
-                        href="/"
+                        href="/cadastro/tipo"
                         class="pressionavel inline-flex min-h-12 items-center justify-center rounded-pill border border-hairline px-8 text-center text-[0.8125rem] font-bold tracking-[0.12em] text-tinta uppercase no-underline"
                     >
                         Não represento

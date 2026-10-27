@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import CampoArquivo from '../../Components/CampoArquivo.vue';
 import CampoCadastro from '../../Components/CampoCadastro.vue';
 import EtapasCadastro from '../../Components/EtapasCadastro.vue';
@@ -37,6 +37,7 @@ const props = defineProps<OrganizacaoFormProps>();
 
 const salvo = props.organizacao;
 const editando = salvo !== null;
+const finalizado = computed(() => usePage().props.auth.user?.tipoCadastro != null);
 
 const LIMITE_REPRESENTANTES = 10;
 const LIMITE_LOGO = 5 * 1024 * 1024;
@@ -357,7 +358,7 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                     {{ editando ? 'Atualize os dados da Pessoa Jurídica e dos representantes legais.' : 'Informe o CNPJ e confira os dados da Pessoa Jurídica que você representa.' }}
                 </p>
             </div>
-            <EtapasCadastro v-if="!editando" :atual="3" />
+            <EtapasCadastro v-if="!editando" :atual="3" :navegavel="finalizado" />
         </FaixaPortal>
 
         <form

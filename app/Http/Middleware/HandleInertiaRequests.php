@@ -45,6 +45,8 @@ class HandleInertiaRequests extends Middleware
                         'nome' => $request->user()->name,
                         'cpfMascarado' => Cpf::mascarar($request->user()->cpf),
                         'ehGestor' => $request->user()->ehGestor(),
+                        // Nulo até a última etapa do cadastro; define o menu do portal.
+                        'tipoCadastro' => $request->user()->tipo_cadastro?->value,
                     ]
                     : null,
             ],

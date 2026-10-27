@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Auth\GovBr\FakeLoginGate;
+use App\Models\User;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -32,6 +33,17 @@ class FakeGovBrLoginTest extends TestCase
 
         $this->assertAuthenticated();
         $this->assertSame('52998224725', auth()->user()->cpf);
+    }
+
+    public function test_login_simulado_com_cadastro_finalizado_abre_o_portal_sem_o_formulario(): void
+    {
+        $this->app['env'] = 'local';
+        config(['govbr.driver' => 'fake']);
+        User::factory()->patrocinador()->create(['cpf' => '52998224725']);
+
+        $this->post('/auth/govbr/fake', ['cpf' => '529.982.247-25'])->assertRedirect('/portal/projetos');
+
+        $this->assertAuthenticated();
     }
 
     public function test_login_simulado_devolve_nome_e_email_da_conta_de_teste(): void

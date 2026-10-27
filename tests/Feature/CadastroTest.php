@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\IdentidadeGenero;
 use App\Enums\RacaCor;
 use App\Enums\Territorio;
+use App\Enums\TipoCadastro;
 use App\Models\PessoaFisica;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -263,7 +264,20 @@ class CadastroTest extends TestCase
                 ->where('flash.sucesso', 'Dados salvos. Você também pode cadastrar uma Pessoa Jurídica.'));
     }
 
-    public function test_salvamentos_seguintes_voltam_para_a_home(): void
+    public function test_salvamento_com_cadastro_finalizado_volta_para_o_cadastro(): void
+    {
+        Storage::fake('local');
+        $cadastro = PessoaFisica::factory()->create();
+        $cadastro->user->forceFill(['profile_completed_at' => now(), 'tipo_cadastro' => TipoCadastro::Proponente, 'email' => 'maria@example.com', 'phone' => '71998765432'])->save();
+
+        $this->actingAs($cadastro->user)->post('/cadastro', [
+            ...$this->dadosValidos(),
+            'documento_cpf' => null,
+            'documento_rg' => null,
+        ])->assertRedirect(route('cadastro'))->assertSessionHas('sucesso', 'Cadastro salvo.');
+    }
+
+    public function test_salvamento_sem_tipo_de_cadastro_segue_para_a_etapa_da_organizacao(): void
     {
         Storage::fake('local');
         $cadastro = PessoaFisica::factory()->create();
@@ -273,7 +287,7 @@ class CadastroTest extends TestCase
             ...$this->dadosValidos(),
             'documento_cpf' => null,
             'documento_rg' => null,
-        ])->assertRedirect(route('home'))->assertSessionHas('sucesso');
+        ])->assertRedirect(route('cadastro.organizacao'));
     }
 
     public function test_etapa_da_organizacao_abre_com_a_pessoa_fisica_completa(): void

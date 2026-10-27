@@ -11,6 +11,7 @@ use App\Http\Controllers\EventoController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\OrganizacaoController;
 use App\Http\Controllers\PaginaController;
+use App\Http\Controllers\PortalController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
@@ -32,6 +33,14 @@ Route::middleware(['auth', 'nao-gestor'])->controller(CadastroController::class)
 
 Route::middleware(['auth', 'nao-gestor', 'cadastro-completo'])->controller(CadastroController::class)->group(function () {
     Route::get('/cadastro/organizacao', 'organizacao')->name('cadastro.organizacao');
+    Route::get('/cadastro/tipo', 'tipo')->name('cadastro.tipo');
+    Route::post('/cadastro/tipo', 'salvarTipo')->name('cadastro.tipo.salvar');
+});
+
+// Telas do menu do portal, conforme o tipo de cadastro escolhido na última etapa.
+Route::middleware(['auth', 'nao-gestor', 'cadastro-completo'])->controller(PortalController::class)->group(function () {
+    Route::get('/portal/editais', 'editais')->middleware('tipo-cadastro:proponente')->name('portal.editais');
+    Route::get('/portal/projetos', 'projetos')->middleware('tipo-cadastro:patrocinador')->name('portal.projetos');
 });
 
 Route::middleware(['auth', 'nao-gestor', 'cadastro-completo'])->controller(OrganizacaoController::class)->group(function () {

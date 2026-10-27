@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick } from 'vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import CampoArquivo from '../../Components/CampoArquivo.vue';
 import CampoCadastro from '../../Components/CampoCadastro.vue';
 import EtapasCadastro from '../../Components/EtapasCadastro.vue';
@@ -14,6 +14,9 @@ defineOptions({ layout: PortalProponenteLayout });
 const props = defineProps<CadastroCompletarProps>();
 
 const primeiroNome = computed(() => props.govbr.nome.split(' ')[0] ?? '');
+
+// Com o tipo de cadastro escolhido, esta tela é a opção "Cadastro" do menu: consulta e edição.
+const finalizado = computed(() => usePage().props.auth.user?.tipoCadastro != null);
 
 // (71) 99999-9999 para celular e (71) 3333-3333 para fixo, enquanto a pessoa digita.
 const formatarTelefone = (valor: string): string => {
@@ -129,10 +132,10 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                     Olá, {{ primeiroNome }}
                 </h1>
                 <p class="max-w-2xl text-base leading-[1.7] text-white/85 md:text-[1.0625rem]">
-                    Para continuar, complete seus dados abaixo.
+                    {{ finalizado ? 'Confira e atualize seus dados abaixo.' : 'Para continuar, complete seus dados abaixo.' }}
                 </p>
             </div>
-            <EtapasCadastro :atual="2" />
+            <EtapasCadastro :atual="2" :navegavel="finalizado" />
         </FaixaPortal>
 
         <form

@@ -4,6 +4,7 @@ import { Link, router, usePage } from '@inertiajs/vue3';
 import AccessibilityControls from '../Components/AccessibilityControls.vue';
 import CookieNotice from '../Components/CookieNotice.vue';
 import FlashMessage from '../Components/FlashMessage.vue';
+import MenuPortal from '../Components/MenuPortal.vue';
 import SkipLink from '../Components/SkipLink.vue';
 import TestEnvBanner from '../Components/TestEnvBanner.vue';
 import VidroLiquido from '../Components/VidroLiquido.vue';
@@ -78,8 +79,10 @@ onBeforeUnmount(() => {
         <VidroLiquido class="flex flex-1 flex-col bg-parchment text-home-tinta">
             <!-- Sem home-escuro: o anel de foco branco fica só nos controles do topo, e não no painel claro de acessibilidade. -->
             <header class="border-b border-white/10 bg-noite text-white [html.alto-contraste_&]:bg-fundo">
-                <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3.5">
-                    <Link href="/" class="block min-w-0 py-1 focus-visible:outline-white">
+                <!-- Logo e controles sempre na mesma linha; o menu do portal fica entre eles a partir de xl
+                     (como o menu da home) e, abaixo disso, numa linha própria. -->
+                <div class="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 px-4 py-3.5 xl:grid-cols-[auto_minmax(0,1fr)_auto]">
+                    <Link href="/" class="block min-w-0 justify-self-start py-1 focus-visible:outline-white">
                         <img
                             src="/images/logo-fgm-prefeitura-branco.png"
                             alt="FGM – Fundação Gregório de Mattos e Prefeitura de Salvador (voltar ao site)"
@@ -89,7 +92,9 @@ onBeforeUnmount(() => {
                         />
                     </Link>
 
-                    <div class="relative flex shrink-0 items-center gap-2 md:gap-4" @keydown.esc="fecharEVoltarAoBotao">
+                    <MenuPortal class="col-span-2 row-start-2 xl:col-span-1 xl:col-start-2 xl:row-start-1 xl:ml-8" />
+
+                    <div class="relative flex shrink-0 items-center gap-2 justify-self-end md:gap-4" @keydown.esc="fecharEVoltarAoBotao">
                         <p v-if="usuario" class="mr-1 flex items-center gap-2.5">
                             <span aria-hidden="true" class="inline-flex size-9 items-center justify-center rounded-full bg-white/15 text-[0.8125rem] font-bold">
                                 {{ iniciais }}
