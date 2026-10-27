@@ -28,10 +28,12 @@ export interface EditalResumo {
     situacaoRotulo: string;
     inscricoesInicio: string;
     inscricoesFim: string;
+    /** Imagem enviada na retaguarda (URL relativa); null usa as fotos fixas da vitrine. */
+    imagem: string | null;
 }
 
 /** Edital em EditalController@show. */
-export interface EditalDetalhe extends Omit<EditalResumo, 'pdf'> {
+export interface EditalDetalhe extends Omit<EditalResumo, 'pdf' | 'imagem'> {
     resumo: string;
     pdf: string | null;
 }

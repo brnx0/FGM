@@ -24,6 +24,8 @@ class HomeController extends Controller
                 'situacaoRotulo' => $edital->situacao()->rotulo(),
                 'inscricoesInicio' => $edital->inscricoes_inicio->format('d/m/Y'),
                 'inscricoesFim' => $edital->inscricoes_fim->format('d/m/Y'),
+                // Imagem enviada na retaguarda; sem ela, o carrossel usa as fotos fixas da vitrine.
+                'imagem' => $edital->imagemUrl(),
             ])->all(),
             // Sem a descrição (CLOB): a home só mostra o card.
             'eventos' => Evento::realizados()
