@@ -88,6 +88,9 @@ const navegacao: { href: string; texto: string; pagina?: boolean }[] = [
                         <li v-if="usuario">
                             <Link :href="usuario.ehGestor ? '/retaguarda' : '/cadastro'" class="inline-flex min-h-11 items-center text-[0.9375rem] font-medium no-underline hover:underline">{{ usuario.ehGestor ? 'Retaguarda' : 'Meu cadastro' }}</Link>
                         </li>
+                        <li v-if="usuario && !usuario.ehGestor">
+                            <Link href="/organizacoes" class="inline-flex min-h-11 items-center text-[0.9375rem] font-medium no-underline hover:underline">Minhas organizações</Link>
+                        </li>
                         <template v-else>
                             <li>
                                 <a href="/auth/govbr/redirect" data-iris class="inline-flex min-h-11 items-center text-[0.9375rem] font-medium no-underline hover:underline">

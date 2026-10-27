@@ -162,6 +162,21 @@ export interface OrganizacoesIndexProps {
     organizacoes: OrganizacaoResumo[];
 }
 
+/** Pessoa vinculada a uma organização (CPF mascarado). */
+export interface VinculoPessoa {
+    id: number;
+    nome: string;
+    cpf: string;
+    responsavel: boolean;
+    ehVoce: boolean;
+}
+
+export interface OrganizacaoVinculosProps {
+    organizacao: { id: number; nome: string };
+    podeGerenciar: boolean;
+    vinculos: VinculoPessoa[];
+}
+
 export interface RepresentanteForm {
     cpf: string;
     nome: string;

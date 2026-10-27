@@ -22,6 +22,13 @@ const iniciais = computed(() => {
 const csrf = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
 const ano = new Date().getFullYear();
 
+// Navegação do topo. O cadastro da organização (/cadastro/pessoa-juridica) faz parte de “Minhas organizações”.
+const caminho = computed(() => page.url.split(/[?#]/)[0] ?? '');
+const itensNavegacao = computed(() => [
+    { href: '/cadastro', texto: 'Meu cadastro', atual: caminho.value.startsWith('/cadastro') && caminho.value !== '/cadastro/pessoa-juridica' },
+    { href: '/organizacoes', texto: 'Minhas organizações', atual: caminho.value.startsWith('/organizacoes') || caminho.value === '/cadastro/pessoa-juridica' },
+]);
+
 const linksRodape: { href: string; texto: string }[] = [
     { href: '/', texto: 'Voltar ao site' },
     { href: '/duvidas', texto: 'Dúvidas' },
@@ -170,6 +177,20 @@ onBeforeUnmount(() => {
                         </form>
                     </div>
                 </div>
+
+                <nav aria-label="Portal do proponente" class="border-t border-white/10">
+                    <ul class="mx-auto flex max-w-6xl gap-1 px-2 md:px-3">
+                        <li v-for="item in itensNavegacao" :key="item.href">
+                            <Link
+                                :href="item.href"
+                                :aria-current="item.atual ? 'page' : undefined"
+                                class="inline-flex min-h-11 items-center border-b-2 border-transparent px-2.5 text-[0.75rem] font-bold tracking-[0.12em] text-white/80 uppercase no-underline hover:text-white focus-visible:outline-white aria-[current=page]:border-white aria-[current=page]:text-white md:px-4"
+                            >
+                                {{ item.texto }}
+                            </Link>
+                        </li>
+                    </ul>
+                </nav>
             </header>
 
             <main id="conteudo" tabindex="-1" class="flex-1 focus:outline-none">

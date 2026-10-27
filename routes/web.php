@@ -11,6 +11,7 @@ use App\Http\Controllers\EventoController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\OrganizacaoController;
 use App\Http\Controllers\PaginaController;
+use App\Http\Controllers\VinculoOrganizacaoController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
@@ -38,8 +39,15 @@ Route::middleware(['auth', 'nao-gestor', 'cadastro-completo'])->controller(Organ
     Route::get('/organizacoes', 'index')->name('organizacoes.index');
     Route::get('/cadastro/pessoa-juridica', 'create')->name('organizacoes.create');
     Route::post('/organizacoes', 'store')->name('organizacoes.store');
-    Route::get('/organizacoes/{organizacao}/editar', 'edit')->name('organizacoes.edit');
-    Route::put('/organizacoes/{organizacao}', 'update')->name('organizacoes.update');
+    Route::get('/organizacoes/{organizacao}/editar', 'edit')->whereNumber('organizacao')->name('organizacoes.edit');
+    Route::put('/organizacoes/{organizacao}', 'update')->whereNumber('organizacao')->name('organizacoes.update');
+});
+
+// scopeBindings: o vínculo precisa ser da organização da URL, senão 404. whereNumber: id não numérico não chega ao Oracle (ORA-01722).
+Route::middleware(['auth', 'nao-gestor', 'cadastro-completo'])->controller(VinculoOrganizacaoController::class)->group(function () {
+    Route::get('/organizacoes/{organizacao}/pessoas', 'index')->whereNumber('organizacao')->name('organizacoes.vinculos');
+    Route::post('/organizacoes/{organizacao}/pessoas', 'store')->whereNumber('organizacao')->name('organizacoes.vinculos.store');
+    Route::delete('/organizacoes/{organizacao}/pessoas/{vinculo}', 'destroy')->whereNumber(['organizacao', 'vinculo'])->scopeBindings()->name('organizacoes.vinculos.destroy');
 });
 
 // Limitador 'consultas' (AppServiceProvider): 30/min por usuário.

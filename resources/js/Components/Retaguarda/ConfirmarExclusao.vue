@@ -9,6 +9,12 @@ const props = defineProps<{
     nome: string;
     /** O que acontece ao excluir, abaixo da pergunta. */
     aviso?: string;
+    /** Verbo do botão e da confirmação ("Desvincular", "Sair da organização"); o padrão é "Excluir". */
+    acao?: string;
+    /** Pergunta do diálogo; o padrão é `Excluir “nome”?`. */
+    pergunta?: string;
+    /** Texto do botão de confirmar enquanto envia; o padrão é "Excluindo…". */
+    acaoEmAndamento?: string;
 }>();
 
 const dialogo = ref<HTMLDialogElement | null>(null);
@@ -43,7 +49,7 @@ const excluir = (): void => {
             <svg aria-hidden="true" viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />
             </svg>
-            Excluir<span class="sr-only"> {{ nome }}</span>
+            {{ acao ?? 'Excluir' }}<span class="sr-only"> {{ nome }}</span>
         </button>
 
         <dialog
@@ -51,7 +57,7 @@ const excluir = (): void => {
             :aria-labelledby="idTitulo"
             class="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-card border border-hairline bg-superficie p-6 text-home-tinta backdrop:bg-noite/60"
         >
-            <h2 :id="idTitulo" class="text-[1.25rem] leading-tight font-bold">Excluir “{{ nome }}”?</h2>
+            <h2 :id="idTitulo" class="text-[1.25rem] leading-tight font-bold">{{ pergunta ?? `Excluir “${nome}”?` }}</h2>
             <p v-if="aviso" class="mt-2 text-[0.9375rem] text-tinta-suave">{{ aviso }}</p>
 
             <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
@@ -69,7 +75,7 @@ const excluir = (): void => {
                     class="pressionavel inline-flex min-h-11 items-center justify-center rounded-pill border border-erro-texto bg-erro-fundo px-5 text-[0.8125rem] font-bold tracking-[0.12em] text-erro-texto uppercase disabled:cursor-wait disabled:opacity-70"
                     @click="excluir"
                 >
-                    {{ excluindo ? 'Excluindo…' : 'Excluir' }}
+                    {{ excluindo ? (acaoEmAndamento ?? 'Excluindo…') : (acao ?? 'Excluir') }}
                 </button>
             </div>
         </dialog>
