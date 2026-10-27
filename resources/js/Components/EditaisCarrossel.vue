@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { fotosVitrine, fotoVitrine } from './fotosVitrine';
 import type { EditalResumo, SituacaoEdital } from '../types';
 
 const props = defineProps<{
@@ -13,15 +14,9 @@ const CARDS_NO_LEQUE = 5;
 // Deslocamento horizontal mínimo para o gesto contar como troca de slide.
 const ARRASTO_MINIMO_PX = 50;
 
-// Fotos da vitrine (anexo portal-fgm.html). São decorativas e vão para os cards pela posição na roda.
-const fotos: { src: string; enquadramento: string }[] = [
-    { src: '/images/vitrine-boca-de-brasa.jpg', enquadramento: 'center' },
-    { src: '/images/vitrine-plateia-danca.jpg', enquadramento: 'center' },
-    { src: '/images/vitrine-orixas.jpg', enquadramento: 'center 30%' },
-    { src: '/images/vitrine-zelia-gattai.jpg', enquadramento: '58% center' },
-    { src: '/images/vitrine-elenco-branco.jpg', enquadramento: 'center' },
-];
-const foto = (indice: number) => fotos[indice % fotos.length];
+// As fotos da vitrine vão para os cards pela posição na roda.
+const fotos = fotosVitrine;
+const foto = fotoVitrine;
 
 // Sem rótulo próprio, vale o situacaoRotulo do backend.
 const situacoes: Record<SituacaoEdital, { cor: string; rotulo?: string }> = {

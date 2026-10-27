@@ -326,12 +326,17 @@ export interface EditalPortal {
     situacaoRotulo: string;
     /** URL do PDF do edital (rota editais.pdf). */
     pdf: string;
+    /** Foto enviada na retaguarda; sem ela, o card usa uma foto da vitrine. */
+    imagem: string | null;
 }
 
 export interface PortalEditaisProps {
     editais: Paginado<EditalPortal>;
-    filtros: { busca: string; situacao: SituacaoEdital | '' };
-    situacoes: { valor: SituacaoEdital; rotulo: string }[];
+}
+
+/** Tela de inscrição num edital aberto (PortalController@inscricao). */
+export interface PortalInscricaoProps {
+    edital: Pick<EditalPortal, 'titulo' | 'categoria' | 'periodo' | 'pdf'>;
 }
 
 export interface RetaguardaEditaisIndexProps {

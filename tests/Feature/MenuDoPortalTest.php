@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\Edital;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -27,26 +29,28 @@ class MenuDoPortalTest extends TestCase
                 ->where('editais.data.0.pdf', route('editais.pdf', 'publicado')));
     }
 
-    public function test_editais_filtram_por_titulo_e_situacao(): void
+    public function test_editais_mostram_so_os_com_inscricoes_abertas(): void
     {
-        Edital::factory()->create(['titulo' => 'Fomento ao Audiovisual']);
-        Edital::factory()->create([
-            'titulo' => 'Fomento à Música',
-            'inscricoes_inicio' => now()->subDays(40)->toDateString(),
-            'inscricoes_fim' => now()->subDays(10)->toDateString(),
-        ]);
-        $proponente = User::factory()->proponente()->create();
+        $this->travelTo(Carbon::parse('2026-11-10 10:00', 'America/Bahia'));
+        Edital::factory()->create(['titulo' => 'Abre hoje', 'inscricoes_inicio' => '2026-11-10', 'inscricoes_fim' => '2026-11-30']);
+        Edital::factory()->create(['titulo' => 'Fecha hoje', 'inscricoes_inicio' => '2026-11-01', 'inscricoes_fim' => '2026-11-10']);
+        Edital::factory()->create(['titulo' => 'Abre amanhã', 'inscricoes_inicio' => '2026-11-11', 'inscricoes_fim' => '2026-11-30']);
+        Edital::factory()->create(['titulo' => 'Fechou ontem', 'inscricoes_inicio' => '2026-10-01', 'inscricoes_fim' => '2026-11-09']);
 
-        $this->actingAs($proponente)->get('/portal/editais?busca=AUDIOVISUAL')
+        $this->actingAs(User::factory()->proponente()->create())->get('/portal/editais')
             ->assertInertia(fn (Assert $page) => $page
-                ->where('editais.total', 1)
-                ->where('editais.data.0.titulo', 'Fomento ao Audiovisual')
-                ->where('filtros.busca', 'AUDIOVISUAL'));
+                ->where('editais.total', 2)
+                ->where('editais.data.0.titulo', 'Abre hoje')
+                ->where('editais.data.1.titulo', 'Fecha hoje'));
+    }
 
-        $this->actingAs($proponente)->get('/portal/editais?situacao=encerrado')
+    public function test_editais_trazem_a_foto_enviada_na_retaguarda(): void
+    {
+        Edital::factory()->create(['imagem' => 'editais/capa.jpg']);
+
+        $this->actingAs(User::factory()->proponente()->create())->get('/portal/editais')
             ->assertInertia(fn (Assert $page) => $page
-                ->where('editais.total', 1)
-                ->where('editais.data.0.titulo', 'Fomento à Música'));
+                ->where('editais.data.0.imagem', Storage::disk('public')->url('editais/capa.jpg')));
     }
 
     public function test_patrocinador_ve_a_tela_de_projetos(): void

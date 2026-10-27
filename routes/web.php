@@ -43,6 +43,7 @@ Route::middleware(['auth', 'nao-gestor', 'cadastro-completo', 'inertia.encrypt']
 // Telas do menu do portal, conforme o tipo de cadastro escolhido na última etapa.
 Route::middleware(['auth', 'nao-gestor', 'cadastro-completo', 'inertia.encrypt'])->controller(PortalController::class)->group(function () {
     Route::get('/portal/editais', 'editais')->middleware('tipo-cadastro:proponente')->name('portal.editais');
+    Route::get('/portal/editais/{edital:slug}/inscricao', 'inscricao')->middleware('tipo-cadastro:proponente')->name('portal.editais.inscricao');
     Route::get('/portal/projetos', 'projetos')->middleware('tipo-cadastro:patrocinador')->name('portal.projetos');
 });
 

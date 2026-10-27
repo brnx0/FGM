@@ -274,7 +274,7 @@ class CadastroTest extends TestCase
             ...$this->dadosValidos(),
             'documento_cpf' => null,
             'documento_rg' => null,
-        ])->assertRedirect(route('cadastro'))->assertSessionHas('sucesso', 'Cadastro salvo.');
+        ])->assertRedirect(route('cadastro'))->assertSessionMissing('sucesso');
     }
 
     public function test_salvamento_sem_tipo_de_cadastro_segue_para_a_etapa_da_organizacao(): void

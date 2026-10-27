@@ -3,6 +3,7 @@ import { nextTick } from 'vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import EtapasCadastro from '../../Components/EtapasCadastro.vue';
 import FaixaPortal from '../../Components/FaixaPortal.vue';
+import SaudacaoCadastro from '../../Components/SaudacaoCadastro.vue';
 import PortalProponenteLayout from '../../Layouts/PortalProponenteLayout.vue';
 import type { CadastroTipoProps, TipoCadastro } from '../../types';
 
@@ -34,13 +35,17 @@ const finalizar = (): void => {
         <Head title="Tipo de Cadastro" />
 
         <FaixaPortal aria-labelledby="tipo-titulo">
-            <div class="flex flex-col gap-3">
+            <!-- No modo edição, o mesmo cabeçalho das outras etapas. -->
+            <SaudacaoCadastro v-if="finalizado" id-titulo="tipo-titulo" />
+            <div v-else class="flex flex-col gap-3">
                 <p class="text-[0.75rem] font-semibold tracking-[0.24em] text-white/75 uppercase">Etapa 4 de 4 · Tipo de Cadastro</p>
                 <h1 id="tipo-titulo" class="font-barlow text-[2.6rem] leading-[0.95] font-extrabold tracking-[0.01em] break-words uppercase md:text-[3.5rem]">
                     Tipo de Cadastro
                 </h1>
             </div>
-            <EtapasCadastro :atual="4" :navegavel="finalizado" />
+            <template #abaixo>
+                <EtapasCadastro :atual="4" :navegavel="finalizado" />
+            </template>
         </FaixaPortal>
 
         <div class="relative mx-auto -mt-20 max-w-6xl px-4 pb-16 md:-mt-24">

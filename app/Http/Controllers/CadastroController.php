@@ -85,7 +85,7 @@ class CadastroController extends Controller
             return redirect()->route('cadastro.organizacao')->with('sucesso', 'Dados salvos. Você também pode cadastrar uma Pessoa Jurídica.');
         }
 
-        return redirect()->route('cadastro')->with('sucesso', 'Cadastro salvo.');
+        return redirect()->route('cadastro');
     }
 
     /** Etapa opcional: depois da pessoa física, a pessoa decide se cadastra uma organização. */

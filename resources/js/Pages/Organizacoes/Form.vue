@@ -5,6 +5,7 @@ import CampoArquivo from '../../Components/CampoArquivo.vue';
 import CampoCadastro from '../../Components/CampoCadastro.vue';
 import EtapasCadastro from '../../Components/EtapasCadastro.vue';
 import FaixaPortal from '../../Components/FaixaPortal.vue';
+import SaudacaoCadastro from '../../Components/SaudacaoCadastro.vue';
 import SecaoCadastro from '../../Components/SecaoCadastro.vue';
 import CampoBusca from '../../Components/Organizacao/CampoBusca.vue';
 import CartaoRepresentante from '../../Components/Organizacao/CartaoRepresentante.vue';
@@ -339,7 +340,9 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
         <Head :title="titulo" />
 
         <FaixaPortal aria-labelledby="organizacao-titulo">
-            <div class="flex flex-col gap-3">
+            <!-- Nova Pessoa Jurídica no modo edição do cadastro: o mesmo cabeçalho das outras etapas. -->
+            <SaudacaoCadastro v-if="finalizado && !editando" id-titulo="organizacao-titulo" />
+            <div v-else class="flex flex-col gap-3">
                 <Link
                     v-if="editando"
                     href="/organizacoes"
@@ -358,7 +361,9 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                     {{ editando ? 'Atualize os dados da Pessoa Jurídica e dos representantes legais.' : 'Informe o CNPJ e confira os dados da Pessoa Jurídica que você representa.' }}
                 </p>
             </div>
-            <EtapasCadastro v-if="!editando" :atual="3" :navegavel="finalizado" />
+            <template v-if="!editando" #abaixo>
+                <EtapasCadastro :atual="3" :navegavel="finalizado" />
+            </template>
         </FaixaPortal>
 
         <form

@@ -4,31 +4,23 @@ namespace App\Http\Controllers;
 
 use App\Enums\SituacaoEdital;
 use App\Models\Edital;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
 
-/** Telas do menu do portal depois do cadastro finalizado: Editais (proponente) e Projetos (patrocinador). */
+/** Telas do menu do portal depois do cadastro finalizado: Editais e inscrição (proponente) e Projetos (patrocinador). */
 class PortalController extends Controller
 {
-    /** Os editais cadastrados na retaguarda, só os publicados com PDF (os mesmos que o site mostra). */
-    public function editais(Request $request): Response
-    {
-        $busca = trim((string) $request->query('busca', ''));
-        $situacao = SituacaoEdital::tryFrom((string) $request->query('situacao', ''));
+    public const AVISO_INSCRICOES_FECHADAS = 'As inscrições deste edital não estão abertas.';
 
+    /** Só os editais em fase de inscrição, entre os publicados com PDF (os mesmos que o site mostra). */
+    public function editais(): Response
+    {
         $editais = Edital::visiveis()
-            // No Oracle a comparação de texto diferencia maiúsculas; % e _ digitados valem literalmente.
-            ->when($busca !== '', fn (Builder $q) => $q->whereRaw(
-                "LOWER(titulo) LIKE ? ESCAPE '\\'",
-                ['%'.addcslashes(mb_strtolower($busca), '\\%_').'%'],
-            ))
-            ->when($situacao, fn (Builder $q) => $q->naSituacao($situacao))
+            ->naSituacao(SituacaoEdital::Aberto)
             ->orderByDesc('inscricoes_inicio')
             ->orderByDesc('id')
             ->paginate(15)
-            ->withQueryString()
             ->through(function (Edital $edital): array {
                 $situacao = $edital->situacao();
 
@@ -40,19 +32,29 @@ class PortalController extends Controller
                     'situacao' => $situacao->value,
                     'situacaoRotulo' => $situacao->rotulo(),
                     'pdf' => $edital->pdfUrl(),
+                    'imagem' => $edital->imagemUrl(),
                 ];
             });
 
-        return Inertia::render('Portal/Editais', [
-            'editais' => $editais,
-            'filtros' => [
-                'busca' => $busca,
-                'situacao' => $situacao?->value ?? '',
+        return Inertia::render('Portal/Editais', ['editais' => $editais]);
+    }
+
+    /** Início da inscrição num edital aberto. O envio dos documentos ainda não existe: a tela mostra o edital e o aviso. */
+    public function inscricao(Edital $edital): Response|RedirectResponse
+    {
+        abort_unless($edital->estaVisivel(), 404);
+
+        if ($edital->situacao() !== SituacaoEdital::Aberto) {
+            return redirect()->route('portal.editais')->with('aviso', self::AVISO_INSCRICOES_FECHADAS);
+        }
+
+        return Inertia::render('Portal/Inscricao', [
+            'edital' => [
+                'titulo' => $edital->titulo,
+                'categoria' => $edital->categoria,
+                'periodo' => $edital->inscricoes_inicio->format('d/m/Y').' a '.$edital->inscricoes_fim->format('d/m/Y'),
+                'pdf' => $edital->pdfUrl(),
             ],
-            'situacoes' => array_map(
-                fn (SituacaoEdital $s): array => ['valor' => $s->value, 'rotulo' => $s->rotulo()],
-                SituacaoEdital::cases(),
-            ),
         ]);
     }
 
