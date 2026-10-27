@@ -155,7 +155,17 @@ const escolherMunicipio = (opcao: OpcaoCadastro | null): void => {
 const MENSAGEM_DUPLICADO = 'Esta organização já está cadastrada. Peça ao responsável por ela para vincular você.';
 
 const situacaoCnpj = ref<'buscando' | 'preenchido' | null>(null);
+// CNPJ cuja consulta terminou e já foi aplicada (não repete) e a consulta em andamento, se houver.
 let cnpjConsultado = '';
+let consultaCnpj: { cnpj: string; controle: AbortController } | null = null;
+
+// A pessoa mudou o CNPJ: a consulta em andamento é descartada e o "Buscando…" some.
+const abandonarConsultaCnpj = (): void => {
+    if (consultaCnpj === null) return;
+    consultaCnpj.controle.abort();
+    consultaCnpj = null;
+    if (situacaoCnpj.value === 'buscando') situacaoCnpj.value = null;
+};
 
 const preencherComCnpj = (dados: DadosPublicosCnpj): void => {
     // Preenche o que está vazio ou o que a pessoa ainda não mexeu.
@@ -205,27 +215,32 @@ const preencherComCnpj = (dados: DadosPublicosCnpj): void => {
 // Ao sair do campo. Falha, 429 ou CNPJ fora das bases públicas (o alfanumérico, por exemplo): segue à mão.
 const consultarCnpj = async (): Promise<void> => {
     const cnpj = normalizarCnpj(form.cnpj);
-    if (cnpj.length !== 14 || cnpj === cnpjConsultado) return;
+    if (cnpj.length !== 14 || cnpj === cnpjConsultado || cnpj === consultaCnpj?.cnpj) return;
 
     if (!cnpjValido(cnpj)) {
         form.setError('cnpj', 'CNPJ inválido. Confira os números e letras.');
         return;
     }
 
-    cnpjConsultado = cnpj;
+    abandonarConsultaCnpj();
+    const consulta = { cnpj, controle: new AbortController() };
+    consultaCnpj = consulta;
     situacaoCnpj.value = 'buscando';
-    const resposta = await consultar<RespostaConsultaCnpj>(`/cadastro/consultas/cnpj/${cnpj}`);
+    const resposta = await consultar<RespostaConsultaCnpj>(`/cadastro/consultas/cnpj/${cnpj}`, consulta.controle.signal);
 
-    // A pessoa trocou o CNPJ enquanto a consulta corria.
-    if (normalizarCnpj(form.cnpj) !== cnpj) return;
+    // Abandonada ou substituída enquanto corria: quem a substituiu já cuidou do aviso.
+    if (consultaCnpj !== consulta) return;
+    consultaCnpj = null;
     situacaoCnpj.value = null;
 
-    if (resposta === null) {
-        cnpjConsultado = '';
-    } else if ('jaCadastrado' in resposta) {
-        cnpjConsultado = '';
+    if (resposta === null) return;
+    if ('jaCadastrado' in resposta) {
         form.setError('cnpj', MENSAGEM_DUPLICADO);
-    } else if (resposta.encontrado) {
+        return;
+    }
+
+    cnpjConsultado = cnpj;
+    if (resposta.encontrado) {
         preencherComCnpj(resposta.dados);
         situacaoCnpj.value = 'preenchido';
     }
@@ -233,7 +248,12 @@ const consultarCnpj = async (): Promise<void> => {
 
 const digitarCnpj = (evento: Event): void => {
     mascarar(evento, 'cnpj', formatarCnpj);
-    if (normalizarCnpj(form.cnpj) !== cnpjConsultado) situacaoCnpj.value = null;
+    const cnpj = normalizarCnpj(form.cnpj);
+    if (cnpj !== consultaCnpj?.cnpj) abandonarConsultaCnpj();
+    if (cnpj !== cnpjConsultado) {
+        cnpjConsultado = '';
+        if (situacaoCnpj.value === 'preenchido') situacaoCnpj.value = null;
+    }
 };
 
 /* Logo. */
