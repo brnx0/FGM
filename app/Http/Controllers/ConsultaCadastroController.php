@@ -46,6 +46,6 @@ class ConsultaCadastroController extends Controller
         $parametro = $request->query('busca', '');
         $busca = is_string($parametro) ? trim($parametro) : '';
 
-        return response()->json(mb_strlen($busca) < 2 ? [] : Municipios::buscar($busca));
+        return response()->json(mb_strlen($busca) < 3 ? [] : Municipios::buscar($busca));
     }
 }

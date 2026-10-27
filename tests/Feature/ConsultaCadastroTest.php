@@ -252,11 +252,11 @@ class ConsultaCadastroTest extends TestCase
         $this->assertContains('Salvador', $nomes);
     }
 
-    public function test_busca_de_municipios_com_menos_de_2_caracteres_retorna_vazio(): void
+    public function test_busca_de_municipios_com_menos_de_3_caracteres_retorna_vazio(): void
     {
         $this->logar();
 
-        $this->getJson(route('consultas.municipios', ['busca' => 's']))->assertOk()->assertExactJson([]);
+        $this->getJson(route('consultas.municipios', ['busca' => 'sa']))->assertOk()->assertExactJson([]);
         $this->getJson(route('consultas.municipios'))->assertOk()->assertExactJson([]);
     }
 

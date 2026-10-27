@@ -138,7 +138,7 @@ const opcaoMunicipio = (municipio: MunicipioBusca): OpcaoCadastro => ({ valor: m
 
 const municipioSelecionado = ref<OpcaoCadastro | null>(salvo?.municipio ? opcaoMunicipio(salvo.municipio) : null);
 
-// Só a partir de 2 letras e 300 ms depois da última tecla: o limite de consultas é dividido com CNPJ e CEP.
+// Só a partir de 3 letras e 300 ms depois da última tecla: o limite de consultas é dividido com CNPJ e CEP.
 const buscarMunicipio = async (termo: string, sinal: AbortSignal): Promise<OpcaoCadastro[] | null> => {
     const municipios = await consultar<MunicipioBusca[]>(`/cadastro/consultas/municipios?busca=${encodeURIComponent(termo)}`, sinal);
     return Array.isArray(municipios) ? municipios.map(opcaoMunicipio) : null;
@@ -523,7 +523,7 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                             rotulo="Municípios"
                             :selecionado="municipioSelecionado"
                             :buscar="buscarMunicipio"
-                            :minimo="2"
+                            :minimo="3"
                             :atraso="300"
                             placeholder="Digite o nome do município"
                             texto-vazio="Nenhum município encontrado."
