@@ -4,6 +4,7 @@ use App\Http\Controllers\Retaguarda\EditalController;
 use App\Http\Controllers\Retaguarda\EventoController;
 use App\Http\Controllers\Retaguarda\LoginController;
 use App\Http\Controllers\Retaguarda\MinhaSenhaController;
+use App\Http\Controllers\Retaguarda\PerfilController;
 use App\Http\Controllers\Retaguarda\UsuarioController;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Route;
@@ -41,6 +42,9 @@ Route::prefix('retaguarda')->name('retaguarda.')->group(function () {
             ->name('eventos.conteudo.imagem');
         Route::resource('eventos', EventoController::class)->except('show');
         Route::patch('/eventos/{evento}/publicacao', [EventoController::class, 'publicacao'])->name('eventos.publicacao');
+
+        Route::get('/perfil', [PerfilController::class, 'edit'])->name('perfil.edit');
+        Route::put('/perfil', [PerfilController::class, 'update'])->middleware('throttle:6,1')->name('perfil.update');
 
         Route::get('/minha-senha', [MinhaSenhaController::class, 'edit'])->name('senha.edit');
         Route::put('/minha-senha', [MinhaSenhaController::class, 'update'])->middleware('throttle:6,1')->name('senha.update');

@@ -286,3 +286,16 @@ export interface RetaguardaUsuariosFormProps {
 export interface RetaguardaMinhaSenhaProps {
     temSenha: boolean;
 }
+
+export interface RetaguardaPerfilProps {
+    perfil: {
+        name: string;
+        email: string;
+        /** Só os números, com DDD. */
+        telefone: string | null;
+        /** Mascarado: ***.982.247-**. */
+        cpf: string;
+        papeis: string[];
+    };
+    temSenha: boolean;
+}
