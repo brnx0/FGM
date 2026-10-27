@@ -14,7 +14,8 @@ use App\Http\Controllers\PaginaController;
 use App\Http\Controllers\PortalController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', HomeController::class)->name('home');
+// Voltar para a home encerra a sessão do proponente (logo, "Voltar ao site" e Voltar do navegador).
+Route::get('/', HomeController::class)->middleware('encerra-sessao-proponente')->name('home');
 Route::get('/editais/{edital:slug}', [EditalController::class, 'show'])->name('editais.show');
 Route::get('/editais/{edital:slug}/pdf', [EditalController::class, 'pdf'])->name('editais.pdf');
 Route::get('/eventos/{evento:slug}', [EventoController::class, 'show'])->name('eventos.show');
@@ -26,24 +27,26 @@ Route::controller(PaginaController::class)->group(function () {
     Route::get('/termos', 'termos')->name('paginas.termos');
 });
 
-Route::middleware(['auth', 'nao-gestor'])->controller(CadastroController::class)->group(function () {
+// inertia.encrypt: as telas com dados pessoais ficam cifradas no histórico do navegador e deixam
+// de abrir pelo Voltar depois que a sessão termina (Inertia::clearHistory em EncerrarSessao).
+Route::middleware(['auth', 'nao-gestor', 'inertia.encrypt'])->controller(CadastroController::class)->group(function () {
     Route::get('/cadastro', 'completar')->name('cadastro');
     Route::post('/cadastro', 'salvar')->name('cadastro.salvar');
 });
 
-Route::middleware(['auth', 'nao-gestor', 'cadastro-completo'])->controller(CadastroController::class)->group(function () {
+Route::middleware(['auth', 'nao-gestor', 'cadastro-completo', 'inertia.encrypt'])->controller(CadastroController::class)->group(function () {
     Route::get('/cadastro/organizacao', 'organizacao')->name('cadastro.organizacao');
     Route::get('/cadastro/tipo', 'tipo')->name('cadastro.tipo');
     Route::post('/cadastro/tipo', 'salvarTipo')->name('cadastro.tipo.salvar');
 });
 
 // Telas do menu do portal, conforme o tipo de cadastro escolhido na última etapa.
-Route::middleware(['auth', 'nao-gestor', 'cadastro-completo'])->controller(PortalController::class)->group(function () {
+Route::middleware(['auth', 'nao-gestor', 'cadastro-completo', 'inertia.encrypt'])->controller(PortalController::class)->group(function () {
     Route::get('/portal/editais', 'editais')->middleware('tipo-cadastro:proponente')->name('portal.editais');
     Route::get('/portal/projetos', 'projetos')->middleware('tipo-cadastro:patrocinador')->name('portal.projetos');
 });
 
-Route::middleware(['auth', 'nao-gestor', 'cadastro-completo'])->controller(OrganizacaoController::class)->group(function () {
+Route::middleware(['auth', 'nao-gestor', 'cadastro-completo', 'inertia.encrypt'])->controller(OrganizacaoController::class)->group(function () {
     Route::get('/organizacoes', 'index')->name('organizacoes.index');
     Route::get('/cadastro/pessoa-juridica', 'create')->name('organizacoes.create');
     Route::post('/organizacoes', 'store')->name('organizacoes.store');

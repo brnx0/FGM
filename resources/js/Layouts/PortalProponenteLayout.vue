@@ -1,3 +1,8 @@
+<script lang="ts">
+// Uma vez por documento: o layout volta a montar ao sair e voltar por outra tela, e a entrada extra do Voltar não se repete.
+let entradaDoVoltarCriada = false;
+</script>
+
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
@@ -60,12 +65,34 @@ watch(acessibilidadeAberta, (aberto) => {
     else document.removeEventListener('pointerdown', fecharAoClicarFora);
 });
 
+// Voltar do navegador encerra a sessão pelo mesmo caminho do botão Sair, e a pessoa volta ao portal deslogada.
+const formularioSair = ref<HTMLFormElement | null>(null);
+let saindo = false;
+
+const sairAoVoltar = (evento: PopStateEvent): void => {
+    // Estado nulo é clique num link de âncora (ex.: "Pular para o conteúdo"), não um Voltar.
+    if (saindo || evento.state === null) return;
+    saindo = true;
+    formularioSair.value?.submit();
+};
+
+window.addEventListener('popstate', sairAoVoltar);
+
 const pararDeOuvir = router.on('navigate', () => {
     acessibilidadeAberta.value = false;
+
+    // A primeira tela ganha uma cópia no histórico: assim o Voltar cai no popstate daqui mesmo quando a tela
+    // anterior é outro documento (gov.br, ou depois de um F5). No navigate o Inertia já gravou a tela no
+    // histórico (a gravação cifrada é assíncrona), então a cópia leva o estado dela.
+    if (!entradaDoVoltarCriada) {
+        entradaDoVoltarCriada = true;
+        window.history.pushState(window.history.state, '', location.href);
+    }
 });
 
 onBeforeUnmount(() => {
     pararDeOuvir();
+    window.removeEventListener('popstate', sairAoVoltar);
     document.removeEventListener('pointerdown', fecharAoClicarFora);
 });
 </script>
@@ -165,7 +192,7 @@ onBeforeUnmount(() => {
                             </div>
                         </Transition>
 
-                        <form method="post" action="/logout">
+                        <form ref="formularioSair" method="post" action="/logout">
                             <input type="hidden" name="_token" :value="csrf" />
                             <button
                                 type="submit"
