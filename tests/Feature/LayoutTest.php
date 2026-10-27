@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\ConfiguracaoVLibras;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -58,6 +59,9 @@ class LayoutTest extends TestCase
 
     public function test_csp_so_permite_frame_do_youtube_nocookie(): void
     {
+        // Sem o VLibras, que acrescenta o iframe do intérprete (VLibrasNoPortalTest).
+        ConfiguracaoVLibras::factory()->desligado()->create();
+
         $csp = $this->get('/')->headers->get('Content-Security-Policy');
 
         $this->assertStringContainsString('frame-src https://www.youtube-nocookie.com;', $csp);

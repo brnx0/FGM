@@ -5,6 +5,7 @@ use App\Http\Controllers\Retaguarda\EventoController;
 use App\Http\Controllers\Retaguarda\LoginController;
 use App\Http\Controllers\Retaguarda\MinhaSenhaController;
 use App\Http\Controllers\Retaguarda\UsuarioController;
+use App\Http\Controllers\Retaguarda\VLibrasController;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Route;
 
@@ -41,6 +42,10 @@ Route::prefix('retaguarda')->name('retaguarda.')->group(function () {
             ->name('eventos.conteudo.imagem');
         Route::resource('eventos', EventoController::class)->except('show');
         Route::patch('/eventos/{evento}/publicacao', [EventoController::class, 'publicacao'])->name('eventos.publicacao');
+
+        // VLibras (tradutor de Libras) nas páginas fora da retaguarda.
+        Route::get('/vlibras', [VLibrasController::class, 'edit'])->name('vlibras.edit');
+        Route::put('/vlibras', [VLibrasController::class, 'update'])->name('vlibras.update');
 
         Route::get('/minha-senha', [MinhaSenhaController::class, 'edit'])->name('senha.edit');
         Route::put('/minha-senha', [MinhaSenhaController::class, 'update'])->middleware('throttle:6,1')->name('senha.update');

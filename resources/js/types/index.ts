@@ -433,3 +433,16 @@ export interface RetaguardaUsuariosFormProps {
 export interface RetaguardaMinhaSenhaProps {
     temSenha: boolean;
 }
+
+/** App\Enums\LadoVLibras (parâmetro position do plugin). */
+export type LadoVLibras = 'R' | 'L';
+
+/** App\Enums\AvatarVLibras (parâmetro avatar do plugin). */
+export type AvatarVLibras = 'icaro' | 'hosana' | 'guga' | 'random';
+
+/** Parâmetros do VLibras fora da retaguarda (Retaguarda\VLibrasController@edit). */
+export interface RetaguardaVLibrasProps {
+    configuracao: { ativo: boolean; lado: LadoVLibras; avatar: AvatarVLibras };
+    lados: { valor: LadoVLibras; rotulo: string }[];
+    avatares: { valor: AvatarVLibras; rotulo: string }[];
+}
