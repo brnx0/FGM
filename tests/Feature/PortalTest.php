@@ -51,7 +51,8 @@ class PortalTest extends TestCase
                 ->where('ano', '2026')
                 ->where('local', 'Centro Histórico')
                 ->where('imagem', null)
-                ->has('resumo')));
+                ->has('resumo')
+                ->has('slug')));
     }
 
     public function test_home_limita_eventos_a_seis(): void

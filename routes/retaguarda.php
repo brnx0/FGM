@@ -35,6 +35,10 @@ Route::prefix('retaguarda')->name('retaguarda.')->group(function () {
         Route::patch('/editais/{edital}/publicacao', [EditalController::class, 'publicacao'])->name('editais.publicacao');
         Route::get('/editais/{edital}/pdf', [EditalController::class, 'pdf'])->name('editais.pdf');
 
+        // Imagens da descrição (editor de texto rico): responde JSON com a URL.
+        Route::post('/eventos/conteudo/imagem', [EventoController::class, 'imagemConteudo'])
+            ->middleware('throttle:30,1')
+            ->name('eventos.conteudo.imagem');
         Route::resource('eventos', EventoController::class)->except('show');
         Route::patch('/eventos/{evento}/publicacao', [EventoController::class, 'publicacao'])->name('eventos.publicacao');
 

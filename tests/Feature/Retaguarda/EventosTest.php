@@ -6,6 +6,7 @@ use App\Models\Evento;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -72,6 +73,24 @@ class EventosTest extends TestCase
 
         $this->get('/retaguarda/eventos?publicado=sim')
             ->assertInertia(fn (Assert $p) => $p->has('eventos.data', 1)->where('eventos.data.0.titulo', 'Capoeira Viva'));
+    }
+
+    public function test_lista_nao_le_a_descricao(): void
+    {
+        Evento::factory()->create(['descricao' => '<p>Longa</p>']);
+        DB::enableQueryLog();
+
+        $this->get('/retaguarda/eventos')->assertOk();
+
+        // A contagem da paginação (count(*)) não lê colunas.
+        $consultas = collect(DB::getQueryLog())->pluck('query')
+            ->filter(fn (string $sql) => stripos($sql, 'eventos') !== false && stripos($sql, 'count(*)') === false);
+        $this->assertNotEmpty($consultas);
+        foreach ($consultas as $sql) {
+            $this->assertStringNotContainsStringIgnoringCase('descricao', $sql);
+            // Sem o comentário de dica do Oracle (/*+ FIRST_ROWS(n) */), nenhum "*": colunas explícitas.
+            $this->assertStringNotContainsString('*', preg_replace('#/\*.*?\*/#', '', $sql));
+        }
     }
 
     public function test_cria_evento_com_imagem(): void
@@ -180,6 +199,79 @@ class EventosTest extends TestCase
             ->assertSessionHasNoErrors();
 
         $this->get('/')->assertInertia(fn (Assert $p) => $p->where('eventos.0.titulo', 'Novo na home'));
+    }
+
+    public function test_descricao_e_gravada_sem_script(): void
+    {
+        $this->post('/retaguarda/eventos', $this->dados([
+            'descricao' => '<h2>Programação</h2><p onclick="alert(1)">Rodas às 18h<script>alert(1)</script></p>',
+        ]))->assertSessionHasNoErrors();
+
+        $this->assertSame('<h2>Programação</h2><p>Rodas às 18h</p>', Evento::sole()->descricao);
+    }
+
+    public function test_edicao_traz_e_atualiza_descricao(): void
+    {
+        $evento = Evento::factory()->create(['descricao' => '<p>Antiga</p>']);
+
+        $this->get("/retaguarda/eventos/{$evento->slug}/edit")
+            ->assertInertia(fn (Assert $p) => $p->where('evento.descricao', '<p>Antiga</p>'));
+
+        $this->put("/retaguarda/eventos/{$evento->slug}", $this->dados(['descricao' => '<p><a href="javascript:alert(1)">Nova</a></p>']))
+            ->assertSessionHasNoErrors();
+        $this->assertSame('<p>Nova</p>', $evento->refresh()->descricao);
+
+        $this->put("/retaguarda/eventos/{$evento->slug}", $this->dados(['descricao' => '<p></p>']))
+            ->assertSessionHasNoErrors();
+        $this->assertNull($evento->refresh()->descricao);
+    }
+
+    public function test_descricao_longa_demais_e_recusada(): void
+    {
+        $this->post('/retaguarda/eventos', $this->dados(['descricao' => str_repeat('a', 200001)]))
+            ->assertSessionHasErrors(['descricao' => 'O campo descrição não pode ter mais de 200000 caracteres.']);
+    }
+
+    public function test_envia_imagem_do_conteudo(): void
+    {
+        $resposta = $this->postJson('/retaguarda/eventos/conteudo/imagem', ['imagem' => $this->imagem()])
+            ->assertOk();
+
+        $url = $resposta->json('url');
+        $this->assertMatchesRegularExpression('#^/storage/eventos/conteudo/[A-Za-z0-9]+\.png$#', $url);
+        Storage::disk('public')->assertExists(substr($url, strlen('/storage/')));
+    }
+
+    public function test_imagem_do_conteudo_so_aceita_imagem(): void
+    {
+        $this->postJson('/retaguarda/eventos/conteudo/imagem', ['imagem' => UploadedFile::fake()->create('x.pdf', 10, 'application/pdf')])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('imagem');
+
+        $this->assertSame([], Storage::disk('public')->allFiles());
+    }
+
+    public function test_proponente_e_visitante_nao_enviam_imagem_do_conteudo(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $this->post('/retaguarda/eventos/conteudo/imagem', ['imagem' => $this->imagem()])->assertRedirect('/retaguarda/login');
+
+        auth()->logout();
+        $this->post('/retaguarda/eventos/conteudo/imagem', ['imagem' => $this->imagem()])->assertRedirect('/retaguarda/login');
+
+        $this->assertSame([], Storage::disk('public')->allFiles());
+    }
+
+    public function test_envio_acima_do_limite_do_php_volta_com_aviso_geral(): void
+    {
+        $this->call('POST', '/retaguarda/eventos', server: [
+            'CONTENT_LENGTH' => (string) (1024 ** 3),
+            'HTTP_X_INERTIA' => 'true',
+            'HTTP_REFERER' => url('/retaguarda/eventos/create'),
+        ])
+            ->assertRedirect('/retaguarda/eventos/create')
+            ->assertSessionHas('erro', 'Os arquivos enviados passam do tamanho máximo permitido.')
+            ->assertSessionDoesntHaveErrors();
     }
 
     public function test_proponente_nao_acessa(): void

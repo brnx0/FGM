@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { computed, nextTick } from 'vue';
+import { computed, defineAsyncComponent, nextTick } from 'vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import CampoArquivo from '../../../Components/CampoArquivo.vue';
 import CampoCadastro from '../../../Components/CampoCadastro.vue';
 import SecaoCadastro from '../../../Components/SecaoCadastro.vue';
 import RetaguardaLayout from '../../../Layouts/RetaguardaLayout.vue';
 import type { RetaguardaEventosFormProps } from '../../../types';
+
+// O editor (Tiptap) é pesado: vai num pedaço separado, carregado só nesta tela.
+const EditorTextoRico = defineAsyncComponent(() => import('../../../Components/EditorTextoRico.vue'));
 
 defineOptions({ layout: RetaguardaLayout });
 
@@ -21,6 +24,7 @@ const editando = salvo !== null;
 const form = useForm({
     titulo: salvo?.titulo ?? '',
     resumo: salvo?.resumo ?? '',
+    descricao: salvo?.descricao ?? '',
     data_realizacao: salvo?.data_realizacao ?? '',
     local: salvo?.local ?? '',
     publicado: salvo?.publicado ?? false,
@@ -134,16 +138,43 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                         />
                     </CampoCadastro>
 
-                    <CampoCadastro id="resumo" class="md:col-span-2" rotulo="Resumo" obrigatorio :erro="form.errors.resumo" v-slot="{ descricao, invalido }">
+                    <CampoCadastro
+                        id="resumo"
+                        class="md:col-span-2"
+                        rotulo="Resumo"
+                        ajuda="Aparece no card da página inicial."
+                        obrigatorio
+                        :erro="form.errors.resumo"
+                        v-slot="{ descricao, invalido }"
+                    >
                         <textarea
                             id="resumo"
                             v-model="form.resumo"
-                            rows="5"
+                            rows="3"
                             required
                             :class="[classeCampo, 'h-auto py-3 leading-[1.6]']"
                             :aria-invalid="invalido || undefined"
                             :aria-describedby="descricao"
                             @input="form.clearErrors('resumo')"
+                        />
+                    </CampoCadastro>
+
+                    <CampoCadastro
+                        id="descricao"
+                        class="md:col-span-2"
+                        rotulo="Descrição"
+                        ajuda="Aparece na página do evento, abaixo do resumo."
+                        :erro="form.errors.descricao"
+                        v-slot="{ descricao, invalido }"
+                    >
+                        <EditorTextoRico
+                            id="descricao"
+                            v-model="form.descricao"
+                            rotulo="Descrição"
+                            :descricao="descricao"
+                            :invalido="invalido"
+                            :url-imagem="`${BASE}/conteudo/imagem`"
+                            @update:model-value="form.clearErrors('descricao')"
                         />
                     </CampoCadastro>
                 </div>

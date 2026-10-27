@@ -11,6 +11,7 @@
         "inertiajs/inertia-laravel": "^2",
         "laravel/framework": "^13.38",
         "laravel/tinker": "^3.0",
+        "symfony/html-sanitizer": "^8.1",
         "yajra/laravel-oci8": "^13"
     },
     "require-dev": {

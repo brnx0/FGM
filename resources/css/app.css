@@ -40,6 +40,10 @@
     --color-aviso-fundo: #fef3c7;
     --color-aviso-texto: #78350f;
 
+    /* Cores do texto rico (editor da descrição do evento): verde e amarelo escuros, AA sobre branco. */
+    --color-texto-verde: #166534;
+    --color-texto-amarelo: #805b00;
+
     /* Página inicial: texto dos botões brancos, faixa escura de eventos e situação dos editais.
        Ficam sobre fotos ou fundos escuros, por isso não mudam no modo noturno. */
     --color-home-azul: #005ca9;
@@ -95,6 +99,8 @@ html.escuro {
     --color-erro-texto: #ffd6d6;
     --color-aviso-fundo: #3b2f12;
     --color-aviso-texto: #fde68a;
+    --color-texto-verde: #86efac;
+    --color-texto-amarelo: #fcd34d;
 }
 
 /* Modo de acessibilidade: a regra "nada de preto" não se aplica aqui. */
@@ -553,4 +559,250 @@ html.alto-contraste .iris {
         font-weight: 600;
         text-decoration: underline;
     }
+}
+
+/* Agenda da home: o link do título cobre a linha; o foco aparece na linha inteira. */
+.linha-evento:has(a:focus-visible) {
+    border-radius: 20px;
+    outline: 2px solid #ffffff;
+    outline-offset: 2px;
+}
+
+/* Descrição do evento: a área do editor (EditorTextoRico) e a página pública (Eventos/Show).
+   O HTML vem da allowlist de App\Support\HtmlSeguro. */
+@layer components {
+    .conteudo-rico {
+        line-height: 1.65;
+        overflow-wrap: anywhere;
+    }
+
+    .conteudo-rico > * + * {
+        margin-top: 1em;
+    }
+
+    .conteudo-rico :is(h2, h3, h4) {
+        line-height: 1.2;
+        letter-spacing: -0.02em;
+    }
+
+    .conteudo-rico > :is(h2, h3, h4):not(:first-child) {
+        margin-top: 1.6em;
+    }
+
+    .conteudo-rico h2 {
+        font-size: 1.75rem;
+        font-weight: 800;
+    }
+
+    .conteudo-rico h3 {
+        font-size: 1.375rem;
+        font-weight: 800;
+    }
+
+    .conteudo-rico h4 {
+        font-size: 1.125rem;
+        font-weight: 700;
+    }
+
+    .conteudo-rico a {
+        color: var(--color-acao);
+        font-weight: 600;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+    }
+
+    .conteudo-rico ul {
+        list-style: disc;
+        padding-left: 1.5em;
+    }
+
+    .conteudo-rico ol {
+        list-style: decimal;
+        padding-left: 1.5em;
+    }
+
+    .conteudo-rico li + li,
+    .conteudo-rico li > :is(ul, ol) {
+        margin-top: 0.375em;
+    }
+
+    /* Lista de tarefas: no editor o Tiptap desenha a caixa; na página, ::before marca o estado. */
+    .conteudo-rico ul[data-type='taskList'] {
+        list-style: none;
+        padding-left: 0;
+    }
+
+    .conteudo-rico ul[data-type='taskList'] > li {
+        display: flex;
+        gap: 0.6em;
+        align-items: flex-start;
+    }
+
+    .conteudo-rico ul[data-type='taskList'] > li > label {
+        margin-top: 0.3em;
+    }
+
+    .conteudo-rico ul[data-type='taskList'] > li > label input {
+        width: 1.05em;
+        height: 1.05em;
+        accent-color: var(--color-acao);
+    }
+
+    .conteudo-rico ul[data-type='taskList'] > li > div {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .conteudo-rico ul[data-type='taskList'] > li:not(:has(> label))::before {
+        content: '';
+        flex: none;
+        width: 1.1rem;
+        height: 1.1rem;
+        margin-top: 0.25em;
+        border: 2px solid var(--color-tinta-suave);
+        border-radius: 4px;
+    }
+
+    .conteudo-rico ul[data-type='taskList'] > li[data-checked='true']:not(:has(> label))::before {
+        content: '✓';
+        display: grid;
+        place-items: center;
+        font-size: 0.8rem;
+        font-weight: 800;
+        line-height: 1;
+        color: var(--color-sobre-acao);
+        background: var(--color-acao);
+        border-color: var(--color-acao);
+    }
+
+    .conteudo-rico blockquote {
+        border-left: 4px solid var(--color-acao);
+        padding: 0.25em 0 0.25em 1em;
+        color: var(--color-tinta-suave);
+        font-style: italic;
+    }
+
+    .conteudo-rico hr {
+        border: 0;
+        border-top: 1px solid var(--color-hairline);
+        margin: 2em 0;
+    }
+
+    .conteudo-rico mark {
+        background: var(--color-aviso-fundo);
+        color: var(--color-tinta);
+        padding: 0 0.15em;
+        border-radius: 3px;
+    }
+
+    .conteudo-rico img {
+        display: block;
+        max-width: 100%;
+        height: auto;
+        border-radius: var(--radius-sm);
+    }
+
+    /* Tabela larga rola na horizontal (o HTML limpo não tem envoltório para isso). */
+    .conteudo-rico table {
+        display: block;
+        max-width: 100%;
+        width: max-content;
+        overflow-x: auto;
+        border-collapse: collapse;
+    }
+
+    .conteudo-rico :is(th, td) {
+        position: relative;
+        min-width: 6rem;
+        padding: 0.5em 0.75em;
+        border: 1px solid var(--color-hairline);
+        text-align: left;
+        vertical-align: top;
+    }
+
+    .conteudo-rico th {
+        background: var(--color-parchment);
+        font-weight: 700;
+    }
+
+    .conteudo-rico :is(th, td) > p {
+        margin: 0;
+    }
+
+    /* Vídeo do YouTube em 16:9, na largura do texto. */
+    .conteudo-rico div[data-youtube-video] {
+        aspect-ratio: 16 / 9;
+    }
+
+    .conteudo-rico div[data-youtube-video] iframe {
+        width: 100%;
+        height: 100%;
+        border: 0;
+        border-radius: var(--radius-sm);
+    }
+
+    /* Área de edição. */
+    .editor-texto-rico .ProseMirror {
+        min-height: 16rem;
+        padding: 1rem;
+        color: var(--color-home-tinta);
+        outline: none;
+    }
+
+    .editor-texto-rico .ProseMirror p.is-editor-empty:first-child::before {
+        content: attr(data-placeholder);
+        float: left;
+        height: 0;
+        color: var(--color-tinta-suave);
+        pointer-events: none;
+    }
+
+    .editor-texto-rico .ProseMirror .tableWrapper {
+        overflow-x: auto;
+    }
+
+    .editor-texto-rico .ProseMirror .selectedCell::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: color-mix(in srgb, var(--color-acao) 18%, transparent);
+        pointer-events: none;
+    }
+
+    .editor-texto-rico .ProseMirror :is(img, div[data-youtube-video]).ProseMirror-selectednode {
+        outline: 3px solid var(--color-acao);
+        outline-offset: 2px;
+    }
+}
+
+/* Cores da paleta (style="color: …": hex no HTML salvo, rgb() dentro do editor): seguem os tokens no modo noturno.
+   Fora de camada e com !important para vencer o estilo inline. */
+.conteudo-rico :is([style*='#004d9f' i], [style*='rgb(0, 77, 159)']) {
+    color: var(--color-acao) !important;
+}
+
+.conteudo-rico :is([style*='#8a1c1c' i], [style*='rgb(138, 28, 28)']) {
+    color: var(--color-erro-texto) !important;
+}
+
+.conteudo-rico :is([style*='#166534' i], [style*='rgb(22, 101, 52)']) {
+    color: var(--color-texto-verde) !important;
+}
+
+.conteudo-rico :is([style*='#805b00' i], [style*='rgb(128, 91, 0)']) {
+    color: var(--color-texto-amarelo) !important;
+}
+
+html.escuro .conteudo-rico :is([style*='#1d1d1f' i], [style*='#0a2747' i], [style*='rgb(29, 29, 31)'], [style*='rgb(10, 39, 71)']) {
+    color: var(--color-tinta) !important;
+}
+
+/* Alto contraste: todo texto colorido fica na cor do texto; marca-texto em amarelo sobre preto. */
+html.alto-contraste .conteudo-rico [style*='color'] {
+    color: var(--color-tinta) !important;
+}
+
+html.alto-contraste .conteudo-rico mark {
+    background: var(--color-acao);
+    color: var(--color-sobre-acao);
 }

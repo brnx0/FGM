@@ -204,6 +204,7 @@ return [
         'cpf' => 'CPF',
         'cultura_principal_renda' => 'cultura como principal renda',
         'data_realizacao' => 'data de realização',
+        'descricao' => 'descrição',
         'documento_cpf' => 'documento do CPF',
         'documento_crnm' => 'CRNM',
         'documento_outros' => 'outros documentos',

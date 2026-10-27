@@ -85,8 +85,9 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->then(function () use ($request): RedirectResponse {
                     $mensagem = 'Os arquivos enviados passam do tamanho máximo permitido.';
 
-                    // Na retaguarda o aviso fica junto ao PDF do edital; no portal, no aviso geral da página.
-                    return $request->is('retaguarda/*')
+                    // No edital o aviso fica junto ao PDF; nas demais telas (portal, eventos, usuários,
+                    // minha senha), no aviso geral da página.
+                    return $request->is('retaguarda/editais', 'retaguarda/editais/*')
                         ? back()->withErrors(['pdf' => $mensagem])
                         : back()->with('erro', $mensagem);
                 });

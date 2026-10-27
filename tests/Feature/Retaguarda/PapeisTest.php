@@ -62,6 +62,31 @@ class PapeisTest extends TestCase
         $this->assertTrue(User::where('email', 'novo@fgm.test')->firstOrFail()->ehGestor());
     }
 
+    public function test_seeder_nao_cria_segundo_admin_quando_o_primeiro_trocou_email_e_cpf(): void
+    {
+        $this->seed(PrimeiroGestorSeeder::class);
+        $admin = User::where('email', 'admin@admin')->firstOrFail();
+
+        $this->actingAs($admin)
+            ->put("/retaguarda/usuarios/{$admin->id}", [
+                'name' => 'Maria Gestora',
+                'email' => 'maria@fgm.test',
+                'cpf' => '111.444.777-35',
+                'senha' => '',
+                'senha_confirmation' => '',
+                'papeis' => [Role::ADMINISTRADOR],
+                'ativo' => '1',
+            ])
+            ->assertSessionHasNoErrors();
+        $this->assertSame('11144477735', $admin->refresh()->cpf);
+
+        $this->seed(PrimeiroGestorSeeder::class);
+
+        $this->assertSame(1, User::count());
+        $this->assertTrue(User::where('email', 'admin@admin')->doesntExist());
+        $this->assertSame(1, Role::where('slug', Role::ADMINISTRADOR)->count());
+    }
+
     public function test_proponente_sem_papel_nao_e_gestor(): void
     {
         $this->assertFalse(User::factory()->create()->ehGestor());

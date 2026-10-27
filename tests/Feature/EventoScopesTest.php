@@ -21,4 +21,20 @@ class EventoScopesTest extends TestCase
         $this->assertSame(['Hoje em Salvador'], Evento::realizados($agora)->pluck('titulo')->all());
         $this->assertSame('2026-11-15 01:30', $agora->format('Y-m-d H:i'));
     }
+
+    public function test_descricao_e_limpa_em_qualquer_gravacao(): void
+    {
+        $evento = Evento::create([
+            'titulo' => 'Direto no modelo',
+            'slug' => 'direto-no-modelo',
+            'resumo' => 'Resumo.',
+            'descricao' => '<p>a</p><script>x</script>',
+            'data_realizacao' => '2026-09-06',
+        ]);
+
+        $this->assertSame('<p>a</p>', $evento->refresh()->descricao);
+
+        $evento->update(['descricao' => '<p onclick="x()">b</p>']);
+        $this->assertSame('<p>b</p>', $evento->refresh()->descricao);
+    }
 }

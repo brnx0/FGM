@@ -21,6 +21,8 @@ class SalvarEventoRequest extends FormRequest
         return [
             'titulo' => ['required', 'string', 'max:255'],
             'resumo' => ['required', 'string'],
+            // Limite antes de sanitizar: o HTML do editor, não o texto visível.
+            'descricao' => ['nullable', 'string', 'max:200000'],
             'data_realizacao' => ['required', 'date'],
             'local' => ['nullable', 'string', 'max:255'],
             'imagem' => ['nullable', 'image', 'mimes:jpg,png,webp', 'max:5120'],
@@ -30,14 +32,15 @@ class SalvarEventoRequest extends FormRequest
     }
 
     /**
-     * Campos do evento, sem a imagem.
+     * Campos do evento, sem a imagem. A descrição é limpa pelo modelo (Evento::descricao).
      *
-     * @return array{titulo: string, resumo: string, data_realizacao: string, local: ?string, publicado: bool}
+     * @return array{titulo: string, resumo: string, descricao: ?string, data_realizacao: string, local: ?string, publicado: bool}
      */
     public function dadosDoEvento(): array
     {
         return [
             ...$this->safe()->only(['titulo', 'resumo', 'data_realizacao']),
+            'descricao' => $this->safe()->input('descricao'),
             'local' => $this->safe()->input('local'),
             'publicado' => $this->boolean('publicado'),
         ];

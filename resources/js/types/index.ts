@@ -38,6 +38,8 @@ export interface EditalDetalhe extends Omit<EditalResumo, 'pdf'> {
 
 export interface Evento {
     titulo: string;
+    /** Endereço da página: /eventos/{slug}. */
+    slug: string;
     resumo: string;
     /** Nome do mês em minúsculas ("agosto"). */
     mes: string;
@@ -60,6 +62,22 @@ export interface HomeProps {
 
 export interface EditaisShowProps {
     edital: EditalDetalhe;
+}
+
+/** Evento em EventoController@show (portal). */
+export interface EventoDetalhe {
+    titulo: string;
+    resumo: string;
+    /** HTML já limpo ao salvar (App\Support\HtmlSeguro). */
+    descricao: string | null;
+    /** "15 de agosto de 2026". */
+    dataRealizacao: string;
+    local: string | null;
+    imagem: string | null;
+}
+
+export interface EventosShowProps {
+    evento: EventoDetalhe;
 }
 
 export interface FakeLoginProps {
@@ -215,6 +233,8 @@ export interface EventoFormulario {
     slug: string;
     titulo: string;
     resumo: string;
+    /** HTML limpo; null sem descrição. */
+    descricao: string | null;
     data_realizacao: string;
     local: string | null;
     publicado: boolean;

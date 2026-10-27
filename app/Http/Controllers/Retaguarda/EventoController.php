@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Retaguarda\SalvarEventoRequest;
 use App\Models\Evento;
 use App\Support\ArquivoArmazenado;
+use App\Support\HtmlSeguro;
 use App\Support\SlugUnico;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -18,12 +20,17 @@ class EventoController extends Controller
 {
     private const string PASTA = 'eventos';
 
+    /** Imagens inseridas na descrição (editor de texto rico). */
+    private const string PASTA_CONTEUDO = 'eventos/conteudo';
+
     public function index(Request $request): Response
     {
         $busca = trim((string) $request->query('busca', ''));
         $publicado = in_array($request->query('publicado'), ['sim', 'nao'], true) ? $request->query('publicado') : null;
 
         $eventos = Evento::query()
+            // Sem a descrição (CLOB): a lista não a mostra.
+            ->select(['id', 'slug', 'titulo', 'local', 'data_realizacao', 'publicado', 'imagem'])
             // No Oracle a comparação de texto diferencia maiúsculas; % e _ digitados valem literalmente.
             ->when($busca !== '', fn (Builder $q) => $q->whereRaw(
                 "LOWER(titulo) LIKE ? ESCAPE '\\'",
@@ -80,6 +87,7 @@ class EventoController extends Controller
                 'slug' => $evento->slug,
                 'titulo' => $evento->titulo,
                 'resumo' => $evento->resumo,
+                'descricao' => $evento->descricao,
                 'data_realizacao' => $evento->data_realizacao->toDateString(),
                 'local' => $evento->local,
                 'publicado' => $evento->publicado,
@@ -115,6 +123,21 @@ class EventoController extends Controller
         $evento->delete();
 
         return redirect()->route('retaguarda.eventos.index')->with('sucesso', 'Evento excluído.');
+    }
+
+    /**
+     * Imagem inserida pelo editor na descrição. Devolve a URL relativa, a única que HtmlSeguro aceita.
+     * Imagens que deixam de ser usadas (ou de eventos não salvos) ficam no disco.
+     */
+    public function imagemConteudo(Request $request): JsonResponse
+    {
+        $request->validate([
+            'imagem' => ['required', 'image', 'mimes:jpg,png,webp', 'max:5120'],
+        ]);
+
+        $caminho = ArquivoArmazenado::guardar($request->file('imagem'), 'public', self::PASTA_CONTEUDO);
+
+        return response()->json(['url' => HtmlSeguro::PASTA_IMAGENS.basename($caminho)]);
     }
 
     public function publicacao(Evento $evento): RedirectResponse

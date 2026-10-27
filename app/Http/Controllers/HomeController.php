@@ -25,15 +25,21 @@ class HomeController extends Controller
                 'inscricoesInicio' => $edital->inscricoes_inicio->format('d/m/Y'),
                 'inscricoesFim' => $edital->inscricoes_fim->format('d/m/Y'),
             ])->all(),
-            'eventos' => Evento::realizados()->limit(self::LIMITE_EVENTOS)->get()->map(fn (Evento $evento) => [
-                'titulo' => $evento->titulo,
-                'resumo' => $evento->resumo,
-                // "agosto" e "2026": a home mostra "AGO / 2026".
-                'mes' => $evento->data_realizacao->locale('pt_BR')->translatedFormat('F'),
-                'ano' => $evento->data_realizacao->format('Y'),
-                'local' => $evento->local,
-                'imagem' => $evento->imagemUrl(),
-            ])->all(),
+            // Sem a descrição (CLOB): a home só mostra o card.
+            'eventos' => Evento::realizados()
+                ->select(['id', 'titulo', 'slug', 'resumo', 'data_realizacao', 'local', 'imagem'])
+                ->limit(self::LIMITE_EVENTOS)
+                ->get()
+                ->map(fn (Evento $evento) => [
+                    'titulo' => $evento->titulo,
+                    'slug' => $evento->slug,
+                    'resumo' => $evento->resumo,
+                    // "agosto" e "2026": a home mostra "AGO / 2026".
+                    'mes' => $evento->data_realizacao->locale('pt_BR')->translatedFormat('F'),
+                    'ano' => $evento->data_realizacao->format('Y'),
+                    'local' => $evento->local,
+                    'imagem' => $evento->imagemUrl(),
+                ])->all(),
         ]);
     }
 }

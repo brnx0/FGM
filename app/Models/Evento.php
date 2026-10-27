@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\UsaDiaCivil;
+use App\Support\HtmlSeguro;
 use Carbon\CarbonInterface;
 use Database\Factories\EventoFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -23,7 +24,7 @@ class Evento extends Model
     protected $table = 'eventos';
 
     protected $fillable = [
-        'titulo', 'slug', 'resumo', 'data_realizacao', 'local', 'imagem', 'publicado',
+        'titulo', 'slug', 'resumo', 'descricao', 'data_realizacao', 'local', 'imagem', 'publicado',
     ];
 
     protected function casts(): array
@@ -42,6 +43,12 @@ class Evento extends Model
     protected function dataRealizacao(): Attribute
     {
         return Attribute::set(fn ($v) => self::diaParaGravar($v));
+    }
+
+    /** Toda gravação passa pela allowlist (HtmlSeguro é idempotente: reler e regravar não muda nada). */
+    protected function descricao(): Attribute
+    {
+        return Attribute::set(fn (?string $html) => HtmlSeguro::limpar($html));
     }
 
     public function imagemUrl(): ?string

@@ -56,6 +56,13 @@ class LayoutTest extends TestCase
         $this->assertMatchesRegularExpression("/script-src[^;]*'nonce-[A-Za-z0-9+\/=]+'/", $csp);
     }
 
+    public function test_csp_so_permite_frame_do_youtube_nocookie(): void
+    {
+        $csp = $this->get('/')->headers->get('Content-Security-Policy');
+
+        $this->assertStringContainsString('frame-src https://www.youtube-nocookie.com;', $csp);
+    }
+
     public function test_hsts_via_proxy_confiavel_com_x_forwarded_proto(): void
     {
         $_SERVER['TRUSTED_PROXIES'] = '10.0.0.1';

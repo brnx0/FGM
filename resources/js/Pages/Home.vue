@@ -199,11 +199,14 @@ const iluminarVidro = (evento: PointerEvent): void => {
                         >
                             <li
                                 v-for="(evento, i) in eventos"
-                                :key="`${i}-${evento.titulo}`"
-                                class="linha-evento grid grid-cols-[72px_minmax(0,1fr)] items-start gap-x-[18px] gap-y-1.5 border-t border-white/15 px-1 py-6 md:grid-cols-[76px_minmax(0,1fr)] md:gap-x-5 md:px-3"
+                                :key="`${i}-${evento.slug}`"
+                                class="linha-evento relative grid grid-cols-[72px_minmax(0,1fr)] items-start gap-x-[18px] gap-y-1.5 border-t border-white/15 px-1 py-6 md:grid-cols-[76px_minmax(0,1fr)] md:gap-x-5 md:px-3"
                             >
+                                <!-- O link cobre a linha inteira (::after); o foco aparece na linha (.linha-evento:has). -->
                                 <h3 class="col-start-2 font-barlow text-[1.5rem] leading-[1.1] font-bold tracking-[0.01em] uppercase md:text-[1.375rem]">
-                                    {{ evento.titulo }}
+                                    <Link :href="`/eventos/${evento.slug}`" class="text-white no-underline outline-none after:absolute after:inset-0 after:content-['']">
+                                        {{ evento.titulo }}
+                                    </Link>
                                 </h3>
                                 <p class="col-start-1 row-span-3 row-start-1 flex flex-col gap-1.5">
                                     <span aria-hidden="true" class="font-barlow text-[2.5rem] leading-[0.85] font-extrabold tracking-[0.02em]">
