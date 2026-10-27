@@ -92,11 +92,6 @@ class CadastroController extends Controller
         return Inertia::render('Cadastro/Organizacao');
     }
 
-    public function pessoaJuridica(): Response
-    {
-        return Inertia::render('Cadastro/Formulario', ['tipo' => 'pessoa-juridica']);
-    }
-
     /**
      * @param  list<IdentidadeGenero|RacaCor|Territorio>  $casos
      * @return list<array{valor: string, rotulo: string}>

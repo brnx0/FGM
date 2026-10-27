@@ -84,8 +84,6 @@ export interface FakeLoginProps {
     contas: ContaFake[];
 }
 
-export type TipoCadastro = 'pessoa-juridica';
-
 export interface OpcaoCadastro {
     valor: string;
     rotulo: string;
@@ -151,8 +149,69 @@ export interface CadastroCompletarProps {
     };
 }
 
-export interface CadastroFormularioProps {
-    tipo: TipoCadastro;
+/** Item da lista de organizações da pessoa. */
+export interface OrganizacaoResumo {
+    id: number;
+    nome: string;
+    cnpj: string;
+    logoUrl: string | null;
+    responsavel: boolean;
+}
+
+export interface OrganizacoesIndexProps {
+    organizacoes: OrganizacaoResumo[];
+}
+
+export interface RepresentanteForm {
+    cpf: string;
+    nome: string;
+    tipo_documento: string | null;
+    numero_documento: string | null;
+    cargo: string | null;
+    telefone: string | null;
+    email: string | null;
+    origem: string | null;
+    origem_descricao: string | null;
+}
+
+/** Organização como o formulário de edição a recebe (CNPJ já formatado, data em aaaa-mm-dd). */
+export interface OrganizacaoForm {
+    id: number;
+    cnpj: string;
+    razao_social: string;
+    nome_fantasia: string | null;
+    natureza_juridica: string;
+    mei: boolean;
+    finalidade_lucrativa: boolean | null;
+    municipio_ibge: string;
+    municipio: { codigo: string; nome: string; uf: string } | null;
+    inscricao_municipal: string | null;
+    inscricao_estadual: string | null;
+    porte: string | null;
+    data_fundacao: string | null;
+    telefone: string | null;
+    logoUrl: string | null;
+    cep: string | null;
+    logradouro: string | null;
+    numero: string | null;
+    sem_numero: boolean;
+    complemento: string | null;
+    bairro: string | null;
+    cidade: string | null;
+    uf: string | null;
+    representantes: RepresentanteForm[];
+}
+
+export interface OrganizacaoFormProps {
+    organizacao: OrganizacaoForm | null;
+    naturezas: OpcaoCadastro[];
+    opcoes: {
+        portes: OpcaoCadastro[];
+        tiposDocumento: OpcaoCadastro[];
+        origens: OpcaoCadastro[];
+        estados: OpcaoCadastro[];
+    };
+    representanteInicial: { cpf: string; nome: string } | null;
 }
 
 /** Link de paginação do LengthAwarePaginator do Laravel. */

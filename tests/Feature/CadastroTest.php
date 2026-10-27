@@ -227,15 +227,6 @@ class CadastroTest extends TestCase
         $this->get('/cadastro/pessoa-juridica')->assertRedirect('/');
     }
 
-    public function test_tipo_pessoa_juridica_abre_o_formulario_do_tipo(): void
-    {
-        $user = User::factory()->create();
-
-        $this->actingAs($user)->get('/cadastro/pessoa-juridica')->assertInertia(fn (Assert $page) => $page
-            ->component('Cadastro/Formulario')
-            ->where('tipo', 'pessoa-juridica'));
-    }
-
     public function test_rota_antiga_de_pessoa_fisica_nao_existe(): void
     {
         $this->actingAs(User::factory()->create())->get('/cadastro/pessoa-fisica')->assertNotFound();
