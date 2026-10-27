@@ -28,10 +28,12 @@ export interface EditalResumo {
     situacaoRotulo: string;
     inscricoesInicio: string;
     inscricoesFim: string;
+    /** Imagem enviada na retaguarda (URL relativa); null usa as fotos fixas da vitrine. */
+    imagem: string | null;
 }
 
 /** Edital em EditalController@show. */
-export interface EditalDetalhe extends Omit<EditalResumo, 'pdf'> {
+export interface EditalDetalhe extends Omit<EditalResumo, 'pdf' | 'imagem'> {
     resumo: string;
     pdf: string | null;
 }
@@ -418,6 +420,27 @@ export interface RetaguardaUsuariosFormProps {
 }
 
 /** Troca da própria senha (Retaguarda\MinhaSenhaController@edit). Sem senha (só gov.br), a atual não é pedida. */
+/** Uma aba de AbasFormulario (formulários longos da retaguarda). */
+export interface AbaFormulario {
+    id: string;
+    rotulo: string;
+    /** Campos do formulário desta aba: os erros deles contam no marcador da aba. */
+    campos: string[];
+}
+
 export interface RetaguardaMinhaSenhaProps {
+    temSenha: boolean;
+}
+
+export interface RetaguardaPerfilProps {
+    perfil: {
+        name: string;
+        email: string;
+        /** Só os números, com DDD. */
+        telefone: string | null;
+        /** Mascarado: ***.982.247-**. */
+        cpf: string;
+        papeis: string[];
+    };
     temSenha: boolean;
 }

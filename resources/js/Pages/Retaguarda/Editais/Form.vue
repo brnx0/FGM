@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, nextTick } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import CampoArquivo from '../../../Components/CampoArquivo.vue';
 import CampoCadastro from '../../../Components/CampoCadastro.vue';
+import AbasFormulario from '../../../Components/Retaguarda/AbasFormulario.vue';
 import SecaoCadastro from '../../../Components/SecaoCadastro.vue';
 import RetaguardaLayout from '../../../Layouts/RetaguardaLayout.vue';
-import type { RetaguardaEditaisFormProps } from '../../../types';
+import type { AbaFormulario, RetaguardaEditaisFormProps } from '../../../types';
 
 defineOptions({ layout: RetaguardaLayout });
 
@@ -46,12 +47,29 @@ const escolherArquivo = (arquivo: File | null, campo: 'pdf' | 'imagem'): void =>
     if (campo === 'imagem' && arquivo) form.remover_imagem = false;
 };
 
+// O edital vai ganhar muitos campos: cada grupo numa aba, todas no mesmo formulário.
+const abas: AbaFormulario[] = [
+    { id: 'dados', rotulo: 'Dados gerais', campos: ['titulo', 'categoria', 'resumo'] },
+    { id: 'inscricoes', rotulo: 'Inscrições', campos: ['inscricoes_inicio', 'inscricoes_fim'] },
+    { id: 'arquivos', rotulo: 'Arquivos', campos: ['pdf', 'imagem'] },
+    { id: 'publicacao', rotulo: 'Publicação', campos: ['publicado'] },
+];
+const abaAtiva = ref<string>('dados');
+
+// Com erro, abre a primeira aba que tem algum e leva o foco ao campo inválido dela.
+const mostrarPrimeiroErro = async (): Promise<void> => {
+    const comErro = abas.find((aba) => aba.campos.some((campo) => form.errors[campo as keyof typeof form.errors]));
+    if (comErro) abaAtiva.value = comErro.id;
+    await nextTick();
+    document.querySelector<HTMLElement>(`#edital-painel-${abaAtiva.value} [aria-invalid="true"]`)?.focus();
+};
+
 // Edição vai como POST com _method=put: PUT com multipart não chega ao PHP.
 const salvar = (): void => {
     const opcoes = {
         forceFormData: true,
         preserveScroll: true,
-        onError: () => nextTick(() => document.querySelector<HTMLElement>('#formulario-edital [aria-invalid="true"]')?.focus()),
+        onError: () => void mostrarPrimeiroErro(),
     };
 
     if (editando) {
@@ -73,7 +91,8 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
 </script>
 
 <template>
-    <div class="mx-auto flex max-w-4xl flex-col gap-6 px-4 pt-8 lg:px-6">
+    <!-- Mais largo que os outros formulários: as abas laterais ocupam uma coluna. -->
+    <div class="mx-auto flex max-w-6xl flex-col gap-6 px-4 pt-8 lg:px-6">
         <Head :title="editando ? 'Editar edital · Retaguarda' : 'Novo edital · Retaguarda'" />
 
         <div>
@@ -87,158 +106,179 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
         </div>
 
         <form id="formulario-edital" novalidate class="flex flex-col gap-6" @submit.prevent="salvar">
-            <SecaoCadastro id="secao-edital-dados" :numero="1" titulo="Dados do edital">
-                <template #icone>
-                    <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6" />
-                    </svg>
-                </template>
+            <AbasFormulario id="edital" v-model="abaAtiva" variante="lateral" :abas="abas" :erros="form.errors">
+                <template #dados>
+                    <SecaoCadastro id="secao-edital-dados" :numero="1" titulo="Dados gerais">
+                        <template #icone>
+                            <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6" />
+                            </svg>
+                        </template>
 
-                <div class="grid gap-x-6 gap-y-5 md:grid-cols-2">
-                    <CampoCadastro id="titulo" class="md:col-span-2" rotulo="Título" obrigatorio :erro="form.errors.titulo" v-slot="{ descricao, invalido }">
-                        <input
-                            id="titulo"
-                            v-model="form.titulo"
-                            type="text"
-                            maxlength="255"
-                            required
-                            :class="classeCampo"
-                            :aria-invalid="invalido || undefined"
-                            :aria-describedby="descricao"
-                            @input="form.clearErrors('titulo')"
-                        />
-                    </CampoCadastro>
+                        <div class="grid gap-x-6 gap-y-5">
+                            <CampoCadastro id="titulo" rotulo="Título" obrigatorio :erro="form.errors.titulo" v-slot="{ descricao, invalido }">
+                                <input
+                                    id="titulo"
+                                    v-model="form.titulo"
+                                    type="text"
+                                    maxlength="255"
+                                    required
+                                    :class="classeCampo"
+                                    :aria-invalid="invalido || undefined"
+                                    :aria-describedby="descricao"
+                                    @input="form.clearErrors('titulo')"
+                                />
+                            </CampoCadastro>
 
-                    <CampoCadastro id="categoria" class="md:col-span-2" rotulo="Categoria" obrigatorio :erro="form.errors.categoria" v-slot="{ descricao, invalido }">
-                        <input
-                            id="categoria"
-                            v-model="form.categoria"
-                            type="text"
-                            maxlength="255"
-                            required
-                            placeholder="Ex.: Fomento, Audiovisual"
-                            :class="classeCampo"
-                            :aria-invalid="invalido || undefined"
-                            :aria-describedby="descricao"
-                            @input="form.clearErrors('categoria')"
-                        />
-                    </CampoCadastro>
+                            <CampoCadastro id="categoria" rotulo="Categoria" obrigatorio :erro="form.errors.categoria" v-slot="{ descricao, invalido }">
+                                <input
+                                    id="categoria"
+                                    v-model="form.categoria"
+                                    type="text"
+                                    maxlength="255"
+                                    required
+                                    placeholder="Ex.: Fomento, Audiovisual"
+                                    :class="classeCampo"
+                                    :aria-invalid="invalido || undefined"
+                                    :aria-describedby="descricao"
+                                    @input="form.clearErrors('categoria')"
+                                />
+                            </CampoCadastro>
 
-                    <CampoCadastro id="resumo" class="md:col-span-2" rotulo="Resumo" obrigatorio :erro="form.errors.resumo" v-slot="{ descricao, invalido }">
-                        <textarea
-                            id="resumo"
-                            v-model="form.resumo"
-                            rows="5"
-                            required
-                            :class="[classeCampo, 'h-auto py-3 leading-[1.6]']"
-                            :aria-invalid="invalido || undefined"
-                            :aria-describedby="descricao"
-                            @input="form.clearErrors('resumo')"
-                        />
-                    </CampoCadastro>
-
-                    <CampoCadastro id="inscricoes_inicio" rotulo="Início das inscrições" obrigatorio :erro="form.errors.inscricoes_inicio" v-slot="{ descricao, invalido }">
-                        <input
-                            id="inscricoes_inicio"
-                            v-model="form.inscricoes_inicio"
-                            type="date"
-                            required
-                            :class="classeCampo"
-                            :aria-invalid="invalido || undefined"
-                            :aria-describedby="descricao"
-                            @input="form.clearErrors('inscricoes_inicio')"
-                        />
-                    </CampoCadastro>
-
-                    <CampoCadastro id="inscricoes_fim" rotulo="Fim das inscrições" obrigatorio :erro="form.errors.inscricoes_fim" v-slot="{ descricao, invalido }">
-                        <input
-                            id="inscricoes_fim"
-                            v-model="form.inscricoes_fim"
-                            type="date"
-                            required
-                            :min="form.inscricoes_inicio || undefined"
-                            :class="classeCampo"
-                            :aria-invalid="invalido || undefined"
-                            :aria-describedby="descricao"
-                            @input="form.clearErrors('inscricoes_fim')"
-                        />
-                    </CampoCadastro>
-                </div>
-            </SecaoCadastro>
-
-            <SecaoCadastro id="secao-edital-arquivos" :numero="2" titulo="Arquivos">
-                <template #icone>
-                    <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M12 16V4M7 9l5-5 5 5" />
-                        <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
-                    </svg>
-                </template>
-
-                <div class="grid gap-x-6 gap-y-6 md:grid-cols-2">
-                    <div class="flex min-w-0 flex-col gap-3">
-                        <CampoCadastro id="pdf" rotulo="PDF do edital" :erro="form.errors.pdf" v-slot="{ descricao, invalido }">
-                            <CampoArquivo
-                                id="pdf"
-                                accept="application/pdf"
-                                dica="Só PDF, até 20 MB. Obrigatório para publicar"
-                                :arquivo="form.pdf"
-                                :enviado="Boolean(salvo?.pdfUrl)"
-                                :descricao="descricao"
-                                :invalido="invalido"
-                                @escolher="escolherArquivo($event, 'pdf')"
-                            />
-                        </CampoCadastro>
-                        <p v-if="salvo?.pdfUrl" class="text-[0.9375rem]">
-                            PDF atual:
-                            <a :href="salvo.pdfUrl" class="font-semibold break-all text-acao underline">{{ salvo.pdfNome }}</a>
-                        </p>
-                    </div>
-
-                    <div class="flex min-w-0 flex-col gap-3">
-                        <CampoCadastro id="imagem" rotulo="Imagem" :erro="form.errors.imagem" v-slot="{ descricao, invalido }">
-                            <CampoArquivo
-                                id="imagem"
-                                accept="image/jpeg,image/png,image/webp"
-                                dica="JPG, PNG ou WEBP, até 5 MB"
-                                :arquivo="form.imagem"
-                                :enviado="Boolean(salvo?.imagemUrl) && !form.remover_imagem"
-                                :descricao="descricao"
-                                :invalido="invalido"
-                                @escolher="escolherArquivo($event, 'imagem')"
-                            />
-                        </CampoCadastro>
-                        <div v-if="salvo?.imagemUrl && !form.imagem" class="flex items-start gap-4">
-                            <img
-                                :src="salvo.imagemUrl"
-                                alt="Imagem atual do edital"
-                                class="h-24 w-36 shrink-0 rounded-[12px] border border-hairline object-cover"
-                                :class="{ 'opacity-40': form.remover_imagem }"
-                            />
-                            <label :class="classeMarcacao">
-                                <input v-model="form.remover_imagem" type="checkbox" :class="classeCaixa" />
-                                Remover imagem
-                            </label>
+                            <CampoCadastro id="resumo" rotulo="Resumo" obrigatorio :erro="form.errors.resumo" v-slot="{ descricao, invalido }">
+                                <textarea
+                                    id="resumo"
+                                    v-model="form.resumo"
+                                    rows="5"
+                                    required
+                                    :class="[classeCampo, 'h-auto py-3 leading-[1.6]']"
+                                    :aria-invalid="invalido || undefined"
+                                    :aria-describedby="descricao"
+                                    @input="form.clearErrors('resumo')"
+                                />
+                            </CampoCadastro>
                         </div>
-                    </div>
-                </div>
-            </SecaoCadastro>
-
-            <SecaoCadastro id="secao-edital-publicacao" :numero="3" titulo="Publicação">
-                <template #icone>
-                    <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="9" />
-                        <path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
-                    </svg>
+                    </SecaoCadastro>
                 </template>
 
-                <label :class="classeMarcacao">
-                    <input v-model="form.publicado" type="checkbox" :class="classeCaixa" aria-describedby="publicado-ajuda" />
-                    <span>
-                        <span class="font-semibold">Publicar no portal</span>
-                        <span id="publicado-ajuda" class="block text-[0.8125rem] text-tinta-suave">O edital só aparece no portal publicado e com PDF.</span>
-                    </span>
-                </label>
-            </SecaoCadastro>
+                <template #inscricoes>
+                    <SecaoCadastro id="secao-edital-inscricoes" :numero="2" titulo="Inscrições">
+                        <template #icone>
+                            <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="4" y="5" width="16" height="16" rx="2" />
+                                <path d="M4 10h16M9 3v4M15 3v4" />
+                            </svg>
+                        </template>
+
+                        <div class="grid gap-x-6 gap-y-5 md:grid-cols-2">
+                            <CampoCadastro id="inscricoes_inicio" rotulo="Início das inscrições" obrigatorio :erro="form.errors.inscricoes_inicio" v-slot="{ descricao, invalido }">
+                                <input
+                                    id="inscricoes_inicio"
+                                    v-model="form.inscricoes_inicio"
+                                    type="date"
+                                    required
+                                    :class="classeCampo"
+                                    :aria-invalid="invalido || undefined"
+                                    :aria-describedby="descricao"
+                                    @input="form.clearErrors('inscricoes_inicio')"
+                                />
+                            </CampoCadastro>
+
+                            <CampoCadastro id="inscricoes_fim" rotulo="Fim das inscrições" obrigatorio :erro="form.errors.inscricoes_fim" v-slot="{ descricao, invalido }">
+                                <input
+                                    id="inscricoes_fim"
+                                    v-model="form.inscricoes_fim"
+                                    type="date"
+                                    required
+                                    :min="form.inscricoes_inicio || undefined"
+                                    :class="classeCampo"
+                                    :aria-invalid="invalido || undefined"
+                                    :aria-describedby="descricao"
+                                    @input="form.clearErrors('inscricoes_fim')"
+                                />
+                            </CampoCadastro>
+                        </div>
+                    </SecaoCadastro>
+                </template>
+
+                <template #arquivos>
+                    <SecaoCadastro id="secao-edital-arquivos" :numero="3" titulo="Arquivos">
+                        <template #icone>
+                            <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 16V4M7 9l5-5 5 5" />
+                                <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
+                            </svg>
+                        </template>
+
+                        <div class="grid gap-x-6 gap-y-6 md:grid-cols-2">
+                            <div class="flex min-w-0 flex-col gap-3">
+                                <CampoCadastro id="pdf" rotulo="PDF do edital" :erro="form.errors.pdf" v-slot="{ descricao, invalido }">
+                                    <CampoArquivo
+                                        id="pdf"
+                                        accept="application/pdf"
+                                        dica="Só PDF, até 20 MB. Obrigatório para publicar"
+                                        :arquivo="form.pdf"
+                                        :enviado="Boolean(salvo?.pdfUrl)"
+                                        :descricao="descricao"
+                                        :invalido="invalido"
+                                        @escolher="escolherArquivo($event, 'pdf')"
+                                    />
+                                </CampoCadastro>
+                                <p v-if="salvo?.pdfUrl" class="text-[0.9375rem]">
+                                    PDF atual:
+                                    <a :href="salvo.pdfUrl" class="font-semibold break-all text-acao underline">{{ salvo.pdfNome }}</a>
+                                </p>
+                            </div>
+
+                            <div class="flex min-w-0 flex-col gap-3">
+                                <CampoCadastro id="imagem" rotulo="Imagem" :erro="form.errors.imagem" v-slot="{ descricao, invalido }">
+                                    <CampoArquivo
+                                        id="imagem"
+                                        accept="image/jpeg,image/png,image/webp"
+                                        dica="JPG, PNG ou WEBP, até 5 MB"
+                                        :arquivo="form.imagem"
+                                        :enviado="Boolean(salvo?.imagemUrl) && !form.remover_imagem"
+                                        :descricao="descricao"
+                                        :invalido="invalido"
+                                        @escolher="escolherArquivo($event, 'imagem')"
+                                    />
+                                </CampoCadastro>
+                                <div v-if="salvo?.imagemUrl && !form.imagem" class="flex items-start gap-4">
+                                    <img
+                                        :src="salvo.imagemUrl"
+                                        alt="Imagem atual do edital"
+                                        class="h-24 w-36 shrink-0 rounded-[12px] border border-hairline object-cover"
+                                        :class="{ 'opacity-40': form.remover_imagem }"
+                                    />
+                                    <label :class="classeMarcacao">
+                                        <input v-model="form.remover_imagem" type="checkbox" :class="classeCaixa" />
+                                        Remover imagem
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </SecaoCadastro>
+                </template>
+
+                <template #publicacao>
+                    <SecaoCadastro id="secao-edital-publicacao" :numero="4" titulo="Publicação">
+                        <template #icone>
+                            <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="9" />
+                                <path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
+                            </svg>
+                        </template>
+
+                        <label :class="classeMarcacao">
+                            <input v-model="form.publicado" type="checkbox" :class="classeCaixa" aria-describedby="publicado-ajuda" />
+                            <span>
+                                <span class="font-semibold">Publicar no portal</span>
+                                <span id="publicado-ajuda" class="block text-[0.8125rem] text-tinta-suave">O edital só aparece no portal publicado e com PDF.</span>
+                            </span>
+                        </label>
+                    </SecaoCadastro>
+                </template>
+            </AbasFormulario>
 
             <div class="flex flex-col-reverse gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <Link
@@ -256,7 +296,7 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                     >
                         {{ textoBotao }}
                     </button>
-                    <p v-if="form.hasErrors" role="alert" class="text-[0.9375rem] font-semibold text-erro-texto">Confira os campos destacados acima.</p>
+                    <p v-if="form.hasErrors" role="alert" class="text-[0.9375rem] font-semibold text-erro-texto">Confira os campos destacados nas abas marcadas.</p>
                 </div>
             </div>
         </form>

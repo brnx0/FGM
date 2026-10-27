@@ -41,7 +41,8 @@ class PortalTest extends TestCase
                 ->where('situacao', 'aberto')
                 ->where('situacaoRotulo', 'Aberto')
                 ->where('inscricoesInicio', '01/11/2026')
-                ->where('inscricoesFim', '15/11/2026'))
+                ->where('inscricoesFim', '15/11/2026')
+                ->where('imagem', null))
             ->where('editais.2.situacao', 'em_breve')
             ->where('editais.2.inscricoesInicio', '01/12/2026')
             ->has('eventos', 2)
@@ -53,6 +54,15 @@ class PortalTest extends TestCase
                 ->where('imagem', null)
                 ->has('resumo')
                 ->has('slug')));
+    }
+
+    public function test_home_envia_a_imagem_cadastrada_do_edital(): void
+    {
+        $this->travelTo(Carbon::parse('2026-11-10 10:00', 'America/Bahia'));
+        Edital::factory()->create(['imagem' => 'editais/capa.jpg', 'inscricoes_inicio' => '2026-11-01', 'inscricoes_fim' => '2026-11-30']);
+
+        $this->get('/')->assertInertia(fn (Assert $p) => $p
+            ->where('editais.0.imagem', Storage::disk('public')->url('editais/capa.jpg')));
     }
 
     public function test_home_limita_eventos_a_seis(): void
