@@ -285,6 +285,14 @@ export interface RetaguardaUsuariosFormProps {
 }
 
 /** Troca da própria senha (Retaguarda\MinhaSenhaController@edit). Sem senha (só gov.br), a atual não é pedida. */
+/** Uma aba de AbasFormulario (formulários longos da retaguarda). */
+export interface AbaFormulario {
+    id: string;
+    rotulo: string;
+    /** Campos do formulário desta aba: os erros deles contam no marcador da aba. */
+    campos: string[];
+}
+
 export interface RetaguardaMinhaSenhaProps {
     temSenha: boolean;
 }
