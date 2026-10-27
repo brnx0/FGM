@@ -74,6 +74,11 @@ GOVBR_SCOPES="openid email profile"
 
 Roteiro conferido em 2026-10-23 (https://roteiro-tecnico.acesso.gov.br/iniciarintegracao.html): `GET {base}/authorize`, `POST {base}/token` (form, Basic `client_id:client_secret`), `{base}/jwk` e `{base}/logout?post_logout_redirect_uri=…`. Os defaults de `config/govbr.php` seguem esses caminhos.
 
+## Cadastro no portal
+
+- Proponentes cadastram organizações (pessoas jurídicas) em "Minhas organizações", com representantes legais e vínculo de pessoas por CPF.
+- O servidor consulta a BrasilAPI (CNPJ) e o ViaCEP (CEP); sem acesso a elas, o formulário é preenchido à mão.
+
 ## Retaguarda
 
 Área de gestão em `/retaguarda` (login em `/retaguarda/login`): editais, eventos e usuários (`/retaguarda/usuarios`). Só entra usuário da retaguarda **ativo com pelo menos um papel** (hoje, `Administrador`).
