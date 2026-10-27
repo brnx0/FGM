@@ -2,7 +2,7 @@
 import { ref, useId } from 'vue';
 import { router } from '@inertiajs/vue3';
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
     /** Endereço do DELETE. */
     url: string;
     /** Nome do item, para o botão (leitor de tela) e para a pergunta. */
@@ -15,7 +15,9 @@ const props = defineProps<{
     pergunta?: string;
     /** Texto do botão de confirmar enquanto envia; o padrão é "Excluindo…". */
     acaoEmAndamento?: string;
-}>();
+    /** Mantém a rolagem após excluir; desligue quando a mensagem de sucesso fica no topo da página. */
+    manterRolagem?: boolean;
+}>(), { manterRolagem: true });
 
 const dialogo = ref<HTMLDialogElement | null>(null);
 const excluindo = ref<boolean>(false);
@@ -27,7 +29,7 @@ const fechar = (): void => dialogo.value?.close();
 
 const excluir = (): void => {
     router.delete(props.url, {
-        preserveScroll: true,
+        preserveScroll: props.manterRolagem,
         onStart: () => {
             excluindo.value = true;
         },

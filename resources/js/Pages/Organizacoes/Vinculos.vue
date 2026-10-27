@@ -17,7 +17,6 @@ const formulario = useForm({ cpf: '', nome: '' });
 
 const vincular = (): void => {
     formulario.post(base, {
-        preserveScroll: true,
         onSuccess: () => formulario.reset(),
     });
 };
@@ -91,6 +90,7 @@ const classeCampo =
                                 :url="`${base}/${vinculo.id}`"
                                 :nome="vinculo.nome"
                                 acao="Desvincular"
+                                :manter-rolagem="false"
                                 acao-em-andamento="Desvinculando…"
                                 :pergunta="`Desvincular ${vinculo.nome}?`"
                                 aviso="A pessoa deixa de ver e editar esta organização."

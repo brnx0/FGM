@@ -21,7 +21,7 @@ class VinculoOrganizacaoController extends Controller
         Gate::authorize('update', $organizacao);
 
         $user = $request->user();
-        $vinculos = $organizacao->vinculos()->orderBy('nome')->get();
+        $vinculos = $organizacao->vinculos()->get();
         $nomesDosUsuarios = User::query()->whereIn('cpf', $vinculos->pluck('cpf'))->pluck('name', 'cpf');
 
         return Inertia::render('Organizacoes/Vinculos', [
@@ -31,6 +31,7 @@ class VinculoOrganizacaoController extends Controller
             ],
             'podeGerenciar' => $user->can('gerenciarVinculos', $organizacao),
             'vinculos' => $vinculos
+                ->sortBy(fn (VinculoOrganizacao $vinculo): string => mb_strtolower($nomesDosUsuarios[$vinculo->cpf] ?? $vinculo->nome))
                 ->map(fn (VinculoOrganizacao $vinculo): array => [
                     'id' => $vinculo->id,
                     'nome' => $nomesDosUsuarios[$vinculo->cpf] ?? $vinculo->nome,

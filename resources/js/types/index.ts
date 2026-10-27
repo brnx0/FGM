@@ -227,6 +227,8 @@ export interface OrganizacaoFormProps {
         estados: OpcaoCadastro[];
     };
     representanteInicial: { cpf: string; nome: string } | null;
+    /** Verdadeiro só quando a pessoa ainda não tem organização: o formulário é a etapa 3 do cadastro inicial. */
+    noCadastroInicial: boolean;
 }
 
 /** Representante como o formulário o edita: tudo texto, vazio quando não informado; CPF e telefone com máscara. */

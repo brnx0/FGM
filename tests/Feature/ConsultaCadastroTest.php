@@ -219,6 +219,31 @@ class ConsultaCadastroTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_cep_com_quebra_de_linha_no_fim_retorna_422(): void
+    {
+        Http::fake();
+        $this->logar();
+
+        $this->getJson('/cadastro/consultas/cep/40015000%0A')->assertStatus(422);
+        Http::assertNothingSent();
+    }
+
+    public function test_cnpj_com_resposta_sem_razao_social_nao_e_encontrado_nem_guardado_em_cache(): void
+    {
+        Http::fake(['brasilapi.com.br/*' => Http::response([])]);
+        $this->logar();
+
+        $this->getJson(route('consultas.cnpj', self::CNPJ))->assertOk()->assertExactJson(['encontrado' => false]);
+        $this->assertFalse(Cache::has('consulta-cnpj:'.self::CNPJ));
+    }
+
+    public function test_busca_de_municipios_com_parametro_em_lista_retorna_vazio(): void
+    {
+        $this->logar();
+
+        $this->getJson(route('consultas.municipios', ['busca' => ['x']]))->assertOk()->assertExactJson([]);
+    }
+
     public function test_busca_de_municipios(): void
     {
         $this->logar();

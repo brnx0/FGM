@@ -55,7 +55,7 @@ class OrganizacaoController extends Controller
         return $this->formulario(null, [
             'cpf' => Cpf::formatar($user->cpf),
             'nome' => $user->name,
-        ]);
+        ], ! Organizacao::query()->daPessoa($user)->exists());
     }
 
     public function edit(Organizacao $organizacao): Response
@@ -168,7 +168,7 @@ class OrganizacaoController extends Controller
     /**
      * @param  array{cpf: string, nome: string}|null  $representanteInicial
      */
-    private function formulario(?Organizacao $organizacao, ?array $representanteInicial): Response
+    private function formulario(?Organizacao $organizacao, ?array $representanteInicial, bool $noCadastroInicial = false): Response
     {
         return Inertia::render('Organizacoes/Form', [
             'organizacao' => $organizacao ? $this->dadosParaEdicao($organizacao) : null,
@@ -182,6 +182,7 @@ class OrganizacaoController extends Controller
                 'estados' => collect(Estados::TODOS)->map(fn (string $nome, string $sigla): array => ['valor' => $sigla, 'rotulo' => $nome])->values(),
             ],
             'representanteInicial' => $representanteInicial,
+            'noCadastroInicial' => $noCadastroInicial,
         ]);
     }
 

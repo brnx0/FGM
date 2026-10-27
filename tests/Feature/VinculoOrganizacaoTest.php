@@ -81,6 +81,18 @@ class VinculoOrganizacaoTest extends TestCase
                 && collect($lista)->contains(fn ($v) => $v['responsavel'] && $v['ehVoce'])));
     }
 
+    public function test_pagina_de_pessoas_ordena_pelo_nome_exibido(): void
+    {
+        $responsavel = User::factory()->cadastroCompleto()->create(['name' => 'Marta Responsavel']);
+        $organizacao = $this->organizacaoDo($responsavel);
+        User::factory()->cadastroCompleto()->create(['cpf' => self::CPF_VALIDO, 'name' => 'Ana Gov']);
+        VinculoOrganizacao::factory()->create(['organizacao_id' => $organizacao->id, 'cpf' => self::CPF_VALIDO, 'nome' => 'Zélia digitada']);
+        VinculoOrganizacao::factory()->create(['organizacao_id' => $organizacao->id, 'cpf' => '11144477735', 'nome' => 'Bruno']);
+
+        $this->actingAs($responsavel)->get(route('organizacoes.vinculos', $organizacao))->assertInertia(fn (Assert $page) => $page
+            ->where('vinculos', fn ($lista) => collect($lista)->pluck('nome')->values()->all() === ['Ana Gov', 'Bruno', 'Marta Responsavel']));
+    }
+
     public function test_vinculado_nao_responsavel_ve_a_pagina_sem_poder_gerenciar(): void
     {
         $organizacao = $this->organizacaoDo($this->usuario());
