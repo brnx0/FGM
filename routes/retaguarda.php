@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Retaguarda\EditalController;
+use App\Http\Controllers\Retaguarda\EventoController;
 use App\Http\Controllers\Retaguarda\LoginController;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Route;
@@ -26,5 +27,8 @@ Route::prefix('retaguarda')->name('retaguarda.')->group(function () {
             ->parameters(['editais' => 'edital']);
         Route::patch('/editais/{edital}/publicacao', [EditalController::class, 'publicacao'])->name('editais.publicacao');
         Route::get('/editais/{edital}/pdf', [EditalController::class, 'pdf'])->name('editais.pdf');
+
+        Route::resource('eventos', EventoController::class)->except('show');
+        Route::patch('/eventos/{evento}/publicacao', [EventoController::class, 'publicacao'])->name('eventos.publicacao');
     });
 });

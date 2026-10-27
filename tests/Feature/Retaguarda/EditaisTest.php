@@ -9,6 +9,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
+use RuntimeException;
 use Tests\TestCase;
 
 class EditaisTest extends TestCase
@@ -194,6 +195,26 @@ class EditaisTest extends TestCase
         $this->assertNotSame('editais/antigo.pdf', $edital->pdf);
         Storage::disk('local')->assertMissing('editais/antigo.pdf');
         Storage::disk('local')->assertExists($edital->pdf);
+    }
+
+    public function test_falha_ao_salvar_mantem_o_arquivo_antigo_e_descarta_o_novo(): void
+    {
+        $edital = Edital::factory()->create(['pdf' => 'editais/antigo.pdf']);
+        Storage::disk('local')->put('editais/antigo.pdf', 'pdf');
+        Edital::saving(fn () => false);
+
+        $this->withoutExceptionHandling();
+
+        try {
+            $this->put("/retaguarda/editais/{$edital->slug}", $this->dados(['pdf' => $this->pdf('novo.pdf')]));
+            $this->fail('A falha ao salvar deveria interromper a requisição.');
+        } catch (RuntimeException) {
+            // esperado
+        }
+
+        $this->assertSame('editais/antigo.pdf', $edital->refresh()->pdf);
+        Storage::disk('local')->assertExists('editais/antigo.pdf');
+        $this->assertCount(1, Storage::disk('local')->allFiles('editais'));
     }
 
     public function test_remover_imagem_apaga_o_arquivo(): void

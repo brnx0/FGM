@@ -78,14 +78,17 @@ class EditalController extends Controller
         $edital = new Edital($request->dadosDoEdital());
         $edital->slug = SlugUnico::para(Edital::class, $edital->titulo);
 
+        $novos = [];
         if ($request->hasFile('pdf')) {
-            $edital->pdf = ArquivoArmazenado::substituir($request->file('pdf'), null, 'local', self::PASTA);
+            $edital->pdf = ArquivoArmazenado::guardar($request->file('pdf'), 'local', self::PASTA);
+            $novos[] = ['local', $edital->pdf];
         }
         if ($request->hasFile('imagem')) {
-            $edital->imagem = ArquivoArmazenado::substituir($request->file('imagem'), null, 'public', self::PASTA);
+            $edital->imagem = ArquivoArmazenado::guardar($request->file('imagem'), 'public', self::PASTA);
+            $novos[] = ['public', $edital->imagem];
         }
 
-        $edital->save();
+        ArquivoArmazenado::salvarTrocando($edital, $novos, []);
 
         return redirect()->route('retaguarda.editais.index')->with('sucesso', 'Edital salvo.');
     }
@@ -113,18 +116,24 @@ class EditalController extends Controller
     {
         $edital->fill($request->dadosDoEdital());
 
+        $novos = [];
+        $antigos = [];
         if ($request->hasFile('pdf')) {
-            $edital->pdf = ArquivoArmazenado::substituir($request->file('pdf'), $edital->pdf, 'local', self::PASTA);
+            $antigos[] = ['local', $edital->pdf];
+            $edital->pdf = ArquivoArmazenado::guardar($request->file('pdf'), 'local', self::PASTA);
+            $novos[] = ['local', $edital->pdf];
         }
 
         if ($request->hasFile('imagem')) {
-            $edital->imagem = ArquivoArmazenado::substituir($request->file('imagem'), $edital->imagem, 'public', self::PASTA);
+            $antigos[] = ['public', $edital->imagem];
+            $edital->imagem = ArquivoArmazenado::guardar($request->file('imagem'), 'public', self::PASTA);
+            $novos[] = ['public', $edital->imagem];
         } elseif ($request->boolean('remover_imagem') && $edital->imagem) {
-            Storage::disk('public')->delete($edital->imagem);
+            $antigos[] = ['public', $edital->imagem];
             $edital->imagem = null;
         }
 
-        $edital->save();
+        ArquivoArmazenado::salvarTrocando($edital, $novos, $antigos);
 
         return redirect()->route('retaguarda.editais.index')->with('sucesso', 'Edital salvo.');
     }

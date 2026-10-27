@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Edital;
-use App\Support\EventosMock;
+use App\Models\Evento;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
@@ -26,10 +26,8 @@ class PortalTest extends TestCase
         ]);
         Edital::factory()->create(['inscricoes_inicio' => '2026-11-05', 'inscricoes_fim' => '2026-11-30']);
         Edital::factory()->create(['inscricoes_inicio' => '2026-12-01', 'inscricoes_fim' => '2026-12-20']);
-        $this->usarEventos([
-            $this->evento('Jornada do Patrimônio', '2026-08-15', 'Centro Histórico'),
-            $this->evento('Dois de Julho', '2026-07-01'),
-        ]);
+        Evento::factory()->create(['titulo' => 'Jornada do Patrimônio', 'data_realizacao' => '2026-08-15', 'local' => 'Centro Histórico']);
+        Evento::factory()->create(['titulo' => 'Dois de Julho', 'data_realizacao' => '2026-07-01']);
 
         $this->get('/')->assertOk()->assertInertia(fn (Assert $p) => $p
             ->component('Home')
@@ -52,30 +50,36 @@ class PortalTest extends TestCase
                 ->where('mes', 'agosto')
                 ->where('ano', '2026')
                 ->where('local', 'Centro Histórico')
+                ->where('imagem', null)
                 ->has('resumo')));
     }
 
     public function test_home_limita_eventos_a_seis(): void
     {
-        $this->usarEventos(array_map(
-            fn (int $mes) => $this->evento("Evento {$mes}", sprintf('2025-%02d-10', $mes)),
-            range(1, 8),
-        ));
+        foreach (range(1, 8) as $mes) {
+            Evento::factory()->create(['titulo' => "Evento {$mes}", 'data_realizacao' => sprintf('2025-%02d-10', $mes)]);
+        }
 
         $this->get('/')->assertInertia(fn (Assert $p) => $p
             ->has('eventos', 6)
             ->where('eventos.0.titulo', 'Evento 8'));
     }
 
-    public function test_home_usa_os_eventos_de_exemplo(): void
+    public function test_evento_futuro_despublicado_e_excluido_ficam_de_fora(): void
     {
-        $this->get('/')->assertInertia(fn (Assert $p) => $p->has('eventos', 6));
+        $this->travelTo(Carbon::parse('2026-11-10 10:00', 'America/Bahia'));
+        Evento::factory()->create(['titulo' => 'Aparece', 'data_realizacao' => '2026-11-10']);
+        Evento::factory()->create(['data_realizacao' => '2026-11-11']);
+        Evento::factory()->create(['data_realizacao' => '2026-09-01', 'publicado' => false]);
+        Evento::factory()->create(['data_realizacao' => '2026-09-02'])->delete();
+
+        $this->get('/')->assertInertia(fn (Assert $p) => $p
+            ->has('eventos', 1)
+            ->where('eventos.0.titulo', 'Aparece'));
     }
 
     public function test_home_vazia_nao_quebra(): void
     {
-        $this->usarEventos([]);
-
         $this->get('/')->assertOk()->assertInertia(fn (Assert $p) => $p
             ->where('totalAbertos', 0)->has('editais', 0)->has('eventos', 0));
     }
@@ -175,24 +179,5 @@ class PortalTest extends TestCase
         ] as $url => $componente) {
             $this->get($url)->assertOk()->assertInertia(fn (Assert $p) => $p->component($componente));
         }
-    }
-
-    /** @param list<array<string, mixed>> $eventos */
-    private function usarEventos(array $eventos): void
-    {
-        $this->app->instance(EventosMock::class, new EventosMock($eventos));
-    }
-
-    /** @return array<string, mixed> */
-    private function evento(string $titulo, string $data, ?string $local = 'Salvador/BA'): array
-    {
-        return [
-            'titulo' => $titulo,
-            'resumo' => 'Resumo do evento.',
-            'data_realizacao' => $data,
-            'local' => $local,
-            'imagem' => null,
-            'publicado' => true,
-        ];
     }
 }

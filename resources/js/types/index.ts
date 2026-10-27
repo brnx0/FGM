@@ -43,6 +43,7 @@ export interface Evento {
     mes: string;
     ano: string;
     local: string | null;
+    imagem: string | null;
 }
 
 export interface ContaFake {
@@ -191,4 +192,35 @@ export interface EditalFormulario {
 
 export interface RetaguardaEditaisFormProps {
     edital: EditalFormulario | null;
+}
+
+/** Linha da lista de eventos na retaguarda (Retaguarda\EventoController@index). */
+export interface EventoRetaguarda {
+    slug: string;
+    titulo: string;
+    local: string | null;
+    /** "15/08/2026". */
+    data: string;
+    publicado: boolean;
+    temImagem: boolean;
+}
+
+export interface RetaguardaEventosIndexProps {
+    eventos: Paginado<EventoRetaguarda>;
+    filtros: { busca: string; publicado: 'sim' | 'nao' | '' };
+}
+
+/** Evento em edição (Retaguarda\EventoController@edit). Data em Y-m-d. */
+export interface EventoFormulario {
+    slug: string;
+    titulo: string;
+    resumo: string;
+    data_realizacao: string;
+    local: string | null;
+    publicado: boolean;
+    imagemUrl: string | null;
+}
+
+export interface RetaguardaEventosFormProps {
+    evento: EventoFormulario | null;
 }
