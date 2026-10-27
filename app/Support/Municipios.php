@@ -8,7 +8,10 @@ final class Municipios
     /** @var list<array{codigo: string, nome: string, uf: string}>|null */
     private static ?array $todos = null;
 
-    /** @var array<string, string>|null nome normalizado, na mesma ordem de */
+    /** @var array<string, array{codigo: string, nome: string, uf: string}>|null */
+    private static ?array $porCodigo = null;
+
+    /** @var list<string>|null nome normalizado, na mesma ordem de; só montado na busca por nome */
     private static ?array $nomesNormalizados = null;
 
     /**
@@ -23,10 +26,11 @@ final class Municipios
             return [];
         }
 
+        $nomes = self::nomesNormalizados();
         $comecam = [];
         $contem = [];
         foreach (self::todos() as $indice => $municipio) {
-            $posicao = strpos(self::$nomesNormalizados[$indice], $termo);
+            $posicao = strpos($nomes[$indice], $termo);
             if ($posicao === 0) {
                 $comecam[] = $municipio;
             } elseif ($posicao !== false) {
@@ -42,13 +46,9 @@ final class Municipios
     /** @return array{codigo: string, nome: string, uf: string}|null */
     public static function porCodigo(string $codigo): ?array
     {
-        foreach (self::todos() as $municipio) {
-            if ($municipio['codigo'] === $codigo) {
-                return $municipio;
-            }
-        }
+        self::todos();
 
-        return null;
+        return self::$porCodigo[$codigo] ?? null;
     }
 
     public static function existe(string $codigo): bool
@@ -65,16 +65,23 @@ final class Municipios
             $lista = json_decode($json === false ? '[]' : $json, true, 512, JSON_THROW_ON_ERROR);
 
             self::$todos = $lista;
-            self::$nomesNormalizados = array_map(fn (array $m): string => self::normalizarTexto($m['nome']), $lista);
+            self::$porCodigo = array_column($lista, null, 'codigo');
         }
 
         return self::$todos;
     }
 
+    /** @return list<string> */
+    private static function nomesNormalizados(): array
+    {
+        return self::$nomesNormalizados ??= array_map(
+            fn (array $municipio): string => self::normalizarTexto($municipio['nome']),
+            self::todos(),
+        );
+    }
+
     private static function normalizarTexto(string $texto): string
     {
-        $semAcento = transliterator_transliterate('Any-Latin; Latin-ASCII; Lower()', $texto);
-
-        return trim($semAcento === false ? mb_strtolower($texto) : $semAcento);
+        return TextoNormalizado::semAcento($texto);
     }
 }

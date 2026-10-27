@@ -282,6 +282,19 @@ class OrganizacaoTest extends TestCase
             ->has('opcoes.estados'));
     }
 
+    public function test_create_marca_cadastro_inicial_so_para_quem_nao_tem_organizacao(): void
+    {
+        $user = $this->usuario();
+
+        $this->actingAs($user)->get('/cadastro/pessoa-juridica')->assertInertia(fn (Assert $page) => $page
+            ->where('noCadastroInicial', true));
+
+        Organizacao::factory()->comResponsavel($user)->create();
+
+        $this->actingAs($user)->get('/cadastro/pessoa-juridica')->assertInertia(fn (Assert $page) => $page
+            ->where('noCadastroInicial', false));
+    }
+
     public function test_edit_entrega_a_organizacao(): void
     {
         $user = $this->usuario();

@@ -138,7 +138,7 @@ const opcaoMunicipio = (municipio: MunicipioBusca): OpcaoCadastro => ({ valor: m
 
 const municipioSelecionado = ref<OpcaoCadastro | null>(salvo?.municipio ? opcaoMunicipio(salvo.municipio) : null);
 
-// Só a partir de 2 letras e 300 ms depois da última tecla: o limite de consultas é dividido com CNPJ e CEP.
+// Só a partir de 3 letras e 300 ms depois da última tecla: o limite de consultas é dividido com CNPJ e CEP.
 const buscarMunicipio = async (termo: string, sinal: AbortSignal): Promise<OpcaoCadastro[] | null> => {
     const municipios = await consultar<MunicipioBusca[]>(`/cadastro/consultas/municipios?busca=${encodeURIComponent(termo)}`, sinal);
     return Array.isArray(municipios) ? municipios.map(opcaoMunicipio) : null;
@@ -340,7 +340,7 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
         <FaixaPortal aria-labelledby="organizacao-titulo">
             <div class="flex flex-col gap-3">
                 <Link
-                    v-if="editando"
+                    v-if="editando || !noCadastroInicial"
                     href="/organizacoes"
                     class="inline-flex min-h-11 items-center gap-2 self-start text-[0.8125rem] font-semibold tracking-[0.12em] text-white/85 uppercase no-underline hover:text-white"
                 >
@@ -357,7 +357,7 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                     {{ editando ? 'Atualize os dados da organização e dos representantes legais.' : 'Informe o CNPJ e confira os dados da organização que você representa.' }}
                 </p>
             </div>
-            <EtapasCadastro v-if="!editando" :atual="3" />
+            <EtapasCadastro v-if="!editando && noCadastroInicial" :atual="3" />
         </FaixaPortal>
 
         <form
@@ -523,7 +523,7 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                             rotulo="Municípios"
                             :selecionado="municipioSelecionado"
                             :buscar="buscarMunicipio"
-                            :minimo="2"
+                            :minimo="3"
                             :atraso="300"
                             placeholder="Digite o nome do município"
                             texto-vazio="Nenhum município encontrado."
@@ -682,13 +682,13 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
 
             <div class="flex flex-col-reverse gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <Link
-                    :href="editando ? '/organizacoes' : '/cadastro/organizacao'"
+                    :href="editando || !noCadastroInicial ? '/organizacoes' : '/cadastro/organizacao'"
                     class="pressionavel inline-flex min-h-12 items-center justify-center gap-2 rounded-pill border border-tinta-suave/70 bg-superficie px-6 text-[0.8125rem] font-bold tracking-[0.12em] text-home-tinta uppercase no-underline hover:border-acao hover:text-acao"
                 >
                     <svg aria-hidden="true" viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M19 12H5M11 6l-6 6 6 6" />
                     </svg>
-                    {{ editando ? 'Cancelar' : 'Voltar' }}
+                    {{ editando ? 'Cancelar' : noCadastroInicial ? 'Voltar' : 'Voltar para Minhas organizações' }}
                 </Link>
 
                 <div class="flex flex-col gap-2 sm:items-end">

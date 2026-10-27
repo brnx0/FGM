@@ -100,6 +100,9 @@ const navegacao: { href: string; texto: string; pagina?: boolean }[] = [
                                 </a>
                             </li>
                         </template>
+                        <li v-if="usuario && !usuario.ehGestor">
+                            <Link href="/organizacoes" class="inline-flex min-h-11 items-center text-[0.9375rem] font-medium no-underline hover:underline">Minhas organizações</Link>
+                        </li>
                         <li>
                             <a href="#editais" class="inline-flex min-h-11 items-center text-[0.9375rem] font-medium no-underline hover:underline">Inscrever um projeto</a>
                         </li>

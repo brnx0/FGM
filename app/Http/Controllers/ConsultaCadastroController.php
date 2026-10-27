@@ -32,7 +32,7 @@ class ConsultaCadastroController extends Controller
 
     public function cep(string $cep): JsonResponse
     {
-        if (preg_match('/^\d{8}$/', $cep) !== 1) {
+        if (preg_match('/^\d{8}\z/', $cep) !== 1) {
             return response()->json(['message' => 'CEP inválido.'], 422);
         }
 
@@ -43,8 +43,9 @@ class ConsultaCadastroController extends Controller
 
     public function municipios(Request $request): JsonResponse
     {
-        $busca = trim((string) $request->query('busca', ''));
+        $parametro = $request->query('busca', '');
+        $busca = is_string($parametro) ? trim($parametro) : '';
 
-        return response()->json(mb_strlen($busca) < 2 ? [] : Municipios::buscar($busca));
+        return response()->json(mb_strlen($busca) < 3 ? [] : Municipios::buscar($busca));
     }
 }

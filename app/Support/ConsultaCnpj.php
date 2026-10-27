@@ -47,7 +47,7 @@ final class ConsultaCnpj
             return null;
         }
 
-        if (! is_array($json)) {
+        if (! is_array($json) || ! is_string($json['razao_social'] ?? null) || trim($json['razao_social']) === '') {
             return null;
         }
 
@@ -112,21 +112,14 @@ final class ConsultaCnpj
             return null;
         }
 
-        $alvo = self::semAcento($nome);
+        $alvo = TextoNormalizado::semAcento($nome);
         foreach (Municipios::buscar($nome, 100) as $municipio) {
-            if ($municipio['uf'] === strtoupper($uf) && self::semAcento($municipio['nome']) === $alvo) {
+            if ($municipio['uf'] === strtoupper($uf) && TextoNormalizado::semAcento($municipio['nome']) === $alvo) {
                 return $municipio;
             }
         }
 
         return null;
-    }
-
-    private static function semAcento(string $texto): string
-    {
-        $convertido = transliterator_transliterate('Any-Latin; Latin-ASCII; Lower()', $texto);
-
-        return trim($convertido === false ? mb_strtolower($texto) : $convertido);
     }
 
     private static function texto(mixed $valor): ?string

@@ -162,6 +162,21 @@ export interface OrganizacoesIndexProps {
     organizacoes: OrganizacaoResumo[];
 }
 
+/** Pessoa vinculada a uma organização (CPF mascarado). */
+export interface VinculoPessoa {
+    id: number;
+    nome: string;
+    cpf: string;
+    responsavel: boolean;
+    ehVoce: boolean;
+}
+
+export interface OrganizacaoVinculosProps {
+    organizacao: { id: number; nome: string };
+    podeGerenciar: boolean;
+    vinculos: VinculoPessoa[];
+}
+
 export interface RepresentanteForm {
     cpf: string;
     nome: string;
@@ -212,6 +227,8 @@ export interface OrganizacaoFormProps {
         estados: OpcaoCadastro[];
     };
     representanteInicial: { cpf: string; nome: string } | null;
+    /** Verdadeiro só quando a pessoa ainda não tem organização: o formulário é a etapa 3 do cadastro inicial. */
+    noCadastroInicial: boolean;
 }
 
 /** Representante como o formulário o edita: tudo texto, vazio quando não informado; CPF e telefone com máscara. */

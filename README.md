@@ -74,6 +74,11 @@ GOVBR_SCOPES="openid email profile"
 
 Roteiro conferido em 2026-10-23 (https://roteiro-tecnico.acesso.gov.br/iniciarintegracao.html): `GET {base}/authorize`, `POST {base}/token` (form, Basic `client_id:client_secret`), `{base}/jwk` e `{base}/logout?post_logout_redirect_uri=…`. Os defaults de `config/govbr.php` seguem esses caminhos.
 
+## Cadastro no portal
+
+- Proponentes cadastram organizações (pessoas jurídicas) em "Minhas organizações", com representantes legais e vínculo de pessoas por CPF.
+- O servidor consulta a BrasilAPI (CNPJ) e o ViaCEP (CEP); o servidor precisa de saída HTTPS para `brasilapi.com.br` e `viacep.com.br`; sem acesso a elas, o formulário é preenchido à mão.
+
 ## Retaguarda
 
 Área de gestão em `/retaguarda` (login em `/retaguarda/login`): editais, eventos e usuários (`/retaguarda/usuarios`). Só entra usuário da retaguarda **ativo com pelo menos um papel** (hoje, `Administrador`).
@@ -84,7 +89,7 @@ Roteiro conferido em 2026-10-23 (https://roteiro-tecnico.acesso.gov.br/iniciarin
 - Usuários da retaguarda (ativos, com papel) não usam a área de cadastro do portal (`/cadastro`); o portal mostra "Ir para a retaguarda" a eles.
 - Ao cadastrar um usuário com o CPF de um proponente, a tela pede confirmação: ele passa a ser usuário da retaguarda e deixa de acessar o cadastro do portal.
 - Limites de envio do PHP exigidos (já definidos em `docker/php/Dockerfile`; em outro servidor, configure no `php.ini`): `upload_max_filesize=20M` (PDF do edital até 20 MB, imagem até 5 MB) e `post_max_size=32M` (PDF + imagem num mesmo envio). O cadastro de proponente mantém o limite próprio de 2 MB por arquivo.
-- Imagens (editais e eventos) ficam no disco `public`, servidas por `/storage` (`php artisan storage:link`, já executado ao subir o container do app). Os PDFs dos editais ficam no disco `local` (privado) e são entregues por `/editais/{slug}/pdf`, que responde 404 para edital excluído, despublicado ou sem PDF.
+- Imagens (editais, eventos e logos de organizações) ficam no disco `public`, servidas por `/storage` (`php artisan storage:link`, já executado ao subir o container do app). Os PDFs dos editais ficam no disco `local` (privado) e são entregues por `/editais/{slug}/pdf`, que responde 404 para edital excluído, despublicado ou sem PDF.
 
 ## Homologação (staging)
 
