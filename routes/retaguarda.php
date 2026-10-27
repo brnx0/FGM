@@ -1,9 +1,9 @@
 <?php
 
+use App\Http\Controllers\Retaguarda\EditalController;
 use App\Http\Controllers\Retaguarda\LoginController;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
 Route::prefix('retaguarda')->name('retaguarda.')->group(function () {
     Route::controller(LoginController::class)->group(function () {
@@ -19,7 +19,12 @@ Route::prefix('retaguarda')->name('retaguarda.')->group(function () {
     })->middleware('throttle:govbr')->name('govbr');
 
     Route::middleware(['auth', 'gestor'])->group(function () {
-        // Provisório: a Task 5 troca por um redirect para retaguarda.editais.index.
-        Route::get('/', fn () => Inertia::render('Retaguarda/Inicio'))->name('inicio');
+        Route::get('/', fn (): RedirectResponse => to_route('retaguarda.editais.index'))->name('inicio');
+
+        Route::resource('editais', EditalController::class)
+            ->except('show')
+            ->parameters(['editais' => 'edital']);
+        Route::patch('/editais/{edital}/publicacao', [EditalController::class, 'publicacao'])->name('editais.publicacao');
+        Route::get('/editais/{edital}/pdf', [EditalController::class, 'pdf'])->name('editais.pdf');
     });
 });

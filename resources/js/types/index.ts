@@ -135,3 +135,60 @@ export interface CadastroCompletarProps {
 export interface CadastroFormularioProps {
     tipo: TipoCadastro;
 }
+
+/** Link de paginação do LengthAwarePaginator do Laravel. */
+export interface LinkPaginacao {
+    url: string | null;
+    label: string;
+    active: boolean;
+}
+
+/** LengthAwarePaginator serializado (só o que as telas usam). */
+export interface Paginado<T> {
+    data: T[];
+    links: LinkPaginacao[];
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+    from: number | null;
+    to: number | null;
+}
+
+/** Linha da lista de editais na retaguarda (Retaguarda\EditalController@index). */
+export interface EditalRetaguarda {
+    slug: string;
+    titulo: string;
+    categoria: string;
+    /** "01/11/2026 a 30/11/2026". */
+    periodo: string;
+    situacao: SituacaoEdital;
+    situacaoRotulo: string;
+    publicado: boolean;
+    temPdf: boolean;
+}
+
+export interface RetaguardaEditaisIndexProps {
+    editais: Paginado<EditalRetaguarda>;
+    filtros: { busca: string; situacao: SituacaoEdital | ''; publicado: 'sim' | 'nao' | '' };
+    situacoes: { valor: SituacaoEdital; rotulo: string }[];
+}
+
+/** Edital em edição (Retaguarda\EditalController@edit). Datas em Y-m-d. */
+export interface EditalFormulario {
+    slug: string;
+    titulo: string;
+    resumo: string;
+    categoria: string;
+    inscricoes_inicio: string;
+    inscricoes_fim: string;
+    publicado: boolean;
+    /** Download do PDF atual pela retaguarda (vale também para rascunho). */
+    pdfUrl: string | null;
+    pdfNome: string | null;
+    imagemUrl: string | null;
+}
+
+export interface RetaguardaEditaisFormProps {
+    edital: EditalFormulario | null;
+}

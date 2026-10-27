@@ -97,13 +97,23 @@ class Edital extends Model
             ->orderBy('inscricoes_inicio');
     }
 
-    public static function contarAbertos(?CarbonInterface $agora = null): int
+    /** Mesma regra de situacao(), em consulta: dias em intervalo semiaberto (ver UsaDiaCivil). */
+    public function scopeNaSituacao(Builder $query, SituacaoEdital $situacao, ?CarbonInterface $agora = null): void
     {
         $hoje = self::hoje($agora);
+        $amanha = $hoje->addDay()->toDateString();
 
-        return static::query()->visiveis()
-            ->where('inscricoes_inicio', '<', $hoje->addDay()->toDateString())
-            ->where('inscricoes_fim', '>=', $hoje->toDateString())
-            ->count();
+        match ($situacao) {
+            SituacaoEdital::EmBreve => $query->where('inscricoes_inicio', '>=', $amanha),
+            SituacaoEdital::Encerrado => $query->where('inscricoes_fim', '<', $hoje->toDateString()),
+            SituacaoEdital::Aberto => $query
+                ->where('inscricoes_inicio', '<', $amanha)
+                ->where('inscricoes_fim', '>=', $hoje->toDateString()),
+        };
+    }
+
+    public static function contarAbertos(?CarbonInterface $agora = null): int
+    {
+        return static::query()->visiveis()->naSituacao(SituacaoEdital::Aberto, $agora)->count();
     }
 }

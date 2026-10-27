@@ -110,11 +110,11 @@ class LoginTest extends TestCase
     public function test_gestor_desativado_com_sessao_aberta_e_expulso(): void
     {
         $gestor = User::factory()->gestor()->create();
-        $this->actingAs($gestor)->get('/retaguarda')->assertOk();
+        $this->actingAs($gestor)->get('/retaguarda/editais')->assertOk();
 
         $gestor->update(['ativo' => false]);
 
-        $this->get('/retaguarda')
+        $this->get('/retaguarda/editais')
             ->assertRedirect('/retaguarda/login')
             ->assertSessionHas('erro', 'Você não tem acesso à retaguarda.');
 
@@ -126,10 +126,10 @@ class LoginTest extends TestCase
         $gestor = User::factory()->gestor()->create();
 
         $this->actingAs($gestor)
-            ->get('/retaguarda')
+            ->get('/retaguarda/editais')
             ->assertOk()
             ->assertInertia(fn (Assert $p) => $p
-                ->component('Retaguarda/Inicio')
+                ->component('Retaguarda/Editais/Index')
                 ->where('auth.user.ehGestor', true));
     }
 

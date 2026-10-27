@@ -1,0 +1,77 @@
+<script setup lang="ts">
+import { ref, useId } from 'vue';
+import { router } from '@inertiajs/vue3';
+
+const props = defineProps<{
+    /** Endereço do DELETE. */
+    url: string;
+    /** Nome do item, para o botão (leitor de tela) e para a pergunta. */
+    nome: string;
+    /** O que acontece ao excluir, abaixo da pergunta. */
+    aviso?: string;
+}>();
+
+const dialogo = ref<HTMLDialogElement | null>(null);
+const excluindo = ref<boolean>(false);
+const idTitulo = `confirmar-exclusao-${useId()}`;
+
+// <dialog> nativo com showModal(): prende o foco, fecha com Esc e devolve o foco ao botão que abriu.
+const abrir = (): void => dialogo.value?.showModal();
+const fechar = (): void => dialogo.value?.close();
+
+const excluir = (): void => {
+    router.delete(props.url, {
+        preserveScroll: true,
+        onStart: () => {
+            excluindo.value = true;
+        },
+        onFinish: () => {
+            excluindo.value = false;
+            fechar();
+        },
+    });
+};
+</script>
+
+<template>
+    <div class="inline-flex">
+        <button
+            type="button"
+            class="pressionavel inline-flex min-h-11 items-center gap-1.5 rounded-pill px-3 text-[0.8125rem] font-bold text-erro-texto hover:bg-erro-fundo"
+            @click="abrir"
+        >
+            <svg aria-hidden="true" viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />
+            </svg>
+            Excluir<span class="sr-only"> {{ nome }}</span>
+        </button>
+
+        <dialog
+            ref="dialogo"
+            :aria-labelledby="idTitulo"
+            class="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-card border border-hairline bg-superficie p-6 text-home-tinta backdrop:bg-noite/60"
+        >
+            <h2 :id="idTitulo" class="text-[1.25rem] leading-tight font-bold">Excluir “{{ nome }}”?</h2>
+            <p v-if="aviso" class="mt-2 text-[0.9375rem] text-tinta-suave">{{ aviso }}</p>
+
+            <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button
+                    type="button"
+                    autofocus
+                    class="pressionavel inline-flex min-h-11 items-center justify-center rounded-pill border border-tinta-suave/70 bg-superficie px-5 text-[0.8125rem] font-bold tracking-[0.12em] uppercase hover:border-acao hover:text-acao"
+                    @click="fechar"
+                >
+                    Cancelar
+                </button>
+                <button
+                    type="button"
+                    :disabled="excluindo"
+                    class="pressionavel inline-flex min-h-11 items-center justify-center rounded-pill border border-erro-texto bg-erro-fundo px-5 text-[0.8125rem] font-bold tracking-[0.12em] text-erro-texto uppercase disabled:cursor-wait disabled:opacity-70"
+                    @click="excluir"
+                >
+                    {{ excluindo ? 'Excluindo…' : 'Excluir' }}
+                </button>
+            </div>
+        </dialog>
+    </div>
+</template>
