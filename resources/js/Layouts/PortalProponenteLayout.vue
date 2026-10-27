@@ -22,11 +22,12 @@ const iniciais = computed(() => {
 const csrf = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
 const ano = new Date().getFullYear();
 
-// Navegação do topo. O cadastro da organização (/cadastro/pessoa-juridica) faz parte de “Minhas organizações”.
+// Navegação do topo. As etapas da organização (/cadastro/organizacao e /cadastro/pessoa-juridica) fazem parte de “Minhas organizações”.
 const caminho = computed(() => page.url.split(/[?#]/)[0] ?? '');
+const rotasDeOrganizacao = ['/cadastro/organizacao', '/cadastro/pessoa-juridica'];
 const itensNavegacao = computed(() => [
-    { href: '/cadastro', texto: 'Meu cadastro', atual: caminho.value.startsWith('/cadastro') && caminho.value !== '/cadastro/pessoa-juridica' },
-    { href: '/organizacoes', texto: 'Minhas organizações', atual: caminho.value.startsWith('/organizacoes') || caminho.value === '/cadastro/pessoa-juridica' },
+    { href: '/cadastro', texto: 'Meu cadastro', atual: caminho.value.startsWith('/cadastro') && !rotasDeOrganizacao.includes(caminho.value) },
+    { href: '/organizacoes', texto: 'Minhas organizações', atual: caminho.value.startsWith('/organizacoes') || rotasDeOrganizacao.includes(caminho.value) },
 ]);
 
 const linksRodape: { href: string; texto: string }[] = [

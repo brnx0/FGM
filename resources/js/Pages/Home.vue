@@ -95,13 +95,6 @@ const iluminarVidro = (evento: PointerEvent): void => {
                             >
                                 {{ usuario.ehGestor ? 'Ir para a retaguarda' : 'Continuar meu cadastro' }}
                             </Link>
-                            <Link
-                                v-if="usuario && !usuario.ehGestor"
-                                href="/organizacoes"
-                                class="vidro pressionavel inline-flex min-h-12 items-center rounded-pill px-[22px] text-[0.75rem] font-bold tracking-[0.12em] text-white uppercase no-underline md:min-h-[58px] md:px-9 md:text-[0.875rem]"
-                            >
-                                Minhas organizações
-                            </Link>
                             <!-- Link comum (não Inertia): a conta é criada no primeiro login gov.br. -->
                             <a
                                 v-else
@@ -114,6 +107,13 @@ const iluminarVidro = (evento: PointerEvent): void => {
                                     <path d="M5 12h14M13 6l6 6-6 6" />
                                 </svg>
                             </a>
+                            <Link
+                                v-if="usuario && !usuario.ehGestor"
+                                href="/organizacoes"
+                                class="vidro pressionavel inline-flex min-h-12 items-center rounded-pill px-[22px] text-[0.75rem] font-bold tracking-[0.12em] text-white uppercase no-underline md:min-h-[58px] md:px-9 md:text-[0.875rem]"
+                            >
+                                Minhas organizações
+                            </Link>
                             <a
                                 href="#editais"
                                 class="vidro pressionavel inline-flex min-h-12 items-center rounded-pill px-[22px] text-[0.75rem] font-bold tracking-[0.12em] text-white uppercase no-underline md:min-h-[58px] md:px-9 md:text-[0.875rem]"
