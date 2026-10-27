@@ -27,8 +27,11 @@ Route::controller(PaginaController::class)->group(function () {
 Route::middleware(['auth', 'nao-gestor'])->controller(CadastroController::class)->group(function () {
     Route::get('/cadastro', 'completar')->name('cadastro');
     Route::post('/cadastro', 'salvar')->name('cadastro.salvar');
-    Route::get('/cadastro/pessoa-fisica', 'pessoaFisica')->name('cadastro.pessoa-fisica');
     Route::get('/cadastro/pessoa-juridica', 'pessoaJuridica')->name('cadastro.pessoa-juridica');
+});
+
+Route::middleware(['auth', 'nao-gestor', 'cadastro-completo'])->controller(CadastroController::class)->group(function () {
+    Route::get('/cadastro/organizacao', 'organizacao')->name('cadastro.organizacao');
 });
 
 // Limitador 'consultas' (AppServiceProvider): 30/min por usuário.

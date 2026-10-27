@@ -14,10 +14,6 @@ const props = defineProps<CadastroFormularioProps>();
 const usuario = computed(() => usePage().props.auth?.user);
 
 const tipos: Record<TipoCadastro, { titulo: string; texto: string }> = {
-    'pessoa-fisica': {
-        titulo: 'Pessoa Física',
-        texto: 'Aqui você vai completar os seus dados de proponente pessoa física para se inscrever nos editais.',
-    },
     'pessoa-juridica': {
         titulo: 'Pessoa Jurídica',
         texto: 'Aqui você vai cadastrar a organização, pelo CNPJ, e atuar como representante dela nas inscrições.',
@@ -49,7 +45,7 @@ const focarConteudo = (): void => document.getElementById('conteudo')?.focus({ p
                     Voltar<span class="sr-only"> para o tipo de cadastro</span>
                 </Link>
 
-                <p class="mt-2 text-[0.75rem] font-semibold tracking-[0.24em] text-white/75 uppercase">Etapa 3 de 4 · Seus dados</p>
+                <p class="mt-2 text-[0.75rem] font-semibold tracking-[0.24em] text-white/75 uppercase">Etapa 3 de 4 · Organização</p>
                 <div class="flex items-center gap-4">
                     <span class="vidro inline-flex size-14 shrink-0 items-center justify-center rounded-2xl" :style="{ viewTransitionName: `icone-${props.tipo}` }">
                         <IconeTipoCadastro :tipo="props.tipo" class="size-7" />
@@ -62,7 +58,7 @@ const focarConteudo = (): void => document.getElementById('conteudo')?.focus({ p
                     {{ usuario?.nome }} · CPF <span class="tabular-nums">{{ usuario?.cpfMascarado }}</span>
                 </p>
             </div>
-            <EtapasCadastro :atual="2" />
+            <EtapasCadastro :atual="3" />
         </FaixaPortal>
 
         <div class="relative mx-auto -mt-20 max-w-6xl px-4 pb-16 md:-mt-24">

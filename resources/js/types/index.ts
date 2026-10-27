@@ -13,7 +13,7 @@ export interface UsuarioAutenticado {
 export interface SharedProps {
     auth: { user: UsuarioAutenticado | null };
     ambienteTeste: boolean;
-    flash: { erro: string | null; sucesso: string | null };
+    flash: { erro: string | null; aviso: string | null; sucesso: string | null };
     errors: Record<string, string>;
 }
 
@@ -84,7 +84,7 @@ export interface FakeLoginProps {
     contas: ContaFake[];
 }
 
-export type TipoCadastro = 'pessoa-fisica' | 'pessoa-juridica';
+export type TipoCadastro = 'pessoa-juridica';
 
 export interface OpcaoCadastro {
     valor: string;
