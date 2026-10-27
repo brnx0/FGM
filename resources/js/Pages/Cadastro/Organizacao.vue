@@ -28,8 +28,15 @@ defineOptions({ layout: PortalProponenteLayout });
             >
                 <h2 id="organizacao-opcoes-titulo" class="sr-only">Escolha como seguir</h2>
                 <p class="max-w-2xl leading-[1.6] text-tinta-suave">
-                    Associações, produtoras, MEIs e empresas também podem se inscrever nos editais. Você pode cadastrar agora ou depois, em Minhas organizações.
+                    Cadastre a organização com CNPJ que você representa no setor cultural. Assim, ela também pode se inscrever nos editais.
                 </p>
+                <p id="organizacao-tipos" class="mt-6 font-semibold text-tinta">Pode ser:</p>
+                <ul aria-labelledby="organizacao-tipos" class="mt-2 flex list-disc flex-col gap-1 pl-5 leading-[1.6] text-tinta-suave marker:text-acao">
+                    <li>MEI (Microempreendedor Individual)</li>
+                    <li>Empresa com fins lucrativos</li>
+                    <li>Associação, coletivo ou outra entidade sem fins lucrativos</li>
+                </ul>
+                <p class="mt-6 max-w-2xl leading-[1.6] text-tinta-suave">Não é obrigatório: se preferir, cadastre depois em Minhas organizações.</p>
                 <div class="mt-8 flex flex-col gap-3 sm:flex-row">
                     <Link
                         href="/cadastro/pessoa-juridica"
