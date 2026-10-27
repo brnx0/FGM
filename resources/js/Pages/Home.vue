@@ -90,10 +90,10 @@ const iluminarVidro = (evento: PointerEvent): void => {
                         <div class="mt-2 flex flex-wrap gap-4">
                             <Link
                                 v-if="usuario"
-                                href="/cadastro"
+                                :href="usuario.ehGestor ? '/retaguarda' : '/cadastro'"
                                 class="botao-claro pressionavel inline-flex min-h-12 items-center gap-3 rounded-pill bg-white px-[22px] text-[0.75rem] font-bold tracking-[0.12em] text-home-azul uppercase no-underline shadow-[0_20px_40px_-16px_rgba(0,0,0,0.45)] md:min-h-[58px] md:px-9 md:text-[0.875rem]"
                             >
-                                Continuar meu cadastro
+                                {{ usuario.ehGestor ? 'Ir para a retaguarda' : 'Continuar meu cadastro' }}
                             </Link>
                             <!-- Link comum (não Inertia): a conta é criada no primeiro login gov.br. -->
                             <a
@@ -199,11 +199,14 @@ const iluminarVidro = (evento: PointerEvent): void => {
                         >
                             <li
                                 v-for="(evento, i) in eventos"
-                                :key="`${i}-${evento.titulo}`"
-                                class="linha-evento grid grid-cols-[72px_minmax(0,1fr)] items-start gap-x-[18px] gap-y-1.5 border-t border-white/15 px-1 py-6 md:grid-cols-[76px_minmax(0,1fr)] md:gap-x-5 md:px-3"
+                                :key="`${i}-${evento.slug}`"
+                                class="linha-evento relative grid grid-cols-[72px_minmax(0,1fr)] items-start gap-x-[18px] gap-y-1.5 border-t border-white/15 px-1 py-6 md:grid-cols-[76px_minmax(0,1fr)] md:gap-x-5 md:px-3"
                             >
+                                <!-- O link cobre a linha inteira (::after); o foco aparece na linha (.linha-evento:has). -->
                                 <h3 class="col-start-2 font-barlow text-[1.5rem] leading-[1.1] font-bold tracking-[0.01em] uppercase md:text-[1.375rem]">
-                                    {{ evento.titulo }}
+                                    <Link :href="`/eventos/${evento.slug}`" class="text-white no-underline outline-none after:absolute after:inset-0 after:content-['']">
+                                        {{ evento.titulo }}
+                                    </Link>
                                 </h3>
                                 <p class="col-start-1 row-span-3 row-start-1 flex flex-col gap-1.5">
                                     <span aria-hidden="true" class="font-barlow text-[2.5rem] leading-[0.85] font-extrabold tracking-[0.02em]">

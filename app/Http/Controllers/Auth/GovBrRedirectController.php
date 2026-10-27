@@ -13,6 +13,13 @@ class GovBrRedirectController extends Controller
 {
     public function __invoke(Request $request, GovBrClient $govbr): RedirectResponse
     {
+        // O destino vale por tentativa: um início sem o parâmetro apaga qualquer destino deixado por tentativa abandonada.
+        if ($request->query('destino') === 'retaguarda') {
+            $request->session()->put('govbr.destino', 'retaguarda');
+        } else {
+            $request->session()->forget('govbr.destino');
+        }
+
         if (FakeLoginGate::permitido()) {
             return redirect()->route('govbr.fake');
         }

@@ -1,47 +1,18 @@
 <?php
 
-namespace App\Support;
+namespace Database\Seeders;
 
-use Carbon\CarbonImmutable;
-use Carbon\CarbonInterface;
+use App\Models\Evento;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
-/**
- * Eventos de exemplo, em código, para a seção "Eventos" da home.
- * Não há tabela de eventos por enquanto: quando o painel do gestor existir,
- * esta lista dá lugar ao banco.
- *
- * @phpstan-type DadosEvento array{titulo: string, resumo: string, data_realizacao: string, local: ?string, imagem: ?string, publicado: bool}
- */
-final class EventosMock
+class EventoSeeder extends Seeder
 {
-    /** @param list<DadosEvento>|null $eventos Outra lista (usada nos testes). */
-    public function __construct(private ?array $eventos = null) {}
-
-    /**
-     * Publicados e já realizados (até hoje, em America/Bahia), do mais recente ao mais antigo.
-     *
-     * @return list<DadosEvento>
-     */
-    public function realizados(int $limite = 6, ?CarbonInterface $agora = null): array
-    {
-        $hoje = ($agora === null ? CarbonImmutable::now() : CarbonImmutable::instance($agora))
-            ->setTimezone(config('app.timezone'))
-            ->toDateString();
-
-        $realizados = array_filter(
-            $this->eventos ?? self::exemplos(),
-            fn (array $e) => $e['publicado'] && $e['data_realizacao'] <= $hoje,
-        );
-        usort($realizados, fn (array $a, array $b) => strcmp($b['data_realizacao'], $a['data_realizacao']));
-
-        return array_slice($realizados, 0, $limite);
-    }
-
-    /** @return list<DadosEvento> */
-    private static function exemplos(): array
+    public function run(): void
     {
         $evento = fn (string $titulo, string $resumo, string $data, ?string $local, bool $publicado = true) => [
             'titulo' => $titulo,
+            'slug' => Str::slug($titulo),
             'resumo' => $resumo,
             'data_realizacao' => $data,
             'local' => $local,
@@ -49,7 +20,7 @@ final class EventosMock
             'publicado' => $publicado,
         ];
 
-        return [
+        $eventos = [
             $evento('VII Conferência Municipal de Cultura', 'Encontro de artistas, gestores e sociedade civil para debater as políticas culturais da cidade.', '2026-09-27', 'Teatro Gregório de Mattos, Salvador/BA'),
             $evento('Capoeira Viva', 'Rodas, oficinas e encontros de mestres celebrando a capoeira como patrimônio de Salvador.', '2026-09-06', 'Espaço Cultural da Barroquinha, Salvador/BA'),
             $evento('Jornada do Patrimônio Cultural', 'Roteiros, oficinas e conversas sobre o patrimônio cultural de Salvador.', '2026-08-15', 'Centro Histórico, Salvador/BA'),
@@ -60,8 +31,17 @@ final class EventosMock
             $evento('Mostra Escolas Criativas', 'Mostra de trabalhos artísticos desenvolvidos por estudantes da rede municipal.', '2025-06-20', 'Salvador/BA'),
             $evento('Circuito #Reconectar', 'Circuito de ações culturais que reconecta a população aos equipamentos da FGM.', '2025-03-29', 'Salvador/BA'),
             // Fora da home: ainda vai acontecer / não publicado.
-            $evento('Festival Boca de Brasa', 'Mostra das produções dos espaços Boca de Brasa da cidade.', CarbonImmutable::now()->addMonth()->toDateString(), 'Espaço Boca de Brasa Cajazeiras, Salvador/BA'),
+            $evento('Festival Boca de Brasa', 'Mostra das produções dos espaços Boca de Brasa da cidade.', now()->addMonth()->toDateString(), 'Espaço Boca de Brasa Cajazeiras, Salvador/BA'),
             $evento('Esqueça um Livro', 'Ação de leitura em pontos de ônibus e praças.', '2025-08-09', 'Salvador/BA', publicado: false),
         ];
+
+        foreach ($eventos as $dados) {
+            $registro = Evento::withTrashed()->firstOrNew(['slug' => $dados['slug']]);
+
+            // Só preenche o que é novo: nunca sobrescreve o que a retaguarda editou.
+            if (! $registro->exists) {
+                $registro->fill($dados)->save();
+            }
+        }
     }
 }

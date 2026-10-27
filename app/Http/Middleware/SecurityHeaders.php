@@ -46,6 +46,8 @@ class SecurityHeaders
             "img-src 'self' data:{$dev}",
             "font-src 'self' data:{$dev}",
             "connect-src 'self'{$dev}{$devWs}",
+            // Vídeos do YouTube na descrição do evento (HtmlSeguro só deixa este domínio).
+            'frame-src https://www.youtube-nocookie.com',
             "object-src 'none'",
             "base-uri 'self'",
             "form-action 'self'{$govbr}",

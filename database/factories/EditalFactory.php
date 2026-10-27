@@ -23,7 +23,13 @@ class EditalFactory extends Factory
             'inscricoes_inicio' => now()->subDays(5)->toDateString(),
             'inscricoes_fim' => now()->addDays(20)->toDateString(),
             'imagem' => null,
+            'pdf' => 'editais/teste.pdf',
             'publicado' => true,
         ];
+    }
+
+    public function semPdf(): static
+    {
+        return $this->state(['pdf' => null]);
     }
 }
