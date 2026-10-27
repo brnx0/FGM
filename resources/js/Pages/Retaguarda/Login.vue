@@ -51,7 +51,7 @@ const entrar = (): void => {
             <section aria-labelledby="titulo-login" class="mx-auto mt-8 max-w-md rounded-card border border-hairline bg-superficie p-6 sm:mt-12 sm:p-8">
                 <p class="text-[0.75rem] font-bold tracking-[0.12em] text-acao uppercase">Retaguarda</p>
                 <h1 id="titulo-login" class="mt-1 text-[1.625rem] leading-tight font-bold">Entrar</h1>
-                <p class="mt-2 text-[0.9375rem] text-tinta-suave">Acesso restrito aos gestores do portal da FGM.</p>
+                <p class="mt-2 text-[0.9375rem] text-tinta-suave">Acesso restrito aos usuários da retaguarda do portal da FGM.</p>
 
                 <form class="mt-6 flex flex-col gap-5" novalidate @submit.prevent="entrar">
                     <CampoCadastro id="email" rotulo="E-mail" :erro="form.errors.email" v-slot="{ descricao, invalido }">

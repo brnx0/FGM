@@ -10,6 +10,12 @@ class LoginGovBrUser
 {
     public function handle(GovBrIdentity $id): User
     {
+        // Gestor entra como na retaguarda: nome e e-mail dele não são sobrescritos pelo gov.br.
+        $gestor = app(EntrarNaRetaguardaPorGovBr::class)->handle($id->cpf);
+        if ($gestor !== null) {
+            return $gestor;
+        }
+
         $user = User::firstOrNew(['cpf' => $id->cpf]);
 
         $user->fill([
@@ -46,6 +52,10 @@ class LoginGovBrUser
 
     public function destinoPosLogin(User $user): string
     {
+        if ($user->ehGestor()) {
+            return route('retaguarda.inicio');
+        }
+
         return $user->profile_completed_at === null ? route('cadastro') : route('home');
     }
 }

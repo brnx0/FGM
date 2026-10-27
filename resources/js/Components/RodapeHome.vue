@@ -29,10 +29,10 @@ const navegacao: { href: string; texto: string; pagina?: boolean }[] = [
                 <div class="flex flex-wrap gap-3.5">
                     <Link
                         v-if="usuario"
-                        href="/cadastro"
+                        :href="usuario.ehGestor ? '/retaguarda' : '/cadastro'"
                         class="pressionavel inline-flex min-h-14 items-center gap-3 rounded-pill bg-home-tinta px-8 text-[0.8125rem] font-bold tracking-[0.12em] text-fundo uppercase no-underline shadow-[0_18px_36px_-16px_rgba(6,36,74,0.45)]"
                     >
-                        Continuar meu cadastro
+                        {{ usuario.ehGestor ? 'Ir para a retaguarda' : 'Continuar meu cadastro' }}
                     </Link>
                     <a
                         v-else
@@ -86,7 +86,7 @@ const navegacao: { href: string; texto: string; pagina?: boolean }[] = [
                     <h3 class="text-[0.75rem] font-bold tracking-[0.22em] uppercase">Participe</h3>
                     <ul>
                         <li v-if="usuario">
-                            <Link href="/cadastro" class="inline-flex min-h-11 items-center text-[0.9375rem] font-medium no-underline hover:underline">Meu cadastro</Link>
+                            <Link :href="usuario.ehGestor ? '/retaguarda' : '/cadastro'" class="inline-flex min-h-11 items-center text-[0.9375rem] font-medium no-underline hover:underline">{{ usuario.ehGestor ? 'Retaguarda' : 'Meu cadastro' }}</Link>
                         </li>
                         <template v-else>
                             <li>

@@ -44,7 +44,7 @@ onBeforeUnmount(pararDeOuvir);
         <SkipLink />
         <TestEnvBanner v-if="ambienteTeste" />
         <VidroLiquido class="flex flex-1 flex-col bg-parchment text-home-tinta">
-            <!-- Topo compacto, em uma linha: menu (celular), logo, acessibilidade, gestor e Sair. -->
+            <!-- Topo compacto, em uma linha: menu (celular), logo, acessibilidade, usuário, trocar senha e Sair. -->
             <header class="barra-institucional border-b border-white/10 bg-noite text-white [html.alto-contraste_&]:bg-fundo">
                 <div class="flex flex-nowrap items-center justify-between gap-3 px-4 py-1.5 lg:px-6">
                     <div class="flex min-w-0 items-center gap-2 md:gap-3">
@@ -78,11 +78,23 @@ onBeforeUnmount(pararDeOuvir);
                         <AccessibilityControls variante="pilula" class="hidden sm:flex" />
 
                         <p v-if="usuario" class="flex items-center gap-2">
-                            <span aria-hidden="true" class="inline-flex size-8 items-center justify-center rounded-full bg-white/15 text-[0.75rem] font-bold">
+                            <span aria-hidden="true" class="hidden size-8 items-center justify-center sm:inline-flex rounded-full bg-white/15 text-[0.75rem] font-bold">
                                 {{ iniciais }}
                             </span>
                             <span class="sr-only lg:not-sr-only lg:max-w-48 lg:truncate lg:text-[0.875rem] lg:font-semibold">{{ usuario.nome }}</span>
                         </p>
+
+                        <Link
+                            v-if="usuario"
+                            href="/retaguarda/minha-senha"
+                            :aria-current="page.url === '/retaguarda/minha-senha' ? 'page' : undefined"
+                            class="pressionavel inline-flex min-h-9 min-w-9 items-center justify-center gap-1.5 rounded-pill text-white hover:bg-white/15 focus-visible:outline-white lg:px-3"
+                        >
+                            <svg aria-hidden="true" viewBox="0 0 24 24" class="size-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M15.5 7.5a4 4 0 1 1-3.4 6.1L4 21.5V19h2.5v-2H9v-2.1l1.9-1.9A4 4 0 0 1 15.5 7.5z" />
+                            </svg>
+                            <span class="sr-only lg:not-sr-only lg:text-[0.8125rem] lg:font-semibold">Trocar senha</span>
+                        </Link>
 
                         <form method="post" action="/retaguarda/sair">
                             <input type="hidden" name="_token" :value="csrf" />
@@ -105,6 +117,17 @@ onBeforeUnmount(pararDeOuvir);
                     @keydown.esc="fecharMenu"
                 >
                     <MenuRetaguarda />
+                    <!-- No celular o topo só mostra o ícone; aqui o item aparece por extenso. -->
+                    <Link
+                        href="/retaguarda/minha-senha"
+                        class="mt-1 flex min-h-11 items-center gap-3 rounded-[12px] px-4 font-semibold text-home-tinta hover:bg-nevoa aria-[current=page]:bg-acao aria-[current=page]:text-sobre-acao lg:hidden"
+                        :aria-current="page.url === '/retaguarda/minha-senha' ? 'page' : undefined"
+                    >
+                        <svg aria-hidden="true" viewBox="0 0 24 24" class="size-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M15.5 7.5a4 4 0 1 1-3.4 6.1L4 21.5V19h2.5v-2H9v-2.1l1.9-1.9A4 4 0 0 1 15.5 7.5z" />
+                        </svg>
+                        Trocar senha
+                    </Link>
                     <!-- No celular os controles de acessibilidade saem do topo e ficam aqui. -->
                     <AccessibilityControls variante="painel" class="mt-4 sm:hidden" />
                 </aside>

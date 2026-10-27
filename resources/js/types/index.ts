@@ -224,3 +224,45 @@ export interface EventoFormulario {
 export interface RetaguardaEventosFormProps {
     evento: EventoFormulario | null;
 }
+
+/** Linha da lista de usuários na retaguarda (Retaguarda\UsuarioController@index). CPF já mascarado. */
+export interface UsuarioRetaguarda {
+    id: number;
+    nome: string;
+    email: string | null;
+    cpf: string;
+    papeis: string[];
+    ativo: boolean;
+    ehVoce: boolean;
+}
+
+export interface RetaguardaUsuariosIndexProps {
+    usuarios: Paginado<UsuarioRetaguarda>;
+    filtros: { busca: string };
+}
+
+/** Papel que pode ser atribuído a um usuário. */
+export interface PapelDisponivel {
+    slug: string;
+    nome: string;
+}
+
+/** Usuário em edição (Retaguarda\UsuarioController@edit). CPF formatado, ou vazio se o salvo é inválido. */
+export interface UsuarioFormulario {
+    id: number;
+    name: string;
+    email: string | null;
+    cpf: string;
+    papeis: string[];
+    ativo: boolean;
+}
+
+export interface RetaguardaUsuariosFormProps {
+    usuario: UsuarioFormulario | null;
+    papeisDisponiveis: PapelDisponivel[];
+}
+
+/** Troca da própria senha (Retaguarda\MinhaSenhaController@edit). Sem senha (só gov.br), a atual não é pedida. */
+export interface RetaguardaMinhaSenhaProps {
+    temSenha: boolean;
+}

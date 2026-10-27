@@ -3,6 +3,8 @@
 use App\Http\Controllers\Retaguarda\EditalController;
 use App\Http\Controllers\Retaguarda\EventoController;
 use App\Http\Controllers\Retaguarda\LoginController;
+use App\Http\Controllers\Retaguarda\MinhaSenhaController;
+use App\Http\Controllers\Retaguarda\UsuarioController;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Route;
 
@@ -20,7 +22,12 @@ Route::prefix('retaguarda')->name('retaguarda.')->group(function () {
     })->middleware('throttle:govbr')->name('govbr');
 
     Route::middleware(['auth', 'gestor'])->group(function () {
-        Route::get('/', fn (): RedirectResponse => to_route('retaguarda.editais.index'))->name('inicio');
+        Route::get('/', function (): RedirectResponse {
+            // Mantém avisos (ex.: gestor barrado no cadastro) através deste redirecionamento.
+            session()->reflash();
+
+            return to_route('retaguarda.editais.index');
+        })->name('inicio');
 
         Route::resource('editais', EditalController::class)
             ->except('show')
@@ -30,5 +37,14 @@ Route::prefix('retaguarda')->name('retaguarda.')->group(function () {
 
         Route::resource('eventos', EventoController::class)->except('show');
         Route::patch('/eventos/{evento}/publicacao', [EventoController::class, 'publicacao'])->name('eventos.publicacao');
+
+        Route::get('/minha-senha', [MinhaSenhaController::class, 'edit'])->name('senha.edit');
+        Route::put('/minha-senha', [MinhaSenhaController::class, 'update'])->middleware('throttle:6,1')->name('senha.update');
+
+        // Usuário não se exclui, só se desativa.
+        Route::resource('usuarios', UsuarioController::class)
+            ->only(['index', 'create', 'store', 'edit', 'update'])
+            ->parameters(['usuarios' => 'user']);
+        Route::patch('/usuarios/{user}/ativo', [UsuarioController::class, 'ativo'])->name('usuarios.ativo');
     });
 });

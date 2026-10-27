@@ -74,6 +74,16 @@ GOVBR_SCOPES="openid email profile"
 
 Roteiro conferido em 2026-10-23 (https://roteiro-tecnico.acesso.gov.br/iniciarintegracao.html): `GET {base}/authorize`, `POST {base}/token` (form, Basic `client_id:client_secret`), `{base}/jwk` e `{base}/logout?post_logout_redirect_uri=…`. Os defaults de `config/govbr.php` seguem esses caminhos.
 
+## Retaguarda
+
+Área de gestão em `/retaguarda` (login em `/retaguarda/login`): editais, eventos e usuários (`/retaguarda/usuarios`). Só entra usuário da retaguarda **ativo com pelo menos um papel** (hoje, `Administrador`).
+
+- Acesso inicial: `admin@admin` / `123456`, criado pelo `PrimeiroGestorSeeder`. O seeder só roda em local e homologação (não roda com `APP_ENV=production`), é idempotente e não redefine a senha. Troque a senha após o primeiro acesso.
+- Cada usuário da retaguarda troca a própria senha em "Trocar senha", na barra superior.
+- O admin inicial tem CPF de preenchimento (`00000000000`) e entra só por e-mail e senha. Para entrar pelo gov.br, o usuário da retaguarda precisa estar cadastrado na tela de usuários com o seu CPF real, que deve ser válido.
+- Usuários da retaguarda (ativos, com papel) não usam a área de cadastro do portal (`/cadastro`); o portal mostra "Ir para a retaguarda" a eles.
+- Imagens (editais e eventos) ficam no disco `public`, servidas por `/storage` (`php artisan storage:link`, já executado ao subir o container do app). Os PDFs dos editais ficam no disco `local` (privado) e são entregues por `/editais/{slug}/pdf`, que responde 404 para edital excluído, despublicado ou sem PDF.
+
 ## Homologação (staging)
 
 ```env

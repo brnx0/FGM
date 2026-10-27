@@ -90,10 +90,10 @@ const iluminarVidro = (evento: PointerEvent): void => {
                         <div class="mt-2 flex flex-wrap gap-4">
                             <Link
                                 v-if="usuario"
-                                href="/cadastro"
+                                :href="usuario.ehGestor ? '/retaguarda' : '/cadastro'"
                                 class="botao-claro pressionavel inline-flex min-h-12 items-center gap-3 rounded-pill bg-white px-[22px] text-[0.75rem] font-bold tracking-[0.12em] text-home-azul uppercase no-underline shadow-[0_20px_40px_-16px_rgba(0,0,0,0.45)] md:min-h-[58px] md:px-9 md:text-[0.875rem]"
                             >
-                                Continuar meu cadastro
+                                {{ usuario.ehGestor ? 'Ir para a retaguarda' : 'Continuar meu cadastro' }}
                             </Link>
                             <!-- Link comum (não Inertia): a conta é criada no primeiro login gov.br. -->
                             <a
