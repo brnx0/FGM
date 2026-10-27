@@ -251,6 +251,27 @@ class CadastroTest extends TestCase
             ->assertSessionHas('sucesso', 'Dados salvos. Você também pode cadastrar uma organização.');
     }
 
+    public function test_aviso_do_middleware_chega_a_tela_de_dados(): void
+    {
+        $user = User::factory()->create(['profile_completed_at' => null]);
+
+        $this->actingAs($user)->followingRedirects()->get('/cadastro/organizacao')
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Cadastro/Completar')
+                ->where('flash.aviso', 'Complete seus dados de pessoa física antes de cadastrar uma organização.'));
+    }
+
+    public function test_primeiro_salvamento_mostra_o_sucesso_na_etapa_da_organizacao(): void
+    {
+        Storage::fake('local');
+        $user = User::factory()->create(['profile_completed_at' => null, 'email' => 'maria@example.com', 'phone' => '71998765432']);
+
+        $this->actingAs($user)->followingRedirects()->post('/cadastro', $this->dadosValidos())
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Cadastro/Organizacao')
+                ->where('flash.sucesso', 'Dados salvos. Você também pode cadastrar uma organização.'));
+    }
+
     public function test_salvamentos_seguintes_voltam_para_a_home(): void
     {
         Storage::fake('local');
