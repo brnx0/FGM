@@ -62,14 +62,23 @@ class LoginGovBrUserTest extends TestCase
         $this->assertSame(1, User::count());
     }
 
-    public function test_destino_pos_login_e_cadastro(): void
+    public function test_destino_pos_login_e_cadastro_enquanto_o_tipo_nao_e_escolhido(): void
     {
         $acao = app(LoginGovBrUser::class);
         $user = User::factory()->create(['profile_completed_at' => null]);
         $this->assertSame(route('cadastro'), $acao->destinoPosLogin($user));
 
         $user->forceFill(['profile_completed_at' => now()])->save();
-        $this->assertSame(route('home'), $acao->destinoPosLogin($user));
+        $this->assertSame(route('cadastro'), $acao->destinoPosLogin($user));
+    }
+
+    public function test_destino_pos_login_com_cadastro_finalizado_e_a_tela_do_tipo(): void
+    {
+        $acao = app(LoginGovBrUser::class);
+
+        $this->assertSame(route('portal.editais'), $acao->destinoPosLogin(User::factory()->proponente()->create()));
+        $this->assertSame(route('portal.projetos'), $acao->destinoPosLogin(User::factory()->patrocinador()->create()));
+        $this->assertSame(route('portal.editais'), $acao->destinoPosLogin(User::factory()->proponenteEPatrocinador()->create()));
     }
 
     public function test_dados_do_govbr_acima_do_limite_nao_estouram_a_coluna(): void

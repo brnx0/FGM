@@ -1,24 +1,32 @@
 <script setup lang="ts">
-import { Head, Link } from '@inertiajs/vue3';
+import { computed } from 'vue';
+import { Head, Link, usePage } from '@inertiajs/vue3';
 import EtapasCadastro from '../../Components/EtapasCadastro.vue';
 import FaixaPortal from '../../Components/FaixaPortal.vue';
+import SaudacaoCadastro from '../../Components/SaudacaoCadastro.vue';
 import PortalProponenteLayout from '../../Layouts/PortalProponenteLayout.vue';
 
 defineOptions({ layout: PortalProponenteLayout });
+
+const finalizado = computed(() => !!usePage().props.auth.user?.tiposCadastro.length);
 </script>
 
 <template>
     <div>
-        <Head title="Organização" />
+        <Head title="Pessoa Jurídica" />
 
         <FaixaPortal aria-labelledby="organizacao-titulo">
-            <div class="flex flex-col gap-3">
-                <p class="text-[0.75rem] font-semibold tracking-[0.24em] text-white/75 uppercase">Etapa 3 de 4 · Organização</p>
+            <!-- No modo edição, o mesmo cabeçalho das outras etapas. -->
+            <SaudacaoCadastro v-if="finalizado" id-titulo="organizacao-titulo" />
+            <div v-else class="flex flex-col gap-3">
+                <p class="text-[0.75rem] font-semibold tracking-[0.24em] text-white/75 uppercase">Etapa 3 de 4 · Pessoa Jurídica</p>
                 <h1 id="organizacao-titulo" class="font-barlow text-[2.6rem] leading-[0.95] font-extrabold tracking-[0.01em] break-words uppercase md:text-[3.5rem]">
-                    Você representa uma organização?
+                    Você representa uma Pessoa Jurídica?
                 </h1>
             </div>
-            <EtapasCadastro :atual="3" />
+            <template #abaixo>
+                <EtapasCadastro :atual="3" :navegavel="finalizado" />
+            </template>
         </FaixaPortal>
 
         <div class="relative mx-auto -mt-20 max-w-6xl px-4 pb-16 md:-mt-24">
@@ -28,20 +36,28 @@ defineOptions({ layout: PortalProponenteLayout });
             >
                 <h2 id="organizacao-opcoes-titulo" class="sr-only">Escolha como seguir</h2>
                 <p class="max-w-2xl leading-[1.6] text-tinta-suave">
-                    Associações, produtoras, MEIs e empresas também podem se inscrever nos editais. Você pode cadastrar agora ou depois, em Minhas organizações.
+                    Cadastre a Pessoa Jurídica (CNPJ) que você representa no setor cultural. Assim, ela também pode se inscrever nos editais.
                 </p>
+                <p id="organizacao-tipos" class="mt-6 font-semibold text-tinta">Pode ser:</p>
+                <ul aria-labelledby="organizacao-tipos" class="mt-2 flex list-disc flex-col gap-1 pl-5 leading-[1.6] text-tinta-suave marker:text-acao">
+                    <li>MEI (Microempreendedor Individual)</li>
+                    <li>Empresa com fins lucrativos</li>
+                    <li>Associação, coletivo ou outra entidade sem fins lucrativos</li>
+                </ul>
+                <p class="mt-6 max-w-2xl leading-[1.6] text-tinta-suave">Não é obrigatório: se preferir, cadastre depois em Minhas Pessoas Jurídicas.</p>
                 <div class="mt-8 flex flex-col gap-3 sm:flex-row">
                     <Link
                         href="/cadastro/pessoa-juridica"
                         class="pressionavel inline-flex min-h-12 items-center justify-center rounded-pill bg-acao px-8 text-center text-[0.8125rem] font-bold tracking-[0.12em] text-sobre-acao uppercase no-underline hover:bg-acao-escuro"
                     >
-                        Cadastrar organização
+                        Cadastrar Pessoa Jurídica
                     </Link>
+                    <!-- Pula para a última etapa (tipo de cadastro). -->
                     <Link
-                        href="/"
+                        href="/cadastro/tipo"
                         class="pressionavel inline-flex min-h-12 items-center justify-center rounded-pill border border-hairline px-8 text-center text-[0.8125rem] font-bold tracking-[0.12em] text-tinta uppercase no-underline"
                     >
-                        Não represento uma organização
+                        Não represento
                     </Link>
                 </div>
             </section>

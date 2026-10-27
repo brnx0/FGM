@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, nextTick } from 'vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import CampoArquivo from '../../Components/CampoArquivo.vue';
 import CampoCadastro from '../../Components/CampoCadastro.vue';
 import EtapasCadastro from '../../Components/EtapasCadastro.vue';
 import FaixaPortal from '../../Components/FaixaPortal.vue';
+import SaudacaoCadastro from '../../Components/SaudacaoCadastro.vue';
 import SecaoCadastro from '../../Components/SecaoCadastro.vue';
 import PortalProponenteLayout from '../../Layouts/PortalProponenteLayout.vue';
 import type { ArquivoCadastro, CadastroCompletarProps } from '../../types';
@@ -13,7 +14,8 @@ defineOptions({ layout: PortalProponenteLayout });
 
 const props = defineProps<CadastroCompletarProps>();
 
-const primeiroNome = computed(() => props.govbr.nome.split(' ')[0] ?? '');
+// Com o tipo de cadastro escolhido, esta tela é a opção "Cadastro" do menu: consulta e edição.
+const finalizado = computed(() => !!usePage().props.auth.user?.tiposCadastro.length);
 
 // (71) 99999-9999 para celular e (71) 3333-3333 para fixo, enquanto a pessoa digita.
 const formatarTelefone = (valor: string): string => {
@@ -123,16 +125,12 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
         <Head title="Complete seu cadastro" />
 
         <FaixaPortal aria-labelledby="portal-titulo">
-            <div class="flex flex-col gap-3">
-                <p class="text-[0.75rem] font-semibold tracking-[0.24em] text-white/75 uppercase">Portal do proponente</p>
-                <h1 id="portal-titulo" class="font-barlow text-[2.6rem] leading-[0.95] font-extrabold tracking-[0.01em] break-words uppercase md:text-[3.5rem]">
-                    Olá, {{ primeiroNome }}
-                </h1>
-                <p class="max-w-2xl text-base leading-[1.7] text-white/85 md:text-[1.0625rem]">
-                    Para continuar, complete seus dados abaixo.
-                </p>
-            </div>
-            <EtapasCadastro :atual="2" />
+            <SaudacaoCadastro id-titulo="portal-titulo" :saudacao="!finalizado">
+                {{ finalizado ? 'Confira e atualize seus dados abaixo.' : 'Para continuar, complete seus dados abaixo.' }}
+            </SaudacaoCadastro>
+            <template #abaixo>
+                <EtapasCadastro :atual="2" :navegavel="finalizado" />
+            </template>
         </FaixaPortal>
 
         <form

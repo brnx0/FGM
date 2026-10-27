@@ -1,3 +1,8 @@
+<script lang="ts">
+// Uma vez por documento: o layout volta a montar ao sair e voltar por outra tela, e a entrada extra do Voltar não se repete.
+let entradaDoVoltarCriada = false;
+</script>
+
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
@@ -12,23 +17,9 @@ const page = usePage();
 const ambienteTeste = computed(() => page.props.ambienteTeste);
 const usuario = computed(() => page.props.auth?.user);
 
-// "Maria Proponente Teste" → "MT", para o avatar.
-const iniciais = computed(() => {
-    const nomes = usuario.value?.nome.trim().split(/\s+/) ?? [];
-    return ((nomes[0]?.[0] ?? '') + (nomes.length > 1 ? (nomes.at(-1)?.[0] ?? '') : '')).toUpperCase();
-});
-
 // Token do <meta> de app.blade.php, como no CabecalhoHome.
 const csrf = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
 const ano = new Date().getFullYear();
-
-// Navegação do topo. As etapas da organização (/cadastro/organizacao e /cadastro/pessoa-juridica) fazem parte de “Minhas organizações”.
-const caminho = computed(() => page.url.split(/[?#]/)[0] ?? '');
-const rotasDeOrganizacao = ['/cadastro/organizacao', '/cadastro/pessoa-juridica'];
-const itensNavegacao = computed(() => [
-    { href: '/cadastro', texto: 'Meu cadastro', atual: caminho.value.startsWith('/cadastro') && !rotasDeOrganizacao.includes(caminho.value) },
-    { href: '/organizacoes', texto: 'Minhas organizações', atual: caminho.value.startsWith('/organizacoes') || rotasDeOrganizacao.includes(caminho.value) },
-]);
 
 const linksRodape: { href: string; texto: string }[] = [
     { href: '/', texto: 'Voltar ao site' },
@@ -67,12 +58,34 @@ watch(acessibilidadeAberta, (aberto) => {
     else document.removeEventListener('pointerdown', fecharAoClicarFora);
 });
 
+// Voltar do navegador encerra a sessão pelo mesmo caminho do botão Sair, e a pessoa volta ao portal deslogada.
+const formularioSair = ref<HTMLFormElement | null>(null);
+let saindo = false;
+
+const sairAoVoltar = (evento: PopStateEvent): void => {
+    // Estado nulo é clique num link de âncora (ex.: "Pular para o conteúdo"), não um Voltar.
+    if (saindo || evento.state === null) return;
+    saindo = true;
+    formularioSair.value?.submit();
+};
+
+window.addEventListener('popstate', sairAoVoltar);
+
 const pararDeOuvir = router.on('navigate', () => {
     acessibilidadeAberta.value = false;
+
+    // A primeira tela ganha uma cópia no histórico: assim o Voltar cai no popstate daqui mesmo quando a tela
+    // anterior é outro documento (gov.br, ou depois de um F5). No navigate o Inertia já gravou a tela no
+    // histórico (a gravação cifrada é assíncrona), então a cópia leva o estado dela.
+    if (!entradaDoVoltarCriada) {
+        entradaDoVoltarCriada = true;
+        window.history.pushState(window.history.state, '', location.href);
+    }
 });
 
 onBeforeUnmount(() => {
     pararDeOuvir();
+    window.removeEventListener('popstate', sairAoVoltar);
     document.removeEventListener('pointerdown', fecharAoClicarFora);
 });
 </script>
@@ -86,8 +99,10 @@ onBeforeUnmount(() => {
         <VidroLiquido class="flex flex-1 flex-col bg-parchment text-home-tinta">
             <!-- Sem home-escuro: o anel de foco branco fica só nos controles do topo, e não no painel claro de acessibilidade. -->
             <header class="border-b border-white/10 bg-noite text-white [html.alto-contraste_&]:bg-fundo">
-                <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3.5">
-                    <Link href="/" class="block min-w-0 py-1 focus-visible:outline-white">
+                <!-- Logo, nome e controles na mesma linha, com o nome centralizado no espaço entre os dois. O menu do
+                     portal não fica aqui: fica na FaixaPortal de cada página, à direita do título. -->
+                <div class="mx-auto grid max-w-6xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 px-4 py-3.5">
+                    <Link href="/" class="block min-w-0 justify-self-start py-1 focus-visible:outline-white">
                         <img
                             src="/images/logo-fgm-prefeitura-branco.png"
                             alt="FGM – Fundação Gregório de Mattos e Prefeitura de Salvador (voltar ao site)"
@@ -97,19 +112,18 @@ onBeforeUnmount(() => {
                         />
                     </Link>
 
-                    <div class="relative flex shrink-0 items-center gap-2 md:gap-4" @keydown.esc="fecharEVoltarAoBotao">
-                        <p v-if="usuario" class="mr-1 flex items-center gap-2.5">
-                            <span aria-hidden="true" class="inline-flex size-9 items-center justify-center rounded-full bg-white/15 text-[0.8125rem] font-bold">
-                                {{ iniciais }}
-                            </span>
-                            <span class="sr-only md:not-sr-only md:max-w-56 md:truncate md:text-[0.9375rem] md:font-semibold">{{ usuario.nome }}</span>
-                        </p>
+                    <!-- No celular não há espaço: o nome fica só para o leitor de tela. -->
+                    <p v-if="usuario" class="sr-only md:not-sr-only md:truncate md:text-center md:text-[1.1875rem] md:font-semibold">{{ usuario.nome }}</p>
 
-                        <!-- Só o ícone no celular e no tablet; a partir de lg, também o texto e a seta. -->
+                    <!-- Coluna fixa: no celular o nome sai do fluxo (sr-only), e os controles não podem cair no meio. -->
+                    <div class="relative col-start-3 flex w-full min-w-0 items-center justify-end gap-2 md:gap-4" @keydown.esc="fecharEVoltarAoBotao">
+
+                        <!-- Ícone e seta, sem o texto (fica para o leitor de tela). No celular, só o ícone: com a seta
+                             o botão espreme a logo. -->
                         <button
                             ref="botaoAcessibilidade"
                             type="button"
-                            class="vidro pressionavel group inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-pill px-2.5 text-white focus-visible:outline-white aria-expanded:bg-white/25 aria-expanded:ring-2 aria-expanded:ring-white/60 lg:pr-3.5 lg:pl-3"
+                            class="pressionavel group inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1 rounded-pill border border-white/15 bg-white/10 px-2.5 text-white sm:pr-3 hover:bg-white/20 focus-visible:outline-white aria-expanded:bg-white/25 [html.alto-contraste_&]:border-hairline aria-expanded:ring-2 aria-expanded:ring-white/60"
                             :aria-expanded="acessibilidadeAberta ? 'true' : 'false'"
                             aria-controls="painel-acessibilidade"
                             title="Acessibilidade"
@@ -121,11 +135,11 @@ onBeforeUnmount(() => {
                                 <circle cx="12" cy="4.5" r="2.2" fill="currentColor" stroke="none" />
                                 <path d="M4.5 8.6c2.5.9 5 1.3 7.5 1.3s5-.4 7.5-1.3M12 9.9v4.6m0 0-3.2 6.5m3.2-6.5 3.2 6.5" />
                             </svg>
-                            <span class="sr-only lg:not-sr-only lg:text-[0.75rem] lg:font-bold lg:tracking-[0.12em] lg:uppercase">Acessibilidade</span>
+                            <span class="sr-only">Acessibilidade</span>
                             <svg
                                 aria-hidden="true"
                                 viewBox="0 0 24 24"
-                                class="hidden size-4 transition-transform group-aria-expanded:rotate-180 motion-reduce:transition-none lg:block"
+                                class="hidden size-4 transition-transform group-aria-expanded:rotate-180 motion-reduce:transition-none sm:block"
                                 fill="none"
                                 stroke="currentColor"
                                 stroke-width="2.2"
@@ -167,7 +181,7 @@ onBeforeUnmount(() => {
                             </div>
                         </Transition>
 
-                        <form method="post" action="/logout">
+                        <form ref="formularioSair" method="post" action="/logout">
                             <input type="hidden" name="_token" :value="csrf" />
                             <button
                                 type="submit"
@@ -178,20 +192,6 @@ onBeforeUnmount(() => {
                         </form>
                     </div>
                 </div>
-
-                <nav aria-label="Portal do proponente" class="border-t border-white/10">
-                    <ul class="mx-auto flex max-w-6xl gap-1 px-2 md:px-3">
-                        <li v-for="item in itensNavegacao" :key="item.href">
-                            <Link
-                                :href="item.href"
-                                :aria-current="item.atual ? 'page' : undefined"
-                                class="inline-flex min-h-11 items-center border-b-2 border-transparent px-2.5 text-[0.75rem] font-bold tracking-[0.12em] text-white/80 uppercase no-underline hover:text-white focus-visible:outline-white aria-[current=page]:border-white aria-[current=page]:text-white md:px-4"
-                            >
-                                {{ item.texto }}
-                            </Link>
-                        </li>
-                    </ul>
-                </nav>
             </header>
 
             <main id="conteudo" tabindex="-1" class="flex-1 focus:outline-none">

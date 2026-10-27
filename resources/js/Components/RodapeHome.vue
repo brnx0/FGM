@@ -18,42 +18,7 @@ const navegacao: { href: string; texto: string; pagina?: boolean }[] = [
 <template>
     <!-- Começa por baixo da curva da faixa de eventos (margem negativa e padding maior). -->
     <footer class="relative z-0 -mt-[130px] bg-superficie px-6 pt-[210px] text-home-tinta">
-        <div class="mx-auto flex max-w-[1200px] flex-col gap-16">
-            <div class="flex flex-wrap items-end justify-between gap-x-12 gap-y-7 border-b border-hairline pb-14">
-                <div class="flex max-w-[620px] flex-col gap-[18px]">
-                    <h2 class="font-barlow text-[clamp(2.6rem,5vw,4.4rem)] leading-[0.92] font-extrabold tracking-[0.01em] uppercase">
-                        Cultura que<br />move Salvador
-                    </h2>
-                    <div aria-hidden="true" class="h-1 w-[72px] bg-home-tinta"></div>
-                </div>
-                <div class="flex flex-wrap gap-3.5">
-                    <Link
-                        v-if="usuario"
-                        :href="usuario.ehGestor ? '/retaguarda' : '/cadastro'"
-                        class="pressionavel inline-flex min-h-14 items-center gap-3 rounded-pill bg-home-tinta px-8 text-[0.8125rem] font-bold tracking-[0.12em] text-fundo uppercase no-underline shadow-[0_18px_36px_-16px_rgba(6,36,74,0.45)]"
-                    >
-                        {{ usuario.ehGestor ? 'Ir para a retaguarda' : 'Continuar meu cadastro' }}
-                    </Link>
-                    <a
-                        v-else
-                        href="/auth/govbr/redirect"
-                        data-iris
-                        class="pressionavel inline-flex min-h-14 items-center gap-3 rounded-pill bg-home-tinta px-8 text-[0.8125rem] font-bold tracking-[0.12em] text-fundo uppercase no-underline shadow-[0_18px_36px_-16px_rgba(6,36,74,0.45)]"
-                    >
-                        Cadastre-se<span class="sr-only"> com a conta gov.br</span>
-                        <svg aria-hidden="true" viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M5 12h14M13 6l6 6-6 6" />
-                        </svg>
-                    </a>
-                    <a
-                        href="#editais"
-                        class="pressionavel inline-flex min-h-14 items-center rounded-pill border-2 border-home-tinta px-8 text-[0.8125rem] font-bold tracking-[0.12em] uppercase no-underline"
-                    >
-                        Ver editais abertos
-                    </a>
-                </div>
-            </div>
-
+        <div class="mx-auto max-w-[1200px]">
             <div class="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-x-12 gap-y-10">
                 <div class="flex flex-col gap-[18px]">
                     <div class="self-start rounded-[14px] bg-noite px-5 py-3.5">

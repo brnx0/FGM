@@ -2,8 +2,10 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\VLibras;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\Vite;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -17,9 +19,14 @@ class SecurityHeaders
         // o usa no script inline de preferências de acessibilidade.
         $nonce = Vite::useCspNonce();
 
+        // Como o nonce: decidido antes da resposta, para o Blade só incluir o VLibras
+        // quando a CSP desta mesma resposta libera os domínios dele.
+        $vlibras = VLibras::paraExibir($request);
+        View::share('vlibras', $vlibras);
+
         $response = $next($request);
 
-        $response->headers->set('Content-Security-Policy', $this->politica($nonce));
+        $response->headers->set('Content-Security-Policy', $this->politica($nonce, $vlibras !== null));
         $response->headers->set('X-Frame-Options', 'DENY');
         $response->headers->set('X-Content-Type-Options', 'nosniff');
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
@@ -31,7 +38,7 @@ class SecurityHeaders
         return $response;
     }
 
-    private function politica(string $nonce): string
+    private function politica(string $nonce, bool $comVLibras): string
     {
         $dev = app()->environment('local') ? ' '.self::VITE_DEV_SERVER : '';
         $devWs = app()->environment('local') ? ' ws:' : '';
@@ -39,15 +46,19 @@ class SecurityHeaders
         // O login gov.br sai do portal por redirecionamento após GET/POST.
         $govbr = config('govbr.base_url') ? ' '.config('govbr.base_url') : '';
 
+        // Domínios do VLibras (App\Support\VLibras::CSP) só nas páginas que exibem o widget.
+        $vlibras = fn (string $diretiva): string => $comVLibras ? ' '.implode(' ', VLibras::CSP[$diretiva]) : '';
+
         return implode('; ', [
             "default-src 'self'",
-            "script-src 'self' 'nonce-{$nonce}'{$dev}",
+            "script-src 'self' 'nonce-{$nonce}'{$dev}".$vlibras('script-src'),
+            // Sem nonce nem hash: com eles o navegador ignora 'unsafe-inline', e o VLibras injeta os próprios estilos.
             "style-src 'self' 'unsafe-inline'{$dev}",
-            "img-src 'self' data:{$dev}",
-            "font-src 'self' data:{$dev}",
-            "connect-src 'self'{$dev}{$devWs}",
-            // Vídeos do YouTube na descrição do evento (HtmlSeguro só deixa este domínio).
-            'frame-src https://www.youtube-nocookie.com',
+            "img-src 'self' data:{$dev}".$vlibras('img-src'),
+            "font-src 'self' data:{$dev}".$vlibras('font-src'),
+            "connect-src 'self'{$dev}{$devWs}".$vlibras('connect-src'),
+            // Vídeos do YouTube na descrição do evento (HtmlSeguro só deixa este domínio) e o intérprete do VLibras.
+            'frame-src https://www.youtube-nocookie.com'.$vlibras('frame-src'),
             "object-src 'none'",
             "base-uri 'self'",
             "form-action 'self'{$govbr}",

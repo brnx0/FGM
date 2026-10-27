@@ -2,11 +2,16 @@
 
 export type SituacaoEdital = 'em_breve' | 'aberto' | 'encerrado';
 
+/** App\Enums\TipoCadastro. */
+export type TipoCadastro = 'proponente' | 'patrocinador';
+
 export interface UsuarioAutenticado {
     nome: string;
     cpfMascarado: string;
     /** Ativo e com pelo menos um papel: pode entrar na retaguarda. */
     ehGestor: boolean;
+    /** Vazio até a última etapa do cadastro; define o menu do portal (um tipo ou os dois). */
+    tiposCadastro: TipoCadastro[];
 }
 
 /** Props compartilhadas, vindas de App\Http\Middleware\HandleInertiaRequests. */
@@ -324,6 +329,35 @@ export interface EditalRetaguarda {
     temPdf: boolean;
 }
 
+/** Etapa 4 do cadastro (CadastroController@tipo). */
+export interface CadastroTipoProps {
+    tiposAtuais: TipoCadastro[];
+    opcoes: { valor: TipoCadastro; rotulo: string }[];
+}
+
+/** Edital na tela Editais do portal (PortalController@editais). */
+export interface EditalPortal {
+    slug: string;
+    titulo: string;
+    categoria: string;
+    periodo: string;
+    situacao: SituacaoEdital;
+    situacaoRotulo: string;
+    /** URL do PDF do edital (rota editais.pdf). */
+    pdf: string;
+    /** Foto enviada na retaguarda; sem ela, o card usa uma foto da vitrine. */
+    imagem: string | null;
+}
+
+export interface PortalEditaisProps {
+    editais: Paginado<EditalPortal>;
+}
+
+/** Tela de inscrição num edital aberto (PortalController@inscricao). */
+export interface PortalInscricaoProps {
+    edital: Pick<EditalPortal, 'titulo' | 'categoria' | 'periodo' | 'pdf'>;
+}
+
 export interface RetaguardaEditaisIndexProps {
     editais: Paginado<EditalRetaguarda>;
     filtros: { busca: string; situacao: SituacaoEdital | ''; publicado: 'sim' | 'nao' | '' };
@@ -443,4 +477,17 @@ export interface RetaguardaPerfilProps {
         papeis: string[];
     };
     temSenha: boolean;
+}
+
+/** App\Enums\LadoVLibras (parâmetro position do plugin). */
+export type LadoVLibras = 'R' | 'L';
+
+/** App\Enums\AvatarVLibras (parâmetro avatar do plugin). */
+export type AvatarVLibras = 'icaro' | 'hosana' | 'guga' | 'random';
+
+/** Parâmetros do VLibras fora da retaguarda (Retaguarda\VLibrasController@edit). */
+export interface RetaguardaVLibrasProps {
+    configuracao: { ativo: boolean; lado: LadoVLibras; avatar: AvatarVLibras };
+    lados: { valor: LadoVLibras; rotulo: string }[];
+    avatares: { valor: AvatarVLibras; rotulo: string }[];
 }

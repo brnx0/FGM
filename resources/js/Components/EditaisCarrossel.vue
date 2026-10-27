@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { fotosVitrine, fotoVitrine } from './fotosVitrine';
 import type { EditalResumo, SituacaoEdital } from '../types';
 
 const props = defineProps<{
@@ -13,19 +14,12 @@ const CARDS_NO_LEQUE = 5;
 // Deslocamento horizontal mínimo para o gesto contar como troca de slide.
 const ARRASTO_MINIMO_PX = 50;
 
-// Fotos da vitrine (anexo portal-fgm.html). São a reserva para o edital sem imagem cadastrada
-// e vão para os cards pela posição na roda.
-const fotos: { src: string; enquadramento: string }[] = [
-    { src: '/images/vitrine-boca-de-brasa.jpg', enquadramento: 'center' },
-    { src: '/images/vitrine-plateia-danca.jpg', enquadramento: 'center' },
-    { src: '/images/vitrine-orixas.jpg', enquadramento: 'center 30%' },
-    { src: '/images/vitrine-zelia-gattai.jpg', enquadramento: '58% center' },
-    { src: '/images/vitrine-elenco-branco.jpg', enquadramento: 'center' },
-];
+// Fotos da vitrine: a reserva para o edital sem imagem cadastrada, pela posição do card na roda.
+const fotos = fotosVitrine;
 // A imagem enviada na retaguarda tem prioridade; centralizada, já que o enquadramento dela não é conhecido.
 const foto = (indice: number): { src: string; enquadramento: string } => {
     const imagem = slides.value[indice]?.edital.imagem;
-    return imagem ? { src: imagem, enquadramento: 'center' } : fotos[indice % fotos.length];
+    return imagem ? { src: imagem, enquadramento: 'center' } : fotoVitrine(indice);
 };
 
 // Sem rótulo próprio, vale o situacaoRotulo do backend.

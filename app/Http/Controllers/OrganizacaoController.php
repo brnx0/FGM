@@ -96,7 +96,12 @@ class OrganizacaoController extends Controller
             throw $erro;
         }
 
-        return redirect()->route('organizacoes.index')->with('sucesso', 'Organização salva.');
+        // Durante o cadastro, a Pessoa Jurídica é a etapa 3: segue para a escolha do tipo.
+        if (! $user->cadastroFinalizado()) {
+            return redirect()->route('cadastro.tipo')->with('sucesso', 'Pessoa Jurídica salva.');
+        }
+
+        return redirect()->route('organizacoes.index')->with('sucesso', 'Pessoa Jurídica salva.');
     }
 
     public function update(SalvarOrganizacaoRequest $request, Organizacao $organizacao): RedirectResponse
@@ -129,7 +134,7 @@ class OrganizacaoController extends Controller
             throw $erro;
         }
 
-        return redirect()->route('organizacoes.index')->with('sucesso', 'Organização salva.');
+        return redirect()->route('organizacoes.index')->with('sucesso', 'Pessoa Jurídica salva.');
     }
 
     /**

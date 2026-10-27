@@ -5,8 +5,8 @@ import { Link, usePage } from '@inertiajs/vue3';
 type ItemMenu = { href: string; texto: string; icone: string };
 type GrupoMenu = { id: string; texto: string; icone: string; itens: ItemMenu[] };
 
-// Caminhos das rotas retaguarda.editais.index, retaguarda.eventos.index e retaguarda.usuarios.index
-// (o front não tem helper de rotas nomeadas).
+// Caminhos das rotas retaguarda.editais.index, retaguarda.eventos.index, retaguarda.vlibras.edit e
+// retaguarda.usuarios.index (o front não tem helper de rotas nomeadas).
 const portal: GrupoMenu = {
     id: 'menu-grupo-portal',
     texto: 'Portal',
@@ -21,6 +21,11 @@ const portal: GrupoMenu = {
             href: '/retaguarda/eventos',
             texto: 'Eventos',
             icone: 'M4 6h16v14H4zM4 10h16M9 3v5M15 3v5',
+        },
+        {
+            href: '/retaguarda/vlibras',
+            texto: 'VLibras',
+            icone: 'M18 11V6a2 2 0 0 0-4 0M14 10V4a2 2 0 0 0-4 0v2M10 10.5V6a2 2 0 0 0-4 0v8M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15',
         },
     ],
 };

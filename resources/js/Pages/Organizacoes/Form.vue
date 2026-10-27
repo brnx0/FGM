@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import CampoArquivo from '../../Components/CampoArquivo.vue';
 import CampoCadastro from '../../Components/CampoCadastro.vue';
 import EtapasCadastro from '../../Components/EtapasCadastro.vue';
 import FaixaPortal from '../../Components/FaixaPortal.vue';
+import SaudacaoCadastro from '../../Components/SaudacaoCadastro.vue';
 import SecaoCadastro from '../../Components/SecaoCadastro.vue';
 import CampoBusca from '../../Components/Organizacao/CampoBusca.vue';
 import CartaoRepresentante from '../../Components/Organizacao/CartaoRepresentante.vue';
@@ -37,6 +38,7 @@ const props = defineProps<OrganizacaoFormProps>();
 
 const salvo = props.organizacao;
 const editando = salvo !== null;
+const finalizado = computed(() => !!usePage().props.auth.user?.tiposCadastro.length);
 
 const LIMITE_REPRESENTANTES = 10;
 const LIMITE_LOGO = 5 * 1024 * 1024;
@@ -152,7 +154,7 @@ const escolherMunicipio = (opcao: OpcaoCadastro | null): void => {
 
 /* Dados públicos do CNPJ. */
 
-const MENSAGEM_DUPLICADO = 'Esta organização já está cadastrada. Peça ao responsável por ela para vincular você.';
+const MENSAGEM_DUPLICADO = 'Esta Pessoa Jurídica já está cadastrada. Peça ao responsável por ela para vincular você.';
 
 const situacaoCnpj = ref<'buscando' | 'preenchido' | null>(null);
 // CNPJ cuja consulta terminou e já foi aplicada (não repete) e a consulta em andamento, se houver.
@@ -319,11 +321,11 @@ const salvar = (): void => {
 };
 
 const textoBotao = computed(() => {
-    if (!form.processing) return 'Salvar organização';
+    if (!form.processing) return 'Salvar Pessoa Jurídica';
     return form.progress?.percentage !== undefined ? `Enviando ${form.progress.percentage}%` : 'Salvando…';
 });
 
-const titulo = editando ? 'Editar organização' : 'Cadastrar organização';
+const titulo = editando ? 'Editar Pessoa Jurídica' : 'Cadastrar Pessoa Jurídica';
 
 const classeCampo =
     'h-12 w-full rounded-[12px] border border-tinta-suave/70 bg-superficie px-4 text-base text-home-tinta placeholder:text-tinta-suave aria-invalid:border-erro-texto aria-invalid:ring-1 aria-invalid:ring-erro-texto disabled:cursor-not-allowed disabled:bg-nevoa disabled:opacity-70';
@@ -338,7 +340,9 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
         <Head :title="titulo" />
 
         <FaixaPortal aria-labelledby="organizacao-titulo">
-            <div class="flex flex-col gap-3">
+            <!-- Primeira Pessoa Jurídica no modo edição do cadastro: o mesmo cabeçalho das outras etapas. -->
+            <SaudacaoCadastro v-if="finalizado && !editando && noCadastroInicial" id-titulo="organizacao-titulo" />
+            <div v-else class="flex flex-col gap-3">
                 <Link
                     v-if="editando || !noCadastroInicial"
                     href="/organizacoes"
@@ -347,17 +351,19 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                     <svg aria-hidden="true" viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M19 12H5M11 6l-6 6 6 6" />
                     </svg>
-                    Voltar para Minhas organizações
+                    Voltar para Minhas Pessoas Jurídicas
                 </Link>
-                <p v-else class="text-[0.75rem] font-semibold tracking-[0.24em] text-white/75 uppercase">Etapa 3 de 4 · Organização</p>
+                <p v-else class="text-[0.75rem] font-semibold tracking-[0.24em] text-white/75 uppercase">Etapa 3 de 4 · Pessoa Jurídica</p>
                 <h1 id="organizacao-titulo" class="font-barlow text-[2.6rem] leading-[0.95] font-extrabold tracking-[0.01em] break-words uppercase md:text-[3.5rem]">
                     {{ titulo }}
                 </h1>
                 <p class="max-w-2xl text-base leading-[1.7] text-white/85 md:text-[1.0625rem]">
-                    {{ editando ? 'Atualize os dados da organização e dos representantes legais.' : 'Informe o CNPJ e confira os dados da organização que você representa.' }}
+                    {{ editando ? 'Atualize os dados da Pessoa Jurídica e dos representantes legais.' : 'Informe o CNPJ e confira os dados da Pessoa Jurídica que você representa.' }}
                 </p>
             </div>
-            <EtapasCadastro v-if="!editando && noCadastroInicial" :atual="3" />
+            <template v-if="!editando && noCadastroInicial" #abaixo>
+                <EtapasCadastro :atual="3" :navegavel="finalizado" />
+            </template>
         </FaixaPortal>
 
         <form
@@ -451,7 +457,7 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                             v-model="form.nome_fantasia"
                             type="text"
                             maxlength="255"
-                            placeholder="Como a organização é conhecida (opcional)"
+                            placeholder="Como a Pessoa Jurídica é conhecida (opcional)"
                             :class="classeCampo"
                             :aria-invalid="invalido || undefined"
                             :aria-describedby="descricao"
@@ -574,7 +580,7 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                     <CampoCadastro
                         id="data_fundacao"
                         rotulo="Data de fundação"
-                        ajuda="Dia, mês e ano de fundação da organização."
+                        ajuda="Dia, mês e ano de fundação da Pessoa Jurídica."
                         :erro="form.errors.data_fundacao"
                         v-slot="{ descricao, invalido }"
                     >
@@ -606,12 +612,12 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                         />
                     </CampoCadastro>
 
-                    <CampoCadastro id="logo" class="md:col-span-2" rotulo="Logo da organização" :erro="form.errors.logo" v-slot="{ descricao, invalido }">
+                    <CampoCadastro id="logo" class="md:col-span-2" rotulo="Logo da Pessoa Jurídica" :erro="form.errors.logo" v-slot="{ descricao, invalido }">
                         <div class="flex items-start gap-3">
                             <img
                                 v-if="salvo?.logoUrl && !form.logo"
                                 :src="salvo.logoUrl"
-                                alt="Logo atual da organização"
+                                alt="Logo atual da Pessoa Jurídica"
                                 class="size-12 shrink-0 rounded-[12px] border border-hairline bg-superficie object-contain"
                             />
                             <div class="min-w-0 flex-1">
@@ -642,7 +648,7 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                 </template>
 
                 <p class="max-w-3xl text-[0.9375rem] leading-[1.6] text-tinta-suave">
-                    Quem responde juridicamente pela organização. A empresa pode ter mais de um; nem todo representante legal é sócio.
+                    Quem responde juridicamente pela Pessoa Jurídica. Ela pode ter mais de um; nem todo representante legal é sócio.
                 </p>
                 <p v-if="form.errors.representantes" role="alert" class="mt-3 text-[0.9375rem] font-semibold text-erro-texto">{{ form.errors.representantes }}</p>
 

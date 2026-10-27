@@ -181,6 +181,16 @@ class GovBrLoginTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_logout_faz_a_tela_seguinte_limpar_o_historico_do_navegador(): void
+    {
+        $this->actingAs(User::factory()->gestor()->create());
+
+        $this->post('/logout');
+        $resposta = $this->get('/');
+
+        $this->assertTrue($resposta->viewData('page')['clearHistory']);
+    }
+
     public function test_retorno_do_logout_govbr_vai_para_inicio(): void
     {
         $this->get('/auth/govbr/logout')->assertRedirect('/');

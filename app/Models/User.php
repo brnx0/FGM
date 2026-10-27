@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Enums\TipoCadastro;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\AsEnumCollection;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -38,6 +40,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'ativo' => 'boolean',
             'profile_completed_at' => 'datetime',
+            'tipos_cadastro' => AsEnumCollection::of(TipoCadastro::class),
             'last_login_at' => 'datetime',
         ];
     }
@@ -52,6 +55,23 @@ class User extends Authenticatable
                 return $normalizado === '' ? null : $normalizado;
             },
         );
+    }
+
+    /** A pessoa já escolheu, na última etapa do cadastro, ser proponente, patrocinadora ou as duas coisas. */
+    public function cadastroFinalizado(): bool
+    {
+        return $this->tipos_cadastro?->isNotEmpty() ?? false;
+    }
+
+    public function temTipoCadastro(TipoCadastro $tipo): bool
+    {
+        return $this->tipos_cadastro?->contains($tipo) ?? false;
+    }
+
+    /** Tela em que o portal abre: a do primeiro tipo escolhido (com os dois, a do proponente). */
+    public function rotaInicialDoPortal(): string
+    {
+        return $this->tipos_cadastro->first()->rotaInicial();
     }
 
     /** @return HasOne<PessoaFisica, $this> */

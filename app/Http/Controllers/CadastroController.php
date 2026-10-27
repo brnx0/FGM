@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Enums\IdentidadeGenero;
 use App\Enums\RacaCor;
 use App\Enums\Territorio;
+use App\Enums\TipoCadastro;
 use App\Http\Requests\SalvarPessoaFisicaRequest;
+use App\Http\Requests\SalvarTipoCadastroRequest;
 use App\Models\PessoaFisica;
 use App\Support\Cpf;
 use App\Support\Estados;
@@ -75,15 +77,15 @@ class CadastroController extends Controller
         $cadastro->save();
         Storage::disk('local')->delete(array_filter($substituidos));
 
-        $primeiroCadastro = $user->profile_completed_at === null;
         $user->profile_completed_at ??= now();
         $user->save();
 
-        if ($primeiroCadastro) {
-            return redirect()->route('cadastro.organizacao')->with('sucesso', 'Dados salvos. Você também pode cadastrar uma organização.');
+        // Enquanto o tipo de cadastro não é escolhido, o cadastro segue pelas etapas seguintes.
+        if (! $user->cadastroFinalizado()) {
+            return redirect()->route('cadastro.organizacao')->with('sucesso', 'Dados salvos. Você também pode cadastrar uma Pessoa Jurídica.');
         }
 
-        return redirect()->route('home')->with('sucesso', 'Cadastro salvo. Agora você já pode se inscrever nos editais.');
+        return redirect()->route('cadastro');
     }
 
     /** Etapa opcional: depois da pessoa física, a pessoa decide se cadastra uma organização. */
@@ -92,12 +94,35 @@ class CadastroController extends Controller
         return Inertia::render('Cadastro/Organizacao');
     }
 
+    /** Última etapa: Proponente, Patrocinador ou os dois. Pode ser trocado depois, e o menu do portal acompanha. */
+    public function tipo(Request $request): Response
+    {
+        return Inertia::render('Cadastro/Tipo', [
+            'tiposAtuais' => $request->user()->tipos_cadastro?->map(fn (TipoCadastro $tipo): string => $tipo->value)->all() ?? [],
+            'opcoes' => self::opcoes(TipoCadastro::cases()),
+        ]);
+    }
+
+    public function salvarTipo(SalvarTipoCadastroRequest $request): RedirectResponse
+    {
+        $user = $request->user();
+        $marcados = $request->validated('tipos_cadastro');
+        // Guardados na ordem do enum: a tela em que o portal abre não depende da ordem das marcações.
+        $user->tipos_cadastro = array_values(array_filter(
+            TipoCadastro::cases(),
+            fn (TipoCadastro $tipo): bool => in_array($tipo->value, $marcados, true),
+        ));
+        $user->save();
+
+        return redirect()->route($user->rotaInicialDoPortal())->with('sucesso', 'Cadastro finalizado.');
+    }
+
     /**
-     * @param  list<IdentidadeGenero|RacaCor|Territorio>  $casos
+     * @param  list<IdentidadeGenero|RacaCor|Territorio|TipoCadastro>  $casos
      * @return list<array{valor: string, rotulo: string}>
      */
     private static function opcoes(array $casos): array
     {
-        return array_map(fn (IdentidadeGenero|RacaCor|Territorio $caso): array => ['valor' => $caso->value, 'rotulo' => $caso->rotulo()], $casos);
+        return array_map(fn (IdentidadeGenero|RacaCor|Territorio|TipoCadastro $caso): array => ['valor' => $caso->value, 'rotulo' => $caso->rotulo()], $casos);
     }
 }

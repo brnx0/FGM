@@ -22,13 +22,14 @@ const classeBotaoSecundario =
 
 <template>
     <div>
-        <Head title="Minhas organizações" />
+        <Head title="Minhas Pessoas Jurídicas" />
 
+        <!-- Com a FaixaPortal, como as outras telas do portal: é nela que fica o menu. -->
         <FaixaPortal aria-labelledby="organizacoes-titulo">
             <div class="flex flex-col gap-3">
                 <p class="text-[0.75rem] font-semibold tracking-[0.24em] text-white/75 uppercase">Portal do proponente</p>
                 <h1 id="organizacoes-titulo" class="font-barlow text-[2.6rem] leading-[0.95] font-extrabold tracking-[0.01em] break-words uppercase md:text-[3.5rem]">
-                    Minhas organizações
+                    Minhas Pessoas Jurídicas
                 </h1>
             </div>
         </FaixaPortal>
@@ -39,10 +40,10 @@ const classeBotaoSecundario =
                 aria-labelledby="organizacoes-vazio"
                 class="rounded-[24px] border border-hairline bg-superficie p-6 shadow-[0_24px_60px_-34px_rgba(6,36,74,0.45)] md:p-10"
             >
-                <h2 id="organizacoes-vazio" class="sr-only">Nenhuma organização</h2>
-                <p class="max-w-2xl leading-[1.6] text-tinta-suave">Você ainda não está vinculado a nenhuma organização.</p>
+                <h2 id="organizacoes-vazio" class="sr-only">Nenhuma Pessoa Jurídica</h2>
+                <p class="max-w-2xl leading-[1.6] text-tinta-suave">Você ainda não está vinculado a nenhuma Pessoa Jurídica.</p>
                 <div class="mt-8 flex">
-                    <Link href="/cadastro/pessoa-juridica" :class="classeBotaoPrimario">Cadastrar organização</Link>
+                    <Link href="/cadastro/pessoa-juridica" :class="classeBotaoPrimario">Cadastrar Pessoa Jurídica</Link>
                 </div>
             </section>
 
@@ -91,7 +92,7 @@ const classeBotaoSecundario =
                 </ul>
 
                 <div class="flex">
-                    <Link href="/cadastro/pessoa-juridica" :class="classeBotaoPrimario">Cadastrar organização</Link>
+                    <Link href="/cadastro/pessoa-juridica" :class="classeBotaoPrimario">Cadastrar Pessoa Jurídica</Link>
                 </div>
             </template>
         </div>

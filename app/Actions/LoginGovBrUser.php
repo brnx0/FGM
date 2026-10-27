@@ -54,12 +54,17 @@ class LoginGovBrUser
             ->exists();
     }
 
+    /** Gestor vai para a retaguarda; cadastro não finalizado volta ao formulário; finalizado abre o portal do tipo escolhido. */
     public function destinoPosLogin(User $user): string
     {
         if ($user->ehGestor()) {
             return route('retaguarda.inicio');
         }
 
-        return $user->profile_completed_at === null ? route('cadastro') : route('home');
+        if (! $user->cadastroFinalizado()) {
+            return route('cadastro');
+        }
+
+        return route($user->rotaInicialDoPortal());
     }
 }

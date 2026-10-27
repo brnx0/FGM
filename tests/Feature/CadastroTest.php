@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\IdentidadeGenero;
 use App\Enums\RacaCor;
 use App\Enums\Territorio;
+use App\Enums\TipoCadastro;
 use App\Models\PessoaFisica;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -239,7 +240,7 @@ class CadastroTest extends TestCase
 
         $this->actingAs($user)->post('/cadastro', $this->dadosValidos())
             ->assertRedirect(route('cadastro.organizacao'))
-            ->assertSessionHas('sucesso', 'Dados salvos. Você também pode cadastrar uma organização.');
+            ->assertSessionHas('sucesso', 'Dados salvos. Você também pode cadastrar uma Pessoa Jurídica.');
     }
 
     public function test_aviso_do_middleware_chega_a_tela_de_dados(): void
@@ -249,7 +250,7 @@ class CadastroTest extends TestCase
         $this->actingAs($user)->followingRedirects()->get('/cadastro/organizacao')
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Cadastro/Completar')
-                ->where('flash.aviso', 'Complete seus dados de pessoa física antes de cadastrar uma organização.'));
+                ->where('flash.aviso', 'Complete seus dados de Pessoa Física antes de cadastrar uma Pessoa Jurídica.'));
     }
 
     public function test_primeiro_salvamento_mostra_o_sucesso_na_etapa_da_organizacao(): void
@@ -260,10 +261,23 @@ class CadastroTest extends TestCase
         $this->actingAs($user)->followingRedirects()->post('/cadastro', $this->dadosValidos())
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Cadastro/Organizacao')
-                ->where('flash.sucesso', 'Dados salvos. Você também pode cadastrar uma organização.'));
+                ->where('flash.sucesso', 'Dados salvos. Você também pode cadastrar uma Pessoa Jurídica.'));
     }
 
-    public function test_salvamentos_seguintes_voltam_para_a_home(): void
+    public function test_salvamento_com_cadastro_finalizado_volta_para_o_cadastro(): void
+    {
+        Storage::fake('local');
+        $cadastro = PessoaFisica::factory()->create();
+        $cadastro->user->forceFill(['profile_completed_at' => now(), 'tipos_cadastro' => [TipoCadastro::Proponente], 'email' => 'maria@example.com', 'phone' => '71998765432'])->save();
+
+        $this->actingAs($cadastro->user)->post('/cadastro', [
+            ...$this->dadosValidos(),
+            'documento_cpf' => null,
+            'documento_rg' => null,
+        ])->assertRedirect(route('cadastro'))->assertSessionMissing('sucesso');
+    }
+
+    public function test_salvamento_sem_tipo_de_cadastro_segue_para_a_etapa_da_organizacao(): void
     {
         Storage::fake('local');
         $cadastro = PessoaFisica::factory()->create();
@@ -273,7 +287,7 @@ class CadastroTest extends TestCase
             ...$this->dadosValidos(),
             'documento_cpf' => null,
             'documento_rg' => null,
-        ])->assertRedirect(route('home'))->assertSessionHas('sucesso');
+        ])->assertRedirect(route('cadastro.organizacao'));
     }
 
     public function test_etapa_da_organizacao_abre_com_a_pessoa_fisica_completa(): void
@@ -291,7 +305,7 @@ class CadastroTest extends TestCase
 
         $this->actingAs($user)->get('/cadastro/organizacao')
             ->assertRedirect(route('cadastro'))
-            ->assertSessionHas('aviso', 'Complete seus dados de pessoa física antes de cadastrar uma organização.');
+            ->assertSessionHas('aviso', 'Complete seus dados de Pessoa Física antes de cadastrar uma Pessoa Jurídica.');
     }
 
     public function test_etapa_da_organizacao_exige_login(): void

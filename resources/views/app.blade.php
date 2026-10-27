@@ -37,5 +37,29 @@
     </head>
     <body>
         @inertia
+
+        {{-- VLibras (Libras): fora da retaguarda e só se ligado em Retaguarda > Portal > VLibras; a mesma
+             decisão libera os domínios dele na CSP (SecurityHeaders / App\Support\VLibras). --}}
+        @isset($vlibras)
+            <script nonce="{{ Vite::cspNonce() }}">
+                (function () {
+                    var raiz = @js(\App\Support\VLibras::RAIZ);
+                    var carregador = document.createElement('script');
+                    // Assíncrono: se o vlibras.gov.br estiver lento ou fora do ar, o portal não espera por ele.
+                    carregador.async = true;
+                    carregador.src = raiz + '/vlibras-plugin.js';
+                    // O load dispara logo após o carregador executar, antes de ele desenhar o botão por
+                    // conta própria; o Widget aplica avatar e lado e já desenha.
+                    carregador.onload = function () {
+                        new window.VLibras.Widget({
+                            rootPath: raiz,
+                            avatar: @js($vlibras->avatar),
+                            position: @js($vlibras->lado),
+                        });
+                    };
+                    document.body.appendChild(carregador);
+                })();
+            </script>
+        @endisset
     </body>
 </html>
