@@ -39,13 +39,27 @@ class PapeisTest extends TestCase
         $this->assertSame(1, $admin->papeis()->count());
     }
 
-    public function test_seeder_nao_roda_em_producao(): void
+    public function test_seeder_em_producao_cria_so_o_papel(): void
     {
         $this->app['env'] = 'production';
 
-        $this->seed(PrimeiroGestorSeeder::class);
+        // Direto, sem o db:seed (que em produção pede confirmação).
+        app(PrimeiroGestorSeeder::class)->run();
 
         $this->assertTrue(User::where('email', 'admin@admin')->doesntExist());
+        $this->assertSame(1, Role::where('slug', Role::ADMINISTRADOR)->count());
+    }
+
+    public function test_seeder_nao_duplica_admin_que_trocou_de_email(): void
+    {
+        $this->seed(PrimeiroGestorSeeder::class);
+        User::where('email', 'admin@admin')->firstOrFail()->update(['email' => 'novo@fgm.test']);
+
+        $this->seed(PrimeiroGestorSeeder::class);
+
+        $this->assertSame(1, User::where('cpf', '00000000000')->count());
+        $this->assertTrue(User::where('email', 'admin@admin')->doesntExist());
+        $this->assertTrue(User::where('email', 'novo@fgm.test')->firstOrFail()->ehGestor());
     }
 
     public function test_proponente_sem_papel_nao_e_gestor(): void

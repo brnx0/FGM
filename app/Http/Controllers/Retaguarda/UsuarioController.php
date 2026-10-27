@@ -65,11 +65,16 @@ class UsuarioController extends Controller
         ]);
     }
 
-    /** CPF de proponente já cadastrado: o mesmo usuário vira usuário da retaguarda (os dados de cadastro dele ficam como estão). */
+    /**
+     * CPF de proponente já cadastrado (com a troca confirmada): o mesmo usuário vira usuário da retaguarda
+     * e deixa de acessar o cadastro do portal; os dados de cadastro dele ficam como estão.
+     */
     public function store(SalvarUsuarioRequest $request): RedirectResponse
     {
-        DB::transaction(function () use ($request): void {
-            $user = $request->usuarioReaproveitado();
+        $proponente = $request->usuarioReaproveitado();
+
+        DB::transaction(function () use ($request, $proponente): void {
+            $user = $proponente;
 
             if ($user === null) {
                 $user = new User;
@@ -85,7 +90,11 @@ class UsuarioController extends Controller
             $user->papeis()->sync($this->idsDosPapeis($request->papeis()));
         });
 
-        return redirect()->route('retaguarda.usuarios.index')->with('sucesso', 'Usuário salvo.');
+        $mensagem = $proponente !== null
+            ? "O proponente {$proponente->name} agora é usuário da retaguarda."
+            : 'Usuário salvo.';
+
+        return redirect()->route('retaguarda.usuarios.index')->with('sucesso', $mensagem);
     }
 
     public function edit(User $user): Response

@@ -78,10 +78,12 @@ Roteiro conferido em 2026-10-23 (https://roteiro-tecnico.acesso.gov.br/iniciarin
 
 Área de gestão em `/retaguarda` (login em `/retaguarda/login`): editais, eventos e usuários (`/retaguarda/usuarios`). Só entra usuário da retaguarda **ativo com pelo menos um papel** (hoje, `Administrador`).
 
-- Acesso inicial: `admin@admin` / `123456`, criado pelo `PrimeiroGestorSeeder`. O seeder só roda em local e homologação (não roda com `APP_ENV=production`), é idempotente e não redefine a senha. Troque a senha após o primeiro acesso.
+- Acesso inicial: `admin@admin` / `123456`, criado pelo `PrimeiroGestorSeeder`. O seeder cria o papel `Administrador` em todo ambiente; o usuário `admin@admin` só fora de produção (`APP_ENV=production` cria só o papel). É idempotente (o admin é reconhecido pelo CPF de preenchimento, mesmo depois de trocar o e-mail) e não redefine a senha. Troque a senha após o primeiro acesso.
 - Cada usuário da retaguarda troca a própria senha em "Trocar senha", na barra superior.
 - O admin inicial tem CPF de preenchimento (`00000000000`) e entra só por e-mail e senha. Para entrar pelo gov.br, o usuário da retaguarda precisa estar cadastrado na tela de usuários com o seu CPF real, que deve ser válido.
 - Usuários da retaguarda (ativos, com papel) não usam a área de cadastro do portal (`/cadastro`); o portal mostra "Ir para a retaguarda" a eles.
+- Ao cadastrar um usuário com o CPF de um proponente, a tela pede confirmação: ele passa a ser usuário da retaguarda e deixa de acessar o cadastro do portal.
+- Limites de envio do PHP exigidos (já definidos em `docker/php/Dockerfile`; em outro servidor, configure no `php.ini`): `upload_max_filesize=20M` (PDF do edital até 20 MB, imagem até 5 MB) e `post_max_size=32M` (PDF + imagem num mesmo envio). O cadastro de proponente mantém o limite próprio de 2 MB por arquivo.
 - Imagens (editais e eventos) ficam no disco `public`, servidas por `/storage` (`php artisan storage:link`, já executado ao subir o container do app). Os PDFs dos editais ficam no disco `local` (privado) e são entregues por `/editais/{slug}/pdf`, que responde 404 para edital excluído, despublicado ou sem PDF.
 
 ## Homologação (staging)

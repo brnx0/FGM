@@ -108,6 +108,29 @@ class UsuariosTest extends TestCase
         $this->assertDatabaseMissing('users', ['email' => 'bruno@fgm.test']);
     }
 
+    public function test_cpf_de_proponente_sem_confirmacao_nao_salva(): void
+    {
+        $proponente = User::factory()->create([
+            'cpf' => '52998224725',
+            'name' => 'Nome do gov.br',
+            'email' => 'proponente@fgm.test',
+            'password' => null,
+        ]);
+        $total = User::count();
+
+        $this->post('/retaguarda/usuarios', $this->dados())
+            ->assertSessionHasErrors([
+                'cpf' => 'Este CPF já é do proponente Nome do gov.br. Ao confirmar, ele passa a ser usuário da retaguarda e deixa de acessar o cadastro do portal.',
+                'confirmar_proponente',
+            ]);
+
+        $this->assertSame($total, User::count());
+        $proponente->refresh();
+        $this->assertSame('proponente@fgm.test', $proponente->email);
+        $this->assertNull($proponente->password);
+        $this->assertFalse($proponente->papeis()->exists());
+    }
+
     public function test_cpf_de_proponente_vira_usuario_sem_duplicar(): void
     {
         $pessoa = PessoaFisica::factory()->create(['rg' => '12345678']);
@@ -115,9 +138,10 @@ class UsuariosTest extends TestCase
         $proponente->update(['cpf' => '52998224725', 'name' => 'Nome do gov.br']);
         $total = User::count();
 
-        $this->post('/retaguarda/usuarios', $this->dados())
+        $this->post('/retaguarda/usuarios', $this->dados(['confirmar_proponente' => '1']))
             ->assertSessionHasNoErrors()
-            ->assertRedirect('/retaguarda/usuarios');
+            ->assertRedirect('/retaguarda/usuarios')
+            ->assertSessionHas('sucesso', 'O proponente Nome do gov.br agora é usuário da retaguarda.');
 
         $this->assertSame($total, User::count());
         $proponente->refresh();

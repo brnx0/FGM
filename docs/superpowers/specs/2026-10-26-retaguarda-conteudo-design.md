@@ -46,9 +46,10 @@ A FGM precisa de uma área interna (retaguarda) onde a equipe gerencia o que o p
 
 - Gestores são registros da tabela `users` existente. Mudanças: `password` (nullable — proponentes continuam sem senha), `email` passa a ser **único quando preenchido**, campo `ativo` (bool, padrão verdadeiro). Gestor exige **nome, e-mail e CPF** (válido, com dígito verificador, único) — o CPF é o que vincula o gestor ao gov.br. `users.cpf` **continua NOT NULL**.
 - Tabelas `roles` (`id`, `nome`, `slug` único) e `role_user` (pivô). Papel inicial: **Administrador** (`administrador`). `User::temPapel(string $slug): bool` e `User::ehGestor(): bool` (tem algum papel e está ativo).
-- **Seeder do primeiro gestor** (`PrimeiroGestorSeeder`, chamado pelo `DatabaseSeeder`): cria o papel Administrador e o usuário **`admin@admin`**, senha **`123456`**, nome "Administrador", com esse papel — valores fixos no seeder, sem `.env` (decisão do usuário). Para manter `users.cpf` NOT NULL, ele recebe o CPF de preenchimento **`00000000000`** (inválido, nunca devolvido pelo gov.br, portanto nunca usado para entrar) — decisão do usuário; esse usuário entra só por e-mail e senha. Ao editar esse usuário na tela Gestores, o formulário pede um CPF válido como para qualquer gestor. Idempotente (não recria nem redefine a senha se o usuário já existe).
-- *(decisão do Claude, por segurança)* O seeder do admin **não roda com `APP_ENV=production`** — em produção o primeiro administrador é criado de outra forma, a combinar. A senha `123456` vale para local e homologação.
-- **Tela Gestores:** listar (nome, e-mail, CPF mascarado, papel, ativo), criar (nome, e-mail, CPF, senha inicial, papel), editar (inclusive trocar senha), ativar/desativar. Um gestor não pode desativar a si mesmo nem remover o próprio papel. Sem exclusão definitiva.
+- **Seeder do primeiro gestor** (`PrimeiroGestorSeeder`, chamado pelo `DatabaseSeeder`): cria o papel Administrador e o usuário **`admin@admin`**, senha **`123456`**, nome "Administrador", com esse papel — valores fixos no seeder, sem `.env` (decisão do usuário). Para manter `users.cpf` NOT NULL, ele recebe o CPF de preenchimento **`00000000000`** (inválido, nunca devolvido pelo gov.br, portanto nunca usado para entrar) — decisão do usuário; esse usuário entra só por e-mail e senha. Ao editar esse usuário na tela Usuários, o formulário pede um CPF válido como para qualquer gestor. Idempotente (não recria nem redefine a senha se o usuário já existe).
+- *(decisão do Claude, por segurança)* Em `APP_ENV=production` o seeder cria **só o papel** Administrador, sem o usuário `admin@admin` — em produção o primeiro administrador é criado de outra forma, a combinar. O admin é reconhecido pelo CPF de preenchimento, então rodar o seeder de novo após ele trocar o e-mail não cria outro. A senha `123456` vale para local e homologação.
+- **Tela Usuários** (antes chamada "Gestores"; `/retaguarda/usuarios`): listar (nome, e-mail, CPF mascarado, papel, ativo), criar (nome, e-mail, CPF, senha inicial, papel), editar (inclusive trocar senha), ativar/desativar. Um gestor não pode desativar a si mesmo nem remover o próprio papel. Sem exclusão definitiva. CPF de um proponente já cadastrado só vira usuário da retaguarda após confirmação na tela (ele deixa de acessar o cadastro do portal).
+- **Trocar senha** (`/retaguarda/minha-senha`, na barra superior): cada usuário da retaguarda troca a própria senha informando a atual (quem ainda não tem senha só define uma).
 
 ## 8. Editais na retaguarda
 
@@ -68,19 +69,19 @@ A FGM precisa de uma área interna (retaguarda) onde a equipe gerencia o que o p
 
 ## 10. Arquivos (PDFs e imagens)
 
-- Guardados no disco **`public`** do Laravel (`storage/app/public`, servido via `storage:link`) *(decisão do Claude — são arquivos públicos do portal; os documentos pessoais do cadastro continuam no disco `local`, privado)*.
-- Ao trocar ou excluir, o arquivo antigo é apagado. Validação por tipo real (mimes) e tamanho: imagem jpg/png/webp até 5 MB.
+- **Imagens** no disco **`public`** do Laravel (`storage/app/public`, servido via `storage:link`). **PDFs dos editais** no disco **`local`** (privado), entregues pela rota `GET /editais/{slug}/pdf`, que responde 404 para edital excluído, despublicado ou sem PDF *(ajuste da revisão — Ruling 1: em `public` o PDF de um edital excluído continuaria acessível por `/storage/...`, contrariando o item 12.5)*. Os documentos pessoais do cadastro continuam no disco `local`.
+- Ao trocar, o arquivo antigo é apagado. Na exclusão lógica os arquivos são mantidos (o PDF deixa de ser entregue pela rota). Validação por tipo real (mimes) e tamanho: imagem jpg/png/webp até 5 MB.
 
 ## 11. Telas e navegação
 
-- Layout próprio da retaguarda (`RetaguardaLayout`), com a mesma identidade visual do portal: menu lateral com **Editais**, **Eventos** e **Gestores** (o menu já pensado para receber mais itens), topo com nome do gestor e "Sair", recolhível no celular.
+- Layout próprio da retaguarda (`RetaguardaLayout`), com a mesma identidade visual do portal: menu lateral com **Editais**, **Eventos** e **Usuários** (o menu já pensado para receber mais itens), topo com nome do gestor e "Sair", recolhível no celular.
 - `/retaguarda` abre a lista de Editais *(decisão do Claude, já que o painel inicial está fora do escopo)*.
 - Formulários com mensagens de validação em português, confirmação antes de excluir, aviso de sucesso após salvar.
 
 ## 12. Decisões do Claude após a revisão (conferir)
 
 1. **gov.br para a retaguarda com CPF que não existe em `users`:** recusa sem criar usuário (o fluxo do proponente pelo portal continua igual, criando o usuário). Gestor que entra pelo gov.br **não** tem nome/e-mail sobrescritos pelos dados do gov.br — o cadastro do gestor manda.
-2. **Uma sessão só** (guard `web` atual). Se a mesma pessoa for proponente e gestora (mesmo CPF), um login vale para as duas áreas; "Sair" encerra as duas. Estar logado sem papel é estado normal (proponente) e só barra a retaguarda.
+2. **Uma sessão só** (guard `web` atual). Se a mesma pessoa for proponente e gestora (mesmo CPF), um login vale para as duas áreas; "Sair" encerra as duas. Estar logado sem papel é estado normal (proponente) e só barra a retaguarda. *Ajuste (decisão do usuário durante a implementação):* usuários da retaguarda (ativos, com papel) **não usam o cadastro do portal** (`/cadastro`); o portal os encaminha à retaguarda.
 3. **Migração de `users`:** o Oracle aceita vários `NULL` num índice único, então "e-mail único quando preenchido" é um índice único simples; e-mail vazio é gravado como `NULL`. O builder confere duplicados nos dados locais antes de criar o índice.
 4. **PDF de edital publicado:** pode ser **trocado**, mas não removido enquanto o edital estiver publicado (validação). Por segurança, o portal também filtra editais sem PDF (validação + filtro na consulta).
 5. **Exclusão lógica:** o slug de um edital/evento excluído continua reservado (não é reaproveitado); a página pública e o PDF de um edital excluído retornam 404.

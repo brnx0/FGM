@@ -23,8 +23,9 @@ RUN docker-php-ext-install -j"$(nproc)" pcntl intl zip \
     && echo "instantclient,/opt/oracle/instantclient" | pecl install oci8 \
     && docker-php-ext-enable oci8
 
-# Cadastro de proponente: até 7 arquivos de 2 MB num mesmo envio (o padrão do PHP aceita 8 MB por requisição).
-RUN printf "upload_max_filesize=2M\npost_max_size=16M\n" > /usr/local/etc/php/conf.d/uploads.ini
+# Edital: PDF de até 20 MB e imagem de até 5 MB num mesmo envio.
+# O cadastro de proponente (até 7 arquivos) mantém a própria regra de 2 MB por arquivo, conferida na validação.
+RUN printf "upload_max_filesize=20M\npost_max_size=32M\n" > /usr/local/etc/php/conf.d/uploads.ini
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 

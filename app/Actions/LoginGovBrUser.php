@@ -18,13 +18,16 @@ class LoginGovBrUser
 
         $user = User::firstOrNew(['cpf' => $id->cpf]);
 
-        $user->fill([
-            'name' => mb_substr($id->nome, 0, 255),
-            'phone' => $id->telefone,
-        ]);
+        // Usuário da retaguarda (mesmo inativo) mantém o nome e o e-mail cadastrados lá.
+        $daRetaguarda = $user->exists && $user->papeis()->exists();
+
+        if (! $daRetaguarda) {
+            $user->name = mb_substr($id->nome, 0, 255);
+        }
+        $user->phone = $id->telefone;
 
         $email = $id->email !== null && mb_strlen($id->email) <= 255 ? $id->email : null;
-        if (! $this->emailPertenceAOutro($email, $user)) {
+        if (! $daRetaguarda && ! $this->emailPertenceAOutro($email, $user)) {
             $user->fill(['email' => $email, 'email_verified' => $id->emailVerificado]);
         }
         $user->govbr_trust_level = $id->nivelConfiabilidade ?? $user->govbr_trust_level;
@@ -33,6 +36,7 @@ class LoginGovBrUser
 
         Auth::login($user);
         session()->regenerate();
+        session(['portal.via_govbr' => true]);
 
         return $user;
     }

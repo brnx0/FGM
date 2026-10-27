@@ -139,6 +139,9 @@ class MinhaSenhaTest extends TestCase
                 ->assertSessionHasErrors('senha_atual');
         }
 
-        $this->put(self::URL, $this->dados())->assertTooManyRequests();
+        $this->from(self::URL)
+            ->put(self::URL, $this->dados())
+            ->assertRedirect(self::URL)
+            ->assertSessionHasErrors(['senha_atual' => 'Muitas tentativas. Aguarde um minuto e tente novamente.']);
     }
 }

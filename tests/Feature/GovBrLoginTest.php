@@ -144,7 +144,10 @@ class GovBrLoginTest extends TestCase
         for ($i = 0; $i < 10; $i++) {
             $this->get('/auth/govbr/callback?code=abc&state=errado')->assertRedirect('/');
         }
-        $this->get('/auth/govbr/callback?code=abc&state=errado')->assertTooManyRequests();
+        $this->get('/auth/govbr/callback?code=abc&state=errado')
+            ->assertRedirect('/')
+            ->assertSessionHas('erro', 'Muitas tentativas. Aguarde um minuto e tente novamente.');
+        $this->getJson('/auth/govbr/callback?code=abc&state=errado')->assertTooManyRequests();
 
         // O limite esgotado do callback não bloqueia o início do fluxo.
         $this->get('/auth/govbr/redirect')->assertRedirectContains(self::GOVBR_BASE.'/authorize');
@@ -152,9 +155,29 @@ class GovBrLoginTest extends TestCase
 
     public function test_logout_redireciona_para_govbr(): void
     {
-        $this->actingAs(User::factory()->create(['cpf' => '52998224725']));
+        $this->get('/auth/govbr/redirect');
+        $this->fakeTokenEndpoint($this->claimsValidos(session('govbr.nonce')));
+        $this->get('/auth/govbr/callback?code=abc&state='.session('govbr.state'));
+        $this->assertAuthenticated();
 
         $this->post('/logout')->assertRedirect(app(GovBrClient::class)->logoutUrl());
+        $this->assertGuest();
+    }
+
+    public function test_logout_de_quem_entrou_pela_retaguarda_com_govbr_vai_ao_govbr(): void
+    {
+        $this->actingAs(User::factory()->gestor()->create())
+            ->withSession(['retaguarda.via_govbr' => true]);
+
+        $this->post('/logout')->assertRedirect(app(GovBrClient::class)->logoutUrl());
+        $this->assertGuest();
+    }
+
+    public function test_logout_de_quem_entrou_com_senha_sai_so_do_portal(): void
+    {
+        $this->actingAs(User::factory()->gestor()->create());
+
+        $this->post('/logout')->assertRedirect('/');
         $this->assertGuest();
     }
 

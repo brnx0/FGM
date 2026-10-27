@@ -17,7 +17,8 @@ const campoEmail = ref<HTMLInputElement | null>(null);
 const classeCampo =
     'h-12 w-full rounded-[12px] border border-tinta-suave/70 bg-superficie px-4 text-base text-home-tinta placeholder:text-tinta-suave aria-invalid:border-erro-texto aria-invalid:ring-1 aria-invalid:ring-erro-texto';
 
-// Recusado (ou limite de tentativas): a senha é apagada e o foco volta ao e-mail, onde aparece o erro.
+// Recusado, ou barrado pelo limite de tentativas (que o servidor devolve como erro do e-mail):
+// a senha é apagada e o foco volta ao e-mail, onde aparece o erro.
 const entrar = (): void => {
     form.post('/retaguarda/login', {
         onFinish: () => form.reset('senha'),
@@ -86,7 +87,7 @@ const entrar = (): void => {
                         :disabled="form.processing"
                         class="pressionavel inline-flex min-h-12 items-center justify-center rounded-pill bg-acao px-8 text-[0.8125rem] font-bold tracking-[0.12em] text-sobre-acao uppercase hover:bg-acao-escuro disabled:cursor-wait disabled:opacity-70"
                     >
-                        Entrar
+                        {{ form.processing ? 'Entrando…' : 'Entrar' }}
                     </button>
                 </form>
 

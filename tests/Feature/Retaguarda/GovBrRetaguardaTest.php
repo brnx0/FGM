@@ -184,4 +184,15 @@ class GovBrRetaguardaTest extends TestCase
         $this->assertAuthenticated();
         $this->assertNull(session('retaguarda.via_govbr'));
     }
+
+    public function test_limite_do_govbr_na_retaguarda_volta_ao_login_com_aviso(): void
+    {
+        for ($i = 0; $i < 10; $i++) {
+            $this->get('/retaguarda/govbr');
+        }
+
+        $this->get('/retaguarda/govbr')
+            ->assertRedirect('/retaguarda/login')
+            ->assertSessionHas('erro', 'Muitas tentativas. Aguarde um minuto e tente novamente.');
+    }
 }

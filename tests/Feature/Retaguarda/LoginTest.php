@@ -79,10 +79,53 @@ class LoginTest extends TestCase
                 ->assertSessionHasErrors('email');
         }
 
-        $this->post('/retaguarda/login', ['email' => $gestor->email, 'senha' => '123456'])
-            ->assertTooManyRequests();
+        $this->from('/retaguarda/login')
+            ->post('/retaguarda/login', ['email' => $gestor->email, 'senha' => '123456'])
+            ->assertRedirect('/retaguarda/login')
+            ->assertSessionHasErrors(['email' => 'Muitas tentativas. Aguarde um minuto e tente novamente.']);
 
         $this->assertGuest();
+    }
+
+    public function test_limite_de_tentativas_em_json_continua_429(): void
+    {
+        $gestor = User::factory()->gestor()->create();
+
+        for ($tentativa = 1; $tentativa <= 5; $tentativa++) {
+            $this->postJson('/retaguarda/login', ['email' => $gestor->email, 'senha' => 'errada'])
+                ->assertUnprocessable();
+        }
+
+        $this->postJson('/retaguarda/login', ['email' => $gestor->email, 'senha' => '123456'])
+            ->assertTooManyRequests();
+    }
+
+    public function test_mensagens_de_validacao_em_portugues(): void
+    {
+        $this->from('/retaguarda/login')
+            ->post('/retaguarda/login', [])
+            ->assertRedirect('/retaguarda/login')
+            ->assertSessionHasErrors([
+                'email' => 'O campo e-mail é obrigatório.',
+                'senha' => 'O campo senha é obrigatório.',
+            ]);
+
+        $this->post('/retaguarda/login', ['email' => 'nao-e-email', 'senha' => 'x'])
+            ->assertSessionHasErrors(['email' => 'O campo e-mail deve ser um endereço de e-mail válido.']);
+    }
+
+    public function test_gestor_logado_que_abre_o_login_vai_para_o_inicio(): void
+    {
+        $this->actingAs(User::factory()->gestor()->create())
+            ->get('/retaguarda/login')
+            ->assertRedirect('/retaguarda');
+    }
+
+    public function test_gestor_inativo_logado_ve_a_tela_de_login(): void
+    {
+        $this->actingAs(User::factory()->gestor()->create(['ativo' => false]))
+            ->get('/retaguarda/login')
+            ->assertOk();
     }
 
     public function test_visitante_vai_para_login(): void

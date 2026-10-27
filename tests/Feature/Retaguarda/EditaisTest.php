@@ -294,4 +294,35 @@ class EditaisTest extends TestCase
 
         $this->assertSame(1, Edital::count());
     }
+
+    public function test_pdf_que_o_php_recusou_mostra_aviso_de_tamanho(): void
+    {
+        $caminho = tempnam(sys_get_temp_dir(), 'upl');
+        $pdfGrandeDemais = new UploadedFile($caminho, 'edital.pdf', null, UPLOAD_ERR_INI_SIZE, true);
+
+        $this->post('/retaguarda/editais', $this->dados(['pdf' => $pdfGrandeDemais]))
+            ->assertSessionHasErrors(['pdf' => 'Não foi possível enviar o arquivo. Ele pode ser maior que o permitido.']);
+    }
+
+    public function test_envio_acima_do_limite_do_php_volta_ao_formulario_com_aviso(): void
+    {
+        $this->call('POST', '/retaguarda/editais', server: [
+            'CONTENT_LENGTH' => (string) (1024 ** 3),
+            'HTTP_X_INERTIA' => 'true',
+            'HTTP_REFERER' => url('/retaguarda/editais/create'),
+        ])
+            ->assertRedirect('/retaguarda/editais/create')
+            ->assertSessionHasErrors(['pdf' => 'Os arquivos enviados passam do tamanho máximo permitido.']);
+    }
+
+    public function test_envio_acima_do_limite_do_php_no_portal_volta_com_aviso_geral(): void
+    {
+        $this->call('POST', '/cadastro', server: [
+            'CONTENT_LENGTH' => (string) (1024 ** 3),
+            'HTTP_X_INERTIA' => 'true',
+            'HTTP_REFERER' => url('/cadastro/pessoa-fisica'),
+        ])
+            ->assertRedirect('/cadastro/pessoa-fisica')
+            ->assertSessionHas('erro', 'Os arquivos enviados passam do tamanho máximo permitido.');
+    }
 }

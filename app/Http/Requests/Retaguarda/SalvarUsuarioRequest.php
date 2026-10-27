@@ -12,7 +12,8 @@ use Illuminate\Validation\Validator;
 
 /**
  * Criação e edição de usuário na retaguarda. Na edição, senha em branco mantém a atual.
- * Na criação, um CPF que já é de proponente (usuário sem papel) reaproveita esse usuário.
+ * Na criação, um CPF que já é de proponente (usuário sem papel) reaproveita esse usuário,
+ * desde que a troca seja confirmada (confirmar_proponente): ele deixa de acessar o cadastro do portal.
  */
 class SalvarUsuarioRequest extends FormRequest
 {
@@ -51,6 +52,7 @@ class SalvarUsuarioRequest extends FormRequest
             'senha' => [$this->usuarioEditado() ? 'nullable' : 'required', 'string', 'min:8', 'confirmed'],
             'papeis' => ['required', 'array'],
             'papeis.*' => ['string', 'distinct', Rule::exists('roles', 'slug')],
+            'confirmar_proponente' => ['nullable', 'boolean'],
         ];
     }
 
@@ -87,6 +89,15 @@ class SalvarUsuarioRequest extends FormRequest
         return [
             function (Validator $validator): void {
                 if ($validator->errors()->has('cpf')) {
+                    return;
+                }
+
+                $proponente = $this->usuarioReaproveitado();
+                if ($proponente !== null && ! $this->boolean('confirmar_proponente')) {
+                    $validator->errors()->add('cpf', "Este CPF já é do proponente {$proponente->name}. Ao confirmar, ele passa a ser usuário da retaguarda e deixa de acessar o cadastro do portal.");
+                    // Faz o formulário mostrar a caixa de confirmação.
+                    $validator->errors()->add('confirmar_proponente', 'Marque a confirmação para continuar.');
+
                     return;
                 }
 

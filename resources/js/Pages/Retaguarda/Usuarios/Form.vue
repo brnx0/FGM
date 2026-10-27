@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick } from 'vue';
+import { computed, nextTick } from 'vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import CampoCadastro from '../../../Components/CampoCadastro.vue';
 import SecaoCadastro from '../../../Components/SecaoCadastro.vue';
@@ -34,19 +34,25 @@ const form = useForm({
     senha_confirmation: '',
     // Com um papel só (hoje, administrador), ele já vem marcado no cadastro novo.
     papeis: salvo?.papeis ?? (props.papeisDisponiveis.length === 1 ? props.papeisDisponiveis.map((papel) => papel.slug) : []),
+    // Marcada quando o CPF é de um proponente e o servidor pede a confirmação.
+    confirmar_proponente: false,
 });
+
+const pedeConfirmacao = computed<boolean>(() => !editando && (form.errors.confirmar_proponente !== undefined || form.confirmar_proponente));
 
 // Atualiza o próprio campo: se a máscara descarta o que foi digitado, o valor do form não muda e o Vue não redesenha.
 const digitarCpf = (evento: Event): void => {
     const campo = evento.target as HTMLInputElement;
     campo.value = formatarCpf(campo.value);
     form.cpf = campo.value;
-    form.clearErrors('cpf');
+    // Outro CPF: a confirmação dada para o anterior não vale mais.
+    form.confirmar_proponente = false;
+    form.clearErrors('cpf', 'confirmar_proponente');
 };
 
 // CPF salvo inválido (o do primeiro administrador) chega em branco e precisa ser informado.
 const ajudaCpf = !editando
-    ? 'Se o CPF já for de um proponente, ele passa a ser usuário da retaguarda sem perder o cadastro.'
+    ? 'Se o CPF já for de um proponente, será pedida a confirmação: ele passa a ser usuário da retaguarda e deixa de acessar o cadastro do portal.'
     : salvo.cpf === ''
       ? 'O CPF salvo não é válido. Informe o CPF correto.'
       : undefined;
@@ -133,6 +139,23 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                             @input="digitarCpf"
                         />
                     </CampoCadastro>
+
+                    <div v-if="pedeConfirmacao" class="md:col-span-2">
+                        <label :class="classeMarcacao">
+                            <input
+                                v-model="form.confirmar_proponente"
+                                type="checkbox"
+                                :class="classeCaixa"
+                                :aria-invalid="form.errors.confirmar_proponente ? true : undefined"
+                                :aria-describedby="form.errors.confirmar_proponente ? 'confirmar_proponente-erro' : undefined"
+                                @change="form.clearErrors('confirmar_proponente')"
+                            />
+                            Confirmo transformar este proponente em usuário da retaguarda
+                        </label>
+                        <p v-if="form.errors.confirmar_proponente" id="confirmar_proponente-erro" class="text-[0.875rem] font-semibold text-erro-texto">
+                            {{ form.errors.confirmar_proponente }}
+                        </p>
+                    </div>
 
                     <CampoCadastro id="email" rotulo="E-mail" obrigatorio ajuda="Usado para entrar na retaguarda." :erro="form.errors.email" v-slot="{ descricao, invalido }">
                         <input

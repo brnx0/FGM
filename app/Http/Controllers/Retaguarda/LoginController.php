@@ -18,8 +18,18 @@ class LoginController extends Controller
 {
     private const ERRO = 'E-mail ou senha inválidos.';
 
-    public function create(): Response
+    /** Hash qualquer, conferido quando não há senha a comparar, para a resposta levar o mesmo tempo. */
+    private const HASH_FICTICIO = '$2y$12$vsQYLPXw3K8oukvcpPx5iOXj3uZACj58Q8Q4PRfVkLfwk8O2UAeMO';
+
+    public function create(Request $request): Response|RedirectResponse
     {
+        if ($request->user()?->ehGestor()) {
+            // Mantém avisos (ex.: limite de tentativas) até o início.
+            $request->session()->reflash();
+
+            return redirect()->route('retaguarda.inicio');
+        }
+
         return Inertia::render('Retaguarda/Login');
     }
 
@@ -32,11 +42,12 @@ class LoginController extends Controller
 
         $user = User::where('email', mb_strtolower(trim($dados['email'])))->first();
 
-        // Mesma mensagem para e-mail desconhecido, senha errada, sem senha, inativo ou sem papel.
-        if ($user === null
-            || $user->password === null
-            || ! Hash::check($dados['senha'], $user->password)
-            || ! $user->ehGestor()) {
+        // Mesma mensagem (e o mesmo custo de Hash::check) para e-mail desconhecido, senha errada,
+        // sem senha, inativo ou sem papel.
+        $senhaConfere = Hash::check($dados['senha'], $user?->password ?? self::HASH_FICTICIO)
+            && $user?->password !== null;
+
+        if (! $senhaConfere || ! $user->ehGestor()) {
             throw ValidationException::withMessages(['email' => self::ERRO]);
         }
 
