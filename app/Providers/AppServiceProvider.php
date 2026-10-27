@@ -47,6 +47,11 @@ class AppServiceProvider extends ServiceProvider
             mb_strtolower(trim((string) $request->input('email'))).'|'.$request->ip()
         ));
 
+        // 30/min por usuário nas consultas de CNPJ, CEP e municípios do cadastro.
+        RateLimiter::for('consultas', fn (Request $request) => Limit::perMinute(30)->by(
+            (string) ($request->user()?->id ?? $request->ip())
+        ));
+
         // Atrás de um proxy que termina o TLS, honra X-Forwarded-Proto; sem isso
         // isSecure() fica falso e o HSTS (SecurityHeaders) nunca é enviado.
         $proxies = trim((string) config('app.trusted_proxies'));

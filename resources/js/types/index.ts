@@ -13,7 +13,7 @@ export interface UsuarioAutenticado {
 export interface SharedProps {
     auth: { user: UsuarioAutenticado | null };
     ambienteTeste: boolean;
-    flash: { erro: string | null; sucesso: string | null };
+    flash: { erro: string | null; aviso: string | null; sucesso: string | null };
     errors: Record<string, string>;
 }
 
@@ -84,8 +84,6 @@ export interface FakeLoginProps {
     contas: ContaFake[];
 }
 
-export type TipoCadastro = 'pessoa-fisica' | 'pessoa-juridica';
-
 export interface OpcaoCadastro {
     valor: string;
     rotulo: string;
@@ -151,9 +149,129 @@ export interface CadastroCompletarProps {
     };
 }
 
-export interface CadastroFormularioProps {
-    tipo: TipoCadastro;
+/** Item da lista de organizações da pessoa. */
+export interface OrganizacaoResumo {
+    id: number;
+    nome: string;
+    cnpj: string;
+    logoUrl: string | null;
+    responsavel: boolean;
 }
+
+export interface OrganizacoesIndexProps {
+    organizacoes: OrganizacaoResumo[];
+}
+
+export interface RepresentanteForm {
+    cpf: string;
+    nome: string;
+    tipo_documento: string | null;
+    numero_documento: string | null;
+    cargo: string | null;
+    telefone: string | null;
+    email: string | null;
+    origem: string | null;
+    origem_descricao: string | null;
+}
+
+/** Organização como o formulário de edição a recebe (CNPJ já formatado, data em aaaa-mm-dd). */
+export interface OrganizacaoForm {
+    id: number;
+    cnpj: string;
+    razao_social: string;
+    nome_fantasia: string | null;
+    natureza_juridica: string;
+    mei: boolean;
+    finalidade_lucrativa: boolean | null;
+    municipio_ibge: string;
+    municipio: { codigo: string; nome: string; uf: string } | null;
+    inscricao_municipal: string | null;
+    inscricao_estadual: string | null;
+    porte: string | null;
+    data_fundacao: string | null;
+    telefone: string | null;
+    logoUrl: string | null;
+    cep: string | null;
+    logradouro: string | null;
+    numero: string | null;
+    sem_numero: boolean;
+    complemento: string | null;
+    bairro: string | null;
+    cidade: string | null;
+    uf: string | null;
+    representantes: RepresentanteForm[];
+}
+
+export interface OrganizacaoFormProps {
+    organizacao: OrganizacaoForm | null;
+    naturezas: OpcaoCadastro[];
+    opcoes: {
+        portes: OpcaoCadastro[];
+        tiposDocumento: OpcaoCadastro[];
+        origens: OpcaoCadastro[];
+        estados: OpcaoCadastro[];
+    };
+    representanteInicial: { cpf: string; nome: string } | null;
+}
+
+/** Representante como o formulário o edita: tudo texto, vazio quando não informado; CPF e telefone com máscara. */
+export interface RepresentanteEdicao {
+    cpf: string;
+    nome: string;
+    tipo_documento: string;
+    numero_documento: string;
+    cargo: string;
+    telefone: string;
+    email: string;
+    origem: string;
+    origem_descricao: string;
+}
+
+/** Endereço da sede como o formulário o edita (CEP com máscara). */
+export interface EnderecoSede {
+    cep: string;
+    logradouro: string;
+    numero: string;
+    sem_numero: boolean;
+    complemento: string;
+    bairro: string;
+    cidade: string;
+    uf: string;
+}
+
+/** Município da lista com busca (/cadastro/consultas/municipios). */
+export interface MunicipioBusca {
+    codigo: string;
+    nome: string;
+    uf: string;
+}
+
+/** Dados públicos do CNPJ (/cadastro/consultas/cnpj/{cnpj}). Telefone e CEP só com números, data em aaaa-mm-dd. */
+export interface DadosPublicosCnpj {
+    razao_social: string | null;
+    nome_fantasia: string | null;
+    natureza_juridica: string | null;
+    finalidade_lucrativa: boolean | null;
+    mei: boolean;
+    porte: string | null;
+    data_fundacao: string | null;
+    telefone: string | null;
+    cep: string | null;
+    logradouro: string | null;
+    numero: string | null;
+    sem_numero: boolean;
+    complemento: string | null;
+    bairro: string | null;
+    cidade: string | null;
+    uf: string | null;
+    municipio: MunicipioBusca | null;
+}
+
+export type RespostaConsultaCnpj = { jaCadastrado: true } | { encontrado: false } | { encontrado: true; dados: DadosPublicosCnpj };
+
+export type RespostaConsultaCep =
+    | { encontrado: false }
+    | { encontrado: true; dados: { logradouro: string | null; bairro: string | null; cidade: string | null; uf: string | null } };
 
 /** Link de paginação do LengthAwarePaginator do Laravel. */
 export interface LinkPaginacao {

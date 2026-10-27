@@ -81,7 +81,7 @@ class CadastroTest extends TestCase
             'nome_artistico' => 'Maria do Samba',
             'telefone_adicional' => '(71) 3333-4444',
             'pcd' => true,
-        ]))->assertRedirect('/')->assertSessionHas('sucesso');
+        ]))->assertRedirect(route('cadastro.organizacao'))->assertSessionHas('sucesso');
 
         $cadastro = $user->pessoaFisica()->sole();
         $this->assertSame('Maria do Samba', $cadastro->nome_artistico);
@@ -224,27 +224,88 @@ class CadastroTest extends TestCase
 
     public function test_tipos_de_cadastro_exigem_login(): void
     {
-        $this->get('/cadastro/pessoa-fisica')->assertRedirect('/');
         $this->get('/cadastro/pessoa-juridica')->assertRedirect('/');
     }
 
-    #[DataProvider('tiposDeCadastro')]
-    public function test_tipo_de_cadastro_abre_o_formulario_do_tipo(string $url, string $tipo): void
+    public function test_rota_antiga_de_pessoa_fisica_nao_existe(): void
     {
-        $user = User::factory()->create();
-
-        $this->actingAs($user)->get($url)->assertInertia(fn (Assert $page) => $page
-            ->component('Cadastro/Formulario')
-            ->where('tipo', $tipo));
+        $this->actingAs(User::factory()->create())->get('/cadastro/pessoa-fisica')->assertNotFound();
     }
 
-    /** @return array<string, array{string, string}> */
-    public static function tiposDeCadastro(): array
+    public function test_primeiro_salvamento_segue_para_a_etapa_da_organizacao(): void
     {
-        return [
-            'pessoa física' => ['/cadastro/pessoa-fisica', 'pessoa-fisica'],
-            'pessoa jurídica' => ['/cadastro/pessoa-juridica', 'pessoa-juridica'],
-        ];
+        Storage::fake('local');
+        $user = User::factory()->create(['profile_completed_at' => null, 'email' => 'maria@example.com', 'phone' => '71998765432']);
+
+        $this->actingAs($user)->post('/cadastro', $this->dadosValidos())
+            ->assertRedirect(route('cadastro.organizacao'))
+            ->assertSessionHas('sucesso', 'Dados salvos. Você também pode cadastrar uma organização.');
+    }
+
+    public function test_aviso_do_middleware_chega_a_tela_de_dados(): void
+    {
+        $user = User::factory()->create(['profile_completed_at' => null]);
+
+        $this->actingAs($user)->followingRedirects()->get('/cadastro/organizacao')
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Cadastro/Completar')
+                ->where('flash.aviso', 'Complete seus dados de pessoa física antes de cadastrar uma organização.'));
+    }
+
+    public function test_primeiro_salvamento_mostra_o_sucesso_na_etapa_da_organizacao(): void
+    {
+        Storage::fake('local');
+        $user = User::factory()->create(['profile_completed_at' => null, 'email' => 'maria@example.com', 'phone' => '71998765432']);
+
+        $this->actingAs($user)->followingRedirects()->post('/cadastro', $this->dadosValidos())
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Cadastro/Organizacao')
+                ->where('flash.sucesso', 'Dados salvos. Você também pode cadastrar uma organização.'));
+    }
+
+    public function test_salvamentos_seguintes_voltam_para_a_home(): void
+    {
+        Storage::fake('local');
+        $cadastro = PessoaFisica::factory()->create();
+        $cadastro->user->forceFill(['profile_completed_at' => now(), 'email' => 'maria@example.com', 'phone' => '71998765432'])->save();
+
+        $this->actingAs($cadastro->user)->post('/cadastro', [
+            ...$this->dadosValidos(),
+            'documento_cpf' => null,
+            'documento_rg' => null,
+        ])->assertRedirect(route('home'))->assertSessionHas('sucesso');
+    }
+
+    public function test_etapa_da_organizacao_abre_com_a_pessoa_fisica_completa(): void
+    {
+        $user = User::factory()->create(['profile_completed_at' => now()]);
+
+        $this->actingAs($user)->get('/cadastro/organizacao')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->component('Cadastro/Organizacao'));
+    }
+
+    public function test_etapa_da_organizacao_exige_pessoa_fisica_completa(): void
+    {
+        $user = User::factory()->create(['profile_completed_at' => null]);
+
+        $this->actingAs($user)->get('/cadastro/organizacao')
+            ->assertRedirect(route('cadastro'))
+            ->assertSessionHas('aviso', 'Complete seus dados de pessoa física antes de cadastrar uma organização.');
+    }
+
+    public function test_etapa_da_organizacao_exige_login(): void
+    {
+        $this->get('/cadastro/organizacao')->assertRedirect('/');
+    }
+
+    public function test_etapa_da_organizacao_bloqueia_usuario_da_retaguarda(): void
+    {
+        $gestor = User::factory()->gestor()->create(['profile_completed_at' => now()]);
+
+        $this->actingAs($gestor)->get('/cadastro/organizacao')
+            ->assertRedirect('/retaguarda')
+            ->assertSessionHas('erro');
     }
 
     public function test_logout_encerra_sessao(): void

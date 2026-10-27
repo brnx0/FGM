@@ -1,16 +1,16 @@
 <script setup lang="ts">
 defineProps<{
-    // Etapa em que a pessoa está, de 1 a 3; as anteriores aparecem como concluídas.
+    // Etapa em que a pessoa está, de 1 a 4; as anteriores aparecem como concluídas.
     atual: number;
 }>();
 
-const etapas = ['Conta gov.br', 'Seus dados', 'Inscrição nos editais'];
+const etapas = ['Conta gov.br', 'Seus dados', 'Organização (opcional)', 'Inscrição nos editais'];
 </script>
 
 <template>
     <!-- Fica sobre a faixa azul-marinho do portal, em vidro. -->
     <nav aria-label="Etapas do cadastro">
-        <ol class="vidro grid gap-1 rounded-[22px] p-1.5 sm:grid-cols-3">
+        <ol class="vidro grid gap-1 rounded-[22px] p-1.5 sm:grid-cols-2 lg:grid-cols-4">
             <li
                 v-for="(etapa, i) in etapas"
                 :key="etapa"

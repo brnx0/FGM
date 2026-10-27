@@ -51,6 +51,7 @@ class HandleInertiaRequests extends Middleware
             'ambienteTeste' => FakeLoginGate::bannerVisivel(),
             'flash' => [
                 'erro' => fn () => $request->session()->get('erro'),
+                'aviso' => fn () => $request->session()->get('aviso'),
                 'sucesso' => fn () => $request->session()->get('sucesso'),
             ],
         ];

@@ -75,20 +75,21 @@ class CadastroController extends Controller
         $cadastro->save();
         Storage::disk('local')->delete(array_filter($substituidos));
 
+        $primeiroCadastro = $user->profile_completed_at === null;
         $user->profile_completed_at ??= now();
         $user->save();
+
+        if ($primeiroCadastro) {
+            return redirect()->route('cadastro.organizacao')->with('sucesso', 'Dados salvos. Você também pode cadastrar uma organização.');
+        }
 
         return redirect()->route('home')->with('sucesso', 'Cadastro salvo. Agora você já pode se inscrever nos editais.');
     }
 
-    public function pessoaFisica(): Response
+    /** Etapa opcional: depois da pessoa física, a pessoa decide se cadastra uma organização. */
+    public function organizacao(): Response
     {
-        return Inertia::render('Cadastro/Formulario', ['tipo' => 'pessoa-fisica']);
-    }
-
-    public function pessoaJuridica(): Response
-    {
-        return Inertia::render('Cadastro/Formulario', ['tipo' => 'pessoa-juridica']);
+        return Inertia::render('Cadastro/Organizacao');
     }
 
     /**

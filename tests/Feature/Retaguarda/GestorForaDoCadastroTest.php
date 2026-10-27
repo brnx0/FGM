@@ -21,7 +21,6 @@ class GestorForaDoCadastroTest extends TestCase
             ->assertRedirect('/retaguarda')
             ->assertSessionHas('erro', self::ERRO);
 
-        $this->actingAs($gestor)->get('/cadastro/pessoa-fisica')->assertRedirect('/retaguarda');
         $this->actingAs($gestor)->get('/cadastro/pessoa-juridica')->assertRedirect('/retaguarda');
     }
 

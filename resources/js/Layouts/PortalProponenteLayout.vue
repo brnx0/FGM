@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
 import AccessibilityControls from '../Components/AccessibilityControls.vue';
 import CookieNotice from '../Components/CookieNotice.vue';
+import FlashMessage from '../Components/FlashMessage.vue';
 import SkipLink from '../Components/SkipLink.vue';
 import TestEnvBanner from '../Components/TestEnvBanner.vue';
 import VidroLiquido from '../Components/VidroLiquido.vue';
@@ -172,6 +173,7 @@ onBeforeUnmount(() => {
             </header>
 
             <main id="conteudo" tabindex="-1" class="flex-1 focus:outline-none">
+                <FlashMessage />
                 <slot />
             </main>
 
