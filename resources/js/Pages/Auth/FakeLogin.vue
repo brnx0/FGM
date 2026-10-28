@@ -78,8 +78,9 @@ const usarConta = (conta: ContaFake): void => {
             </div>
         </header>
 
-        <main id="conteudo" tabindex="-1" class="flex-1 focus:outline-none">
-            <div class="mx-auto grid max-w-6xl gap-10 px-4 py-8 sm:py-12 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-14">
+        <!-- No notebook (tela-baixa) a página cabe sem rolagem; o clip evita a barra durante a subida da íris. -->
+        <main id="conteudo" tabindex="-1" class="flex-1 overflow-clip focus:outline-none">
+            <div class="mx-auto grid max-w-6xl gap-10 px-4 py-8 sm:py-12 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-14 lg:tela-baixa:py-5">
                 <!-- Painel de abertura, como o do gov.br (sem a foto). Painel e formulário sobem quando se chega pela íris da home. -->
                 <div aria-hidden="true" class="iris-surge relative hidden min-h-[380px] overflow-hidden rounded-card bg-parchment lg:block">
                     <div class="absolute inset-y-0 left-[9%] w-[16%] bg-[#ffcd07]"></div>
@@ -94,11 +95,11 @@ const usarConta = (conta: ContaFake): void => {
                     </div>
                 </div>
 
-                <section aria-labelledby="titulo-login" class="iris-surge iris-surge-depois lg:pt-6">
+                <section aria-labelledby="titulo-login" class="iris-surge iris-surge-depois lg:pt-6 lg:tela-baixa:pt-0">
                     <form novalidate @submit.prevent="entrar">
                         <h1 id="titulo-login" class="text-[1.25rem] font-bold tracking-normal">Identifique-se no gov.br com:</h1>
 
-                        <p class="mt-6 flex items-center gap-3 font-semibold">
+                        <p class="mt-6 flex items-center gap-3 font-semibold lg:tela-baixa:mt-4">
                             <svg aria-hidden="true" viewBox="0 0 24 24" class="size-6 shrink-0 text-acao" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                                 <rect x="3" y="5" width="18" height="14" rx="2" />
                                 <circle cx="9" cy="11" r="2" />
@@ -106,9 +107,9 @@ const usarConta = (conta: ContaFake): void => {
                             </svg>
                             Número do CPF
                         </p>
-                        <p class="mt-3 text-[0.9375rem]">Digite seu CPF e sua senha para <strong>acessar</strong> sua conta gov.br</p>
+                        <p class="mt-3 text-[0.9375rem] lg:tela-baixa:mt-2">Digite seu CPF e sua senha para <strong>acessar</strong> sua conta gov.br</p>
 
-                        <label for="cpf" class="mt-5 block font-semibold">CPF</label>
+                        <label for="cpf" class="mt-5 block font-semibold lg:tela-baixa:mt-4">CPF</label>
                         <input
                             id="cpf"
                             ref="campoCpf"
@@ -131,7 +132,7 @@ const usarConta = (conta: ContaFake): void => {
                             {{ form.errors.cpf }}
                         </p>
 
-                        <label for="senha" class="mt-5 block font-semibold">Senha</label>
+                        <label for="senha" class="mt-5 block font-semibold lg:tela-baixa:mt-4">Senha</label>
                         <div class="relative mt-1">
                             <input
                                 id="senha"
@@ -167,7 +168,7 @@ const usarConta = (conta: ContaFake): void => {
                             {{ erroSenha }}
                         </p>
 
-                        <div class="mt-6 flex justify-end">
+                        <div class="mt-6 flex justify-end lg:tela-baixa:mt-4">
                             <button
                                 type="submit"
                                 class="pressionavel inline-flex min-h-11 items-center rounded-pill bg-govbr px-9 font-bold text-sobre-govbr hover:brightness-110 disabled:opacity-60"
@@ -178,12 +179,12 @@ const usarConta = (conta: ContaFake): void => {
                         </div>
                     </form>
 
-                    <aside aria-labelledby="simulacao-titulo" class="mt-10 rounded-card border border-hairline bg-parchment p-5 text-[0.9375rem]">
+                    <aside aria-labelledby="simulacao-titulo" class="mt-10 rounded-card border border-hairline bg-parchment p-5 text-[0.9375rem] lg:tela-baixa:mt-5 lg:tela-baixa:p-4">
                         <h2 id="simulacao-titulo" class="text-[1rem] font-bold tracking-normal">Este é um login simulado</h2>
                         <p class="mt-1 text-tinta-suave">
                             Nenhum dado é enviado ao gov.br e a senha não é conferida. Para entrar como outra pessoa, use uma conta de teste:
                         </p>
-                        <ul class="mt-3 flex flex-col gap-2">
+                        <ul class="mt-3 flex flex-col gap-2 lg:tela-baixa:mt-2">
                             <li v-for="conta in contas" :key="conta.cpf">
                                 <button
                                     type="button"
