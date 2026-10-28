@@ -3,10 +3,11 @@ import { computed, defineAsyncComponent, nextTick, ref } from 'vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import CampoArquivo from '../../../Components/CampoArquivo.vue';
 import CampoCadastro from '../../../Components/CampoCadastro.vue';
-import AbasFormulario from '../../../Components/Retaguarda/AbasFormulario.vue';
+import AbasFormulario, { camposComErro } from '../../../Components/Retaguarda/AbasFormulario.vue';
+import CategoriasEdital from '../../../Components/Retaguarda/CategoriasEdital.vue';
 import SecaoCadastro from '../../../Components/SecaoCadastro.vue';
 import RetaguardaLayout from '../../../Layouts/RetaguardaLayout.vue';
-import type { AbaFormulario, RetaguardaEditaisFormProps } from '../../../types';
+import type { AbaFormulario, CategoriaEditavel, RetaguardaEditaisFormProps } from '../../../types';
 
 // O editor (Tiptap) é pesado: vai num pedaço separado, carregado só nesta tela.
 const EditorTextoRico = defineAsyncComponent(() => import('../../../Components/EditorTextoRico.vue'));
@@ -23,6 +24,21 @@ const URL_IMAGEM_CONTEUDO = '/retaguarda/eventos/conteudo/imagem';
 const salvo = props.edital;
 const editando = salvo !== null;
 
+// Categorias salvas viram cartões editáveis; a chave do cartão segue o id (não a posição).
+const categoriasSalvas: CategoriaEditavel[] = (salvo?.categorias ?? []).map((categoria) => ({
+    chave: `salva-${categoria.id}`,
+    id: categoria.id,
+    nome: categoria.nome,
+    valor: categoria.valor,
+    vagas: categoria.vagas,
+    naturezas: [...categoria.naturezas],
+    cotas: {
+        negros: { valor: categoria.cotas.negros.valor, unidade: categoria.cotas.negros.unidade ?? 'vagas' },
+        indigenas: { valor: categoria.cotas.indigenas.valor, unidade: categoria.cotas.indigenas.unidade ?? 'vagas' },
+        pcd: { valor: categoria.cotas.pcd.valor, unidade: categoria.cotas.pcd.unidade ?? 'vagas' },
+    },
+}));
+
 // Arquivos só vão quando escolhidos; sem novo upload o servidor mantém os atuais.
 const form = useForm({
     titulo: salvo?.titulo ?? '',
@@ -37,6 +53,7 @@ const form = useForm({
     pdf: null as File | null,
     imagem: null as File | null,
     remover_imagem: false,
+    categorias: categoriasSalvas,
 });
 
 // Limites do servidor (max em KB na validação): o arquivo grande nem sai do navegador.
@@ -59,6 +76,7 @@ const escolherArquivo = (arquivo: File | null, campo: 'pdf' | 'imagem'): void =>
 const abas: AbaFormulario[] = [
     { id: 'dados', rotulo: 'Dados gerais', campos: ['titulo', 'categoria', 'tipo_fomento', 'vigencia_inicio', 'vigencia_fim', 'divulgacao'] },
     { id: 'inscricoes', rotulo: 'Inscrições', campos: ['inscricoes_inicio', 'inscricoes_fim'] },
+    { id: 'categorias', rotulo: 'Categorias', campos: ['categorias', 'categorias.*'] },
     { id: 'arquivos', rotulo: 'Arquivos', campos: ['pdf', 'imagem'] },
     { id: 'publicacao', rotulo: 'Publicação', campos: ['publicado'] },
 ];
@@ -66,24 +84,38 @@ const abaAtiva = ref<string>('dados');
 
 // Com erro, abre a primeira aba que tem algum e leva o foco ao campo inválido dela.
 const mostrarPrimeiroErro = async (): Promise<void> => {
-    const comErro = abas.find((aba) => aba.campos.some((campo) => form.errors[campo as keyof typeof form.errors]));
+    const comErro = abas.find((aba) => camposComErro(aba, form.errors as Partial<Record<string, string>>).length > 0);
     if (comErro) abaAtiva.value = comErro.id;
     await nextTick();
     document.querySelector<HTMLElement>(`#edital-painel-${abaAtiva.value} [aria-invalid="true"]`)?.focus();
 };
 
+// Os erros das categorias chegam como "categorias.N.campo": chaves que o tipo do useForm não prevê.
+const limparErros = (campos: string[]): void => {
+    form.clearErrors(...(campos as Parameters<typeof form.clearErrors>));
+};
+
+// A lista de categorias vai sempre inteira: o servidor apaga as que não vierem (lista vazia = nenhuma).
+// Sem a chave do cartão, que é só da tela.
+const paraEnvio = (dados: ReturnType<typeof form.data>) => ({
+    ...dados,
+    categorias: dados.categorias.map(({ chave: _chave, ...categoria }) => categoria),
+});
+
 // Edição vai como POST com _method=put: PUT com multipart não chega ao PHP.
+// "indices" monta categorias[0][nome]; o padrão ("brackets") viraria categorias[][nome] e quebraria os itens.
 const salvar = (): void => {
     const opcoes = {
         forceFormData: true,
+        queryStringArrayFormat: 'indices' as const,
         preserveScroll: true,
         onError: () => void mostrarPrimeiroErro(),
     };
 
     if (editando) {
-        form.transform((dados) => ({ ...dados, _method: 'put' })).post(`${BASE}/${salvo.slug}`, opcoes);
+        form.transform((dados) => ({ ...paraEnvio(dados), _method: 'put' })).post(`${BASE}/${salvo.slug}`, opcoes);
     } else {
-        form.post(BASE, opcoes);
+        form.transform(paraEnvio).post(BASE, opcoes);
     }
 };
 
@@ -271,8 +303,30 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                     </SecaoCadastro>
                 </template>
 
+                <template #categorias>
+                    <SecaoCadastro id="secao-edital-categorias" :numero="3" titulo="Categorias de inscrição">
+                        <template #icone>
+                            <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="4" y="4" width="16" height="6" rx="1.5" />
+                                <rect x="4" y="14" width="16" height="6" rx="1.5" />
+                            </svg>
+                        </template>
+
+                        <p class="mb-6 text-[0.9375rem] leading-[1.6] text-tinta-suave">
+                            As opções que o proponente escolhe ao se inscrever. Cada categoria tem valor, vagas, quem pode concorrer e reserva de cotas.
+                        </p>
+
+                        <CategoriasEdital
+                            v-model="form.categorias"
+                            :erros="form.errors as Partial<Record<string, string>>"
+                            :naturezas="naturezas"
+                            @limpar-erros="limparErros"
+                        />
+                    </SecaoCadastro>
+                </template>
+
                 <template #arquivos>
-                    <SecaoCadastro id="secao-edital-arquivos" :numero="3" titulo="Arquivos">
+                    <SecaoCadastro id="secao-edital-arquivos" :numero="4" titulo="Arquivos">
                         <template #icone>
                             <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M12 16V4M7 9l5-5 5 5" />
@@ -331,7 +385,7 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                 </template>
 
                 <template #publicacao>
-                    <SecaoCadastro id="secao-edital-publicacao" :numero="4" titulo="Publicação">
+                    <SecaoCadastro id="secao-edital-publicacao" :numero="5" titulo="Publicação">
                         <template #icone>
                             <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                                 <circle cx="12" cy="12" r="9" />

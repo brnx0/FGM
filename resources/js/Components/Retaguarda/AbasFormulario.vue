@@ -1,6 +1,18 @@
+<script lang="ts">
+import type { AbaFormulario } from '../../types';
+
+/** Campos com erro na aba; um item terminado em ".*" (ex.: "categorias.*") vale para todo campo que começa com o prefixo. */
+export const camposComErro = (aba: AbaFormulario, erros: Partial<Record<string, string>>): string[] => {
+    const comErro = Object.keys(erros).filter((chave) => Boolean(erros[chave]));
+
+    return comErro.filter((chave) =>
+        aba.campos.some((campo) => (campo.endsWith('.*') ? chave.startsWith(campo.slice(0, -1)) : chave === campo)),
+    );
+};
+</script>
+
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
-import type { AbaFormulario } from '../../types';
 
 const props = withDefaults(
     defineProps<{
@@ -19,7 +31,7 @@ const ativa = defineModel<string>({ required: true });
 
 const botoes = ref<HTMLButtonElement[]>([]);
 
-const errosDa = (aba: AbaFormulario): number => aba.campos.filter((campo) => Boolean(props.erros[campo])).length;
+const errosDa = (aba: AbaFormulario): number => camposComErro(aba, props.erros).length;
 
 const idAba = (aba: AbaFormulario): string => `${props.id}-aba-${aba.id}`;
 const idPainel = (aba: AbaFormulario): string => `${props.id}-painel-${aba.id}`;

@@ -382,11 +382,45 @@ export interface EditalFormulario {
     pdfUrl: string | null;
     pdfNome: string | null;
     imagemUrl: string | null;
+    /** Na ordem de exibição. */
+    categorias: CategoriaEdital[];
+}
+
+/** App\Models\EditalCategoria::COTAS. */
+export type CotaEdital = 'negros' | 'indigenas' | 'pcd';
+
+/** App\Enums\UnidadeCota. */
+export type UnidadeCota = 'vagas' | 'percentual';
+
+/** Categoria de inscrição do edital (Retaguarda\EditalController@edit). */
+export interface CategoriaEdital {
+    id: number;
+    nome: string;
+    /** Em reais (150000.5 = R$ 150.000,50). */
+    valor: number;
+    vagas: number;
+    /** Valores do enum NaturezaProponente. */
+    naturezas: string[];
+    /** Sem cota: valor e unidade null. */
+    cotas: Record<CotaEdital, { valor: number | null; unidade: UnidadeCota | null }>;
+}
+
+/** Categoria no formulário do edital: `chave` identifica o cartão (não vai ao servidor); `id` só nas já salvas. */
+export interface CategoriaEditavel {
+    chave: string;
+    id: number | null;
+    nome: string;
+    valor: number | null;
+    vagas: number | null;
+    naturezas: string[];
+    cotas: Record<CotaEdital, { valor: number | null; unidade: UnidadeCota }>;
 }
 
 export interface RetaguardaEditaisFormProps {
     edital: EditalFormulario | null;
     tiposFomento: { valor: string; rotulo: string }[];
+    /** NaturezaProponente: quem pode concorrer a cada categoria. */
+    naturezas: { valor: string; rotulo: string }[];
 }
 
 /** Linha da lista de eventos na retaguarda (Retaguarda\EventoController@index). */
@@ -464,7 +498,7 @@ export interface RetaguardaUsuariosFormProps {
 export interface AbaFormulario {
     id: string;
     rotulo: string;
-    /** Campos do formulário desta aba: os erros deles contam no marcador da aba. */
+    /** Campos do formulário desta aba: os erros deles contam no marcador da aba. Terminado em ".*", vale para todo campo com esse prefixo. */
     campos: string[];
 }
 
