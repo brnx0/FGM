@@ -39,7 +39,8 @@ export interface EditalResumo {
 
 /** Edital em EditalController@show. */
 export interface EditalDetalhe extends Omit<EditalResumo, 'pdf' | 'imagem'> {
-    resumo: string;
+    /** HTML já limpo ao salvar (App\Support\HtmlSeguro). */
+    divulgacao: string;
     pdf: string | null;
 }
 
@@ -368,10 +369,14 @@ export interface RetaguardaEditaisIndexProps {
 export interface EditalFormulario {
     slug: string;
     titulo: string;
-    resumo: string;
     categoria: string;
+    /** Valor do enum TipoFomento; null em edital antigo. */
+    tipo_fomento: string | null;
+    divulgacao: string;
     inscricoes_inicio: string;
     inscricoes_fim: string;
+    vigencia_inicio: string | null;
+    vigencia_fim: string | null;
     publicado: boolean;
     /** Download do PDF atual pela retaguarda (vale também para rascunho). */
     pdfUrl: string | null;
@@ -381,6 +386,7 @@ export interface EditalFormulario {
 
 export interface RetaguardaEditaisFormProps {
     edital: EditalFormulario | null;
+    tiposFomento: { valor: string; rotulo: string }[];
 }
 
 /** Linha da lista de eventos na retaguarda (Retaguarda\EventoController@index). */

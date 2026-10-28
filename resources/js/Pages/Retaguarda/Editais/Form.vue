@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue';
+import { computed, defineAsyncComponent, nextTick, ref } from 'vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import CampoArquivo from '../../../Components/CampoArquivo.vue';
 import CampoCadastro from '../../../Components/CampoCadastro.vue';
@@ -8,12 +8,17 @@ import SecaoCadastro from '../../../Components/SecaoCadastro.vue';
 import RetaguardaLayout from '../../../Layouts/RetaguardaLayout.vue';
 import type { AbaFormulario, RetaguardaEditaisFormProps } from '../../../types';
 
+// O editor (Tiptap) é pesado: vai num pedaço separado, carregado só nesta tela.
+const EditorTextoRico = defineAsyncComponent(() => import('../../../Components/EditorTextoRico.vue'));
+
 defineOptions({ layout: RetaguardaLayout });
 
 const props = defineProps<RetaguardaEditaisFormProps>();
 
 // Caminhos das rotas retaguarda.editais.* (o front não tem helper de rotas nomeadas).
 const BASE = '/retaguarda/editais';
+// Imagens do texto rico usam o mesmo envio dos eventos (retaguarda.eventos.conteudo.imagem).
+const URL_IMAGEM_CONTEUDO = '/retaguarda/eventos/conteudo/imagem';
 
 const salvo = props.edital;
 const editando = salvo !== null;
@@ -22,7 +27,10 @@ const editando = salvo !== null;
 const form = useForm({
     titulo: salvo?.titulo ?? '',
     categoria: salvo?.categoria ?? '',
-    resumo: salvo?.resumo ?? '',
+    tipo_fomento: salvo?.tipo_fomento ?? '',
+    vigencia_inicio: salvo?.vigencia_inicio ?? '',
+    vigencia_fim: salvo?.vigencia_fim ?? '',
+    divulgacao: salvo?.divulgacao ?? '',
     inscricoes_inicio: salvo?.inscricoes_inicio ?? '',
     inscricoes_fim: salvo?.inscricoes_fim ?? '',
     publicado: salvo?.publicado ?? false,
@@ -49,7 +57,7 @@ const escolherArquivo = (arquivo: File | null, campo: 'pdf' | 'imagem'): void =>
 
 // O edital vai ganhar muitos campos: cada grupo numa aba, todas no mesmo formulário.
 const abas: AbaFormulario[] = [
-    { id: 'dados', rotulo: 'Dados gerais', campos: ['titulo', 'categoria', 'resumo'] },
+    { id: 'dados', rotulo: 'Dados gerais', campos: ['titulo', 'categoria', 'tipo_fomento', 'vigencia_inicio', 'vigencia_fim', 'divulgacao'] },
     { id: 'inscricoes', rotulo: 'Inscrições', campos: ['inscricoes_inicio', 'inscricoes_fim'] },
     { id: 'arquivos', rotulo: 'Arquivos', campos: ['pdf', 'imagem'] },
     { id: 'publicacao', rotulo: 'Publicação', campos: ['publicado'] },
@@ -116,7 +124,7 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                         </template>
 
                         <div class="grid gap-x-6 gap-y-5">
-                            <CampoCadastro id="titulo" rotulo="Título" obrigatorio :erro="form.errors.titulo" v-slot="{ descricao, invalido }">
+                            <CampoCadastro id="titulo" rotulo="Título do edital" obrigatorio :erro="form.errors.titulo" v-slot="{ descricao, invalido }">
                                 <input
                                     id="titulo"
                                     v-model="form.titulo"
@@ -145,16 +153,78 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                                 />
                             </CampoCadastro>
 
-                            <CampoCadastro id="resumo" rotulo="Resumo" obrigatorio :erro="form.errors.resumo" v-slot="{ descricao, invalido }">
-                                <textarea
-                                    id="resumo"
-                                    v-model="form.resumo"
-                                    rows="5"
+                            <CampoCadastro id="tipo_fomento" rotulo="Tipo de fomento" obrigatorio :erro="form.errors.tipo_fomento" v-slot="{ descricao, invalido }">
+                                <select
+                                    id="tipo_fomento"
+                                    v-model="form.tipo_fomento"
                                     required
-                                    :class="[classeCampo, 'h-auto py-3 leading-[1.6]']"
+                                    :class="classeCampo"
                                     :aria-invalid="invalido || undefined"
                                     :aria-describedby="descricao"
-                                    @input="form.clearErrors('resumo')"
+                                    @change="form.clearErrors('tipo_fomento')"
+                                >
+                                    <option value="">Selecione…</option>
+                                    <option v-for="tipo in tiposFomento" :key="tipo.valor" :value="tipo.valor">{{ tipo.rotulo }}</option>
+                                </select>
+                            </CampoCadastro>
+
+                            <div class="grid gap-x-6 gap-y-5 md:grid-cols-2">
+                                <CampoCadastro
+                                    id="vigencia_inicio"
+                                    rotulo="Início da vigência"
+                                    obrigatorio
+                                    ajuda="Validade administrativa, não a janela de inscrição."
+                                    :erro="form.errors.vigencia_inicio"
+                                    v-slot="{ descricao, invalido }"
+                                >
+                                    <input
+                                        id="vigencia_inicio"
+                                        v-model="form.vigencia_inicio"
+                                        type="date"
+                                        required
+                                        :class="classeCampo"
+                                        :aria-invalid="invalido || undefined"
+                                        :aria-describedby="descricao"
+                                        @input="form.clearErrors('vigencia_inicio')"
+                                    />
+                                </CampoCadastro>
+
+                                <CampoCadastro
+                                    id="vigencia_fim"
+                                    rotulo="Fim da vigência"
+                                    ajuda="Opcional. Sem data, o edital fica vigente por prazo indeterminado."
+                                    :erro="form.errors.vigencia_fim"
+                                    v-slot="{ descricao, invalido }"
+                                >
+                                    <input
+                                        id="vigencia_fim"
+                                        v-model="form.vigencia_fim"
+                                        type="date"
+                                        :min="form.vigencia_inicio || undefined"
+                                        :class="classeCampo"
+                                        :aria-invalid="invalido || undefined"
+                                        :aria-describedby="descricao"
+                                        @input="form.clearErrors('vigencia_fim')"
+                                    />
+                                </CampoCadastro>
+                            </div>
+
+                            <CampoCadastro
+                                id="divulgacao"
+                                rotulo="Divulgação"
+                                obrigatorio
+                                ajuda="Texto informativo do edital, exibido na página dele no portal."
+                                :erro="form.errors.divulgacao"
+                                v-slot="{ descricao, invalido }"
+                            >
+                                <EditorTextoRico
+                                    id="divulgacao"
+                                    v-model="form.divulgacao"
+                                    rotulo="Divulgação"
+                                    :descricao="descricao"
+                                    :invalido="invalido"
+                                    :url-imagem="URL_IMAGEM_CONTEUDO"
+                                    @update:model-value="form.clearErrors('divulgacao')"
                                 />
                             </CampoCadastro>
                         </div>
