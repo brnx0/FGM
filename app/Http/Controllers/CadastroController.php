@@ -8,6 +8,7 @@ use App\Enums\Territorio;
 use App\Enums\TipoCadastro;
 use App\Http\Requests\SalvarPessoaFisicaRequest;
 use App\Http\Requests\SalvarTipoCadastroRequest;
+use App\Models\Organizacao;
 use App\Models\PessoaFisica;
 use App\Support\Cpf;
 use App\Support\Estados;
@@ -89,9 +90,12 @@ class CadastroController extends Controller
     }
 
     /** Etapa opcional: depois da pessoa física, a pessoa decide se cadastra uma organização. */
-    public function organizacao(): Response
+    /** Etapa da Pessoa Jurídica: quem já tem alguma vê as suas, em vez do convite para cadastrar. */
+    public function organizacao(Request $request): Response
     {
-        return Inertia::render('Cadastro/Organizacao');
+        return Inertia::render('Cadastro/Organizacao', [
+            'organizacoes' => Organizacao::resumosDaPessoa($request->user()),
+        ]);
     }
 
     /** Última etapa: Proponente, Patrocinador ou os dois. Pode ser trocado depois, e o menu do portal acompanha. */

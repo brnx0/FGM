@@ -29,23 +29,7 @@ class OrganizacaoController extends Controller
     /** Organizações às quais a pessoa está vinculada. */
     public function index(Request $request): Response
     {
-        $user = $request->user();
-
-        $organizacoes = Organizacao::query()
-            ->daPessoa($user)
-            ->with(['vinculos' => fn ($vinculos) => $vinculos->where('cpf', $user->cpf)])
-            ->get()
-            ->map(fn (Organizacao $organizacao): array => [
-                'id' => $organizacao->id,
-                'nome' => $organizacao->nome_fantasia ?? $organizacao->razao_social,
-                'cnpj' => Cnpj::formatar($organizacao->cnpj),
-                'logoUrl' => $organizacao->logoUrl(),
-                'responsavel' => $organizacao->vinculos->contains('responsavel', true),
-            ])
-            ->sortBy('nome', SORT_NATURAL | SORT_FLAG_CASE)
-            ->values();
-
-        return Inertia::render('Organizacoes/Index', ['organizacoes' => $organizacoes]);
+        return Inertia::render('Organizacoes/Index', ['organizacoes' => Organizacao::resumosDaPessoa($request->user())]);
     }
 
     public function create(Request $request): Response

@@ -75,6 +75,29 @@ class Organizacao extends Model
         $query->whereHas('vinculos', fn (Builder $vinculos) => $vinculos->where('cpf', $user->cpf));
     }
 
+    /**
+     * Organizações da pessoa para listas (Minhas Pessoas Jurídicas e a etapa do cadastro), por nome.
+     *
+     * @return list<array{id: int, nome: string, cnpj: string, logoUrl: ?string, responsavel: bool}>
+     */
+    public static function resumosDaPessoa(User $user): array
+    {
+        return self::query()
+            ->daPessoa($user)
+            ->with(['vinculos' => fn ($vinculos) => $vinculos->where('cpf', $user->cpf)])
+            ->get()
+            ->map(fn (self $organizacao): array => [
+                'id' => (int) $organizacao->id,
+                'nome' => $organizacao->nome_fantasia ?? $organizacao->razao_social,
+                'cnpj' => Cnpj::formatar($organizacao->cnpj),
+                'logoUrl' => $organizacao->logoUrl(),
+                'responsavel' => $organizacao->vinculos->contains('responsavel', true),
+            ])
+            ->sortBy('nome', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values()
+            ->all();
+    }
+
     public function temVinculo(User $user): bool
     {
         return $this->vinculos()->where('cpf', $user->cpf)->exists();

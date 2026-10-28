@@ -6,8 +6,10 @@ use App\Enums\IdentidadeGenero;
 use App\Enums\RacaCor;
 use App\Enums\Territorio;
 use App\Enums\TipoCadastro;
+use App\Models\Organizacao;
 use App\Models\PessoaFisica;
 use App\Models\User;
+use App\Support\Cnpj;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -296,7 +298,24 @@ class CadastroTest extends TestCase
 
         $this->actingAs($user)->get('/cadastro/organizacao')
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page->component('Cadastro/Organizacao'));
+            ->assertInertia(fn (Assert $page) => $page->component('Cadastro/Organizacao')->where('organizacoes', []));
+    }
+
+    public function test_etapa_da_organizacao_lista_as_pessoas_juridicas_vinculadas(): void
+    {
+        $user = User::factory()->create(['profile_completed_at' => now()]);
+        $minha = Organizacao::factory()->comResponsavel($user)->create(['razao_social' => 'Coletivo Teste LTDA', 'nome_fantasia' => null]);
+        Organizacao::factory()->create();
+
+        $this->actingAs($user)->get('/cadastro/organizacao')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Cadastro/Organizacao')
+                ->has('organizacoes', 1)
+                ->where('organizacoes.0.id', $minha->id)
+                ->where('organizacoes.0.nome', 'Coletivo Teste LTDA')
+                ->where('organizacoes.0.cnpj', Cnpj::formatar($minha->cnpj))
+                ->where('organizacoes.0.responsavel', true));
     }
 
     public function test_etapa_da_organizacao_exige_pessoa_fisica_completa(): void
