@@ -6,8 +6,8 @@ type ItemMenu = { href: string; texto: string; icone: string };
 type GrupoMenu = { id: string; texto: string; icone: string; itens: ItemMenu[] };
 
 // Caminhos das rotas retaguarda.editais.index, retaguarda.eventos.index, retaguarda.vlibras.edit,
-// retaguarda.proponentes.index, retaguarda.prefeituras-bairro.index e retaguarda.usuarios.index
-// (o front não tem helper de rotas nomeadas).
+// retaguarda.proponentes.index, retaguarda.prefeituras-bairro.index, retaguarda.integracao-ia.edit
+// e retaguarda.usuarios.index (o front não tem helper de rotas nomeadas).
 const portal: GrupoMenu = {
     id: 'menu-grupo-portal',
     texto: 'Portal',
@@ -55,6 +55,11 @@ const parametrizacao: GrupoMenu = {
             href: '/retaguarda/prefeituras-bairro',
             texto: 'Prefeituras-Bairro',
             icone: 'M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11zM12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
+        },
+        {
+            href: '/retaguarda/integracao-ia',
+            texto: 'Integração com IA',
+            icone: 'M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9zM19 15v4M17 17h4M5 3v3M3.5 4.5h3',
         },
     ],
 };

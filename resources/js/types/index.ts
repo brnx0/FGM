@@ -675,3 +675,23 @@ export interface RetaguardaVLibrasProps {
     lados: { valor: LadoVLibras; rotulo: string }[];
     avatares: { valor: AvatarVLibras; rotulo: string }[];
 }
+
+/** App\Enums\ProvedorIa. */
+export type ProvedorIa = 'openai' | 'gemini';
+
+/** Provedor na Integração com IA. A chave em si nunca vem para o navegador: só o começo e o fim dela. */
+export interface ProvedorIaRetaguarda {
+    valor: ProvedorIa;
+    rotulo: string;
+    /** Onde criar a chave; aparece enquanto o provedor não tem uma guardada. */
+    ajudaChave: string;
+    modelo: string | null;
+    /** Máscara da chave guardada (ex.: "sk-…H2UA"); null sem chave. */
+    chave: string | null;
+}
+
+/** Integração com IA: o principal, a redundância e um item por provedor (Retaguarda\IntegracaoIaController@edit). */
+export interface RetaguardaIntegracaoIaProps {
+    configuracao: { ativo: boolean; principal: ProvedorIa | null; redundancia: ProvedorIa | null };
+    provedores: ProvedorIaRetaguarda[];
+}
