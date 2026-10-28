@@ -24,7 +24,8 @@ class Evento extends Model
     protected $table = 'eventos';
 
     protected $fillable = [
-        'titulo', 'slug', 'resumo', 'descricao', 'data_realizacao', 'local', 'imagem', 'publicado',
+        'titulo', 'slug', 'resumo', 'descricao', 'data_realizacao', 'hora_inicio', 'hora_fim',
+        'local', 'endereco', 'latitude', 'longitude', 'imagem', 'publicado',
     ];
 
     protected function casts(): array
@@ -32,6 +33,8 @@ class Evento extends Model
         return [
             'data_realizacao' => 'date',
             'publicado' => 'boolean',
+            'latitude' => 'float',
+            'longitude' => 'float',
         ];
     }
 
@@ -56,10 +59,31 @@ class Evento extends Model
         return $this->imagem ? Storage::disk('public')->url($this->imagem) : null;
     }
 
-    public function scopeRealizados(Builder $query, ?CarbonInterface $agora = null): void
+    /** "19h às 22h30", "A partir das 19h" ou nulo quando não há horário. */
+    public function horarioPorExtenso(): ?string
+    {
+        if ($this->hora_inicio === null) {
+            return null;
+        }
+
+        $hora = fn (string $hhmm): string => (int) substr($hhmm, 0, 2).'h'.(substr($hhmm, 3, 2) === '00' ? '' : substr($hhmm, 3, 2));
+
+        return $this->hora_fim === null
+            ? 'A partir das '.$hora($this->hora_inicio)
+            : $hora($this->hora_inicio).' às '.$hora($this->hora_fim);
+    }
+
+    /** Pin marcado no mapa pela retaguarda. */
+    public function temLocalizacao(): bool
+    {
+        return $this->latitude !== null && $this->longitude !== null;
+    }
+
+    /** Agenda do portal: publicado e de hoje em diante, do mais próximo ao mais distante. */
+    public function scopeProximos(Builder $query, ?CarbonInterface $agora = null): void
     {
         $query->where('publicado', true)
-            ->where('data_realizacao', '<', self::hoje($agora)->addDay()->toDateString())
-            ->orderByDesc('data_realizacao');
+            ->where('data_realizacao', '>=', self::hoje($agora)->toDateString())
+            ->orderBy('data_realizacao');
     }
 }

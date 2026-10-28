@@ -4,11 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Enums\IdentidadeGenero;
 use App\Enums\RacaCor;
-use App\Enums\Territorio;
 use App\Enums\TipoCadastro;
 use App\Http\Requests\SalvarPessoaFisicaRequest;
 use App\Http\Requests\SalvarTipoCadastroRequest;
 use App\Models\PessoaFisica;
+use App\Models\PrefeituraBairro;
 use App\Support\Cpf;
 use App\Support\Estados;
 use App\Support\Paises;
@@ -48,7 +48,7 @@ class CadastroController extends Controller
                 'estados' => collect(Estados::TODOS)->map(fn (string $nome, string $sigla): array => ['valor' => $sigla, 'rotulo' => $nome])->values(),
                 'identidadesGenero' => self::opcoes(IdentidadeGenero::cases()),
                 'racasCores' => self::opcoes(RacaCor::cases()),
-                'territorios' => self::opcoes(Territorio::cases()),
+                'territorios' => PrefeituraBairro::opcoesDoPortal($salvo?->territorio),
             ],
         ]);
     }
@@ -118,11 +118,11 @@ class CadastroController extends Controller
     }
 
     /**
-     * @param  list<IdentidadeGenero|RacaCor|Territorio|TipoCadastro>  $casos
+     * @param  list<IdentidadeGenero|RacaCor|TipoCadastro>  $casos
      * @return list<array{valor: string, rotulo: string}>
      */
     private static function opcoes(array $casos): array
     {
-        return array_map(fn (IdentidadeGenero|RacaCor|Territorio|TipoCadastro $caso): array => ['valor' => $caso->value, 'rotulo' => $caso->rotulo()], $casos);
+        return array_map(fn (IdentidadeGenero|RacaCor|TipoCadastro $caso): array => ['valor' => $caso->value, 'rotulo' => $caso->rotulo()], $casos);
     }
 }

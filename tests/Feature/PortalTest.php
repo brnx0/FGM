@@ -26,8 +26,8 @@ class PortalTest extends TestCase
         ]);
         Edital::factory()->create(['inscricoes_inicio' => '2026-11-05', 'inscricoes_fim' => '2026-11-30']);
         Edital::factory()->create(['inscricoes_inicio' => '2026-12-01', 'inscricoes_fim' => '2026-12-20']);
-        Evento::factory()->create(['titulo' => 'Jornada do Patrimônio', 'data_realizacao' => '2026-08-15', 'local' => 'Centro Histórico']);
-        Evento::factory()->create(['titulo' => 'Dois de Julho', 'data_realizacao' => '2026-07-01']);
+        Evento::factory()->create(['titulo' => 'Dois de Julho', 'data_realizacao' => '2027-07-02']);
+        Evento::factory()->create(['titulo' => 'Jornada do Patrimônio', 'data_realizacao' => '2026-12-15', 'local' => 'Centro Histórico']);
 
         $this->get('/')->assertOk()->assertInertia(fn (Assert $p) => $p
             ->component('Home')
@@ -48,7 +48,8 @@ class PortalTest extends TestCase
             ->has('eventos', 2)
             ->has('eventos.0', fn (Assert $e) => $e
                 ->where('titulo', 'Jornada do Patrimônio')
-                ->where('mes', 'agosto')
+                ->where('dia', '15')
+                ->where('mes', 'dezembro')
                 ->where('ano', '2026')
                 ->where('local', 'Centro Histórico')
                 ->where('imagem', null)
@@ -65,24 +66,27 @@ class PortalTest extends TestCase
             ->where('editais.0.imagem', Storage::disk('public')->url('editais/capa.jpg')));
     }
 
-    public function test_home_limita_eventos_a_seis(): void
+    public function test_home_envia_todos_os_proximos_eventos_do_mais_proximo_ao_mais_distante(): void
     {
-        foreach (range(1, 8) as $mes) {
-            Evento::factory()->create(['titulo' => "Evento {$mes}", 'data_realizacao' => sprintf('2025-%02d-10', $mes)]);
+        $this->travelTo(Carbon::parse('2026-11-10 10:00', 'America/Bahia'));
+        foreach ([8, 3, 5, 1, 7, 2, 6, 4] as $mes) {
+            Evento::factory()->create(['titulo' => "Evento {$mes}", 'data_realizacao' => sprintf('2027-%02d-10', $mes)]);
         }
 
         $this->get('/')->assertInertia(fn (Assert $p) => $p
-            ->has('eventos', 6)
-            ->where('eventos.0.titulo', 'Evento 8'));
+            ->has('eventos', 8)
+            ->where('eventos.0.titulo', 'Evento 1')
+            ->where('eventos.6.titulo', 'Evento 7')
+            ->where('eventos.7.titulo', 'Evento 8'));
     }
 
-    public function test_evento_futuro_despublicado_e_excluido_ficam_de_fora(): void
+    public function test_evento_passado_despublicado_e_excluido_ficam_de_fora(): void
     {
         $this->travelTo(Carbon::parse('2026-11-10 10:00', 'America/Bahia'));
         Evento::factory()->create(['titulo' => 'Aparece', 'data_realizacao' => '2026-11-10']);
-        Evento::factory()->create(['data_realizacao' => '2026-11-11']);
-        Evento::factory()->create(['data_realizacao' => '2026-09-01', 'publicado' => false]);
-        Evento::factory()->create(['data_realizacao' => '2026-09-02'])->delete();
+        Evento::factory()->create(['data_realizacao' => '2026-11-09']);
+        Evento::factory()->create(['data_realizacao' => '2026-12-01', 'publicado' => false]);
+        Evento::factory()->create(['data_realizacao' => '2026-12-02'])->delete();
 
         $this->get('/')->assertInertia(fn (Assert $p) => $p
             ->has('eventos', 1)

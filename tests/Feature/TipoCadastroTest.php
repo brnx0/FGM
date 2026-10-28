@@ -56,7 +56,7 @@ class TipoCadastroTest extends TestCase
     {
         $gestor = User::factory()->gestor()->create();
 
-        $this->actingAs($gestor)->post('/cadastro/tipo', ['tipos_cadastro' => ['proponente']])->assertRedirect('/retaguarda');
+        $this->actingAs($gestor)->post('/cadastro/tipo', ['tipos_cadastro' => ['proponente']])->assertRedirect('/');
 
         $this->assertNull($gestor->fresh()->tipos_cadastro);
     }

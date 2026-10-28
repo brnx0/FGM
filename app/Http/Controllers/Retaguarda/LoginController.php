@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Retaguarda;
 
-use App\Auth\GovBr\GovBrClient;
+use App\Actions\EncerrarSessao;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -58,19 +58,11 @@ class LoginController extends Controller
         return redirect()->route('retaguarda.inicio');
     }
 
-    public function destroy(Request $request, GovBrClient $govbr): RedirectResponse
+    /** Como no portal: limpa o histórico (as telas de proponentes não reabrem pelo Voltar) e sai também do gov.br. */
+    public function destroy(Request $request, EncerrarSessao $encerrarSessao): RedirectResponse
     {
-        $viaGovBr = (bool) $request->session()->get('retaguarda.via_govbr');
+        $saidaDoGovBr = $encerrarSessao->handle($request);
 
-        Auth::logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-
-        if ($viaGovBr && config('govbr.driver') === 'govbr') {
-            // Encerra também a sessão no gov.br.
-            return redirect()->away($govbr->logoutUrl());
-        }
-
-        return redirect()->route('retaguarda.login');
+        return $saidaDoGovBr !== null ? redirect()->away($saidaDoGovBr) : redirect()->route('retaguarda.login');
     }
 }

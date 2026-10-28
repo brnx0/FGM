@@ -267,10 +267,10 @@ class ConsultaCadastroTest extends TestCase
         $this->get(route('consultas.municipios'))->assertRedirect('/');
     }
 
-    public function test_usuario_da_retaguarda_e_redirecionado(): void
+    public function test_usuario_da_retaguarda_volta_a_home(): void
     {
         $this->actingAs(User::factory()->gestor()->create());
 
-        $this->get(route('consultas.cnpj', self::CNPJ))->assertRedirect(route('retaguarda.inicio'));
+        $this->get(route('consultas.cnpj', self::CNPJ))->assertRedirect(route('home'));
     }
 }

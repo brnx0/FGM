@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Actions\LoginGovBrUser;
 use App\Auth\GovBr\GovBrClient;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -78,6 +79,27 @@ class GovBrLoginTest extends TestCase
         $this->get('/auth/govbr/callback?code=abc&state='.$state)
             ->assertRedirect('/cadastro')->assertSessionMissing('erro');
         $this->assertAuthenticated();
+    }
+
+    public function test_cpf_de_gestor_e_recusado_no_portal_sem_entrar(): void
+    {
+        $gestor = User::factory()->gestor()->create(['cpf' => '52998224725']);
+        $this->get('/auth/govbr/redirect');
+        $this->fakeTokenEndpoint($this->claimsValidos(session('govbr.nonce')));
+
+        $this->get('/auth/govbr/callback?code=abc&state='.session('govbr.state'))
+            ->assertRedirect('/')->assertSessionHas('erro', LoginGovBrUser::GESTOR_RECUSADO);
+
+        $this->assertGuest();
+        $this->assertNull($gestor->fresh()->last_login_at);
+    }
+
+    public function test_falha_com_gestor_logado_volta_a_home_e_nao_leva_a_retaguarda(): void
+    {
+        $this->actingAs(User::factory()->gestor()->create());
+
+        $this->get('/auth/govbr/callback?code=abc&state=')
+            ->assertRedirect('/')->assertSessionHas('erro', self::ERRO);
     }
 
     public function test_callback_sem_fluxo_iniciado_falha(): void

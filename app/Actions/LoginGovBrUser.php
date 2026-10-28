@@ -6,19 +6,21 @@ use App\Auth\GovBr\GovBrIdentity;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 
+/** Entrada no portal do proponente pelo gov.br. A retaguarda nunca é aberta por aqui: ela tem login próprio. */
 class LoginGovBrUser
 {
-    public function handle(GovBrIdentity $id): User
-    {
-        // Gestor entra como na retaguarda: nome e e-mail dele não são sobrescritos pelo gov.br.
-        $gestor = app(EntrarNaRetaguardaPorGovBr::class)->handle($id->cpf);
-        if ($gestor !== null) {
-            return $gestor;
-        }
+    public const GESTOR_RECUSADO = 'Este CPF é de um usuário da retaguarda e não entra pelo portal. Use a tela de login da retaguarda.';
 
+    /** Gestor (ativo e com papel) não entra: devolve null sem mexer na sessão nem nos dados dele. */
+    public function handle(GovBrIdentity $id): ?User
+    {
         $user = User::firstOrNew(['cpf' => $id->cpf]);
 
-        // Usuário da retaguarda (mesmo inativo) mantém o nome e o e-mail cadastrados lá.
+        if ($user->exists && $user->ehGestor()) {
+            return null;
+        }
+
+        // Usuário da retaguarda desativado entra como proponente, mas mantém o nome e o e-mail cadastrados lá.
         $daRetaguarda = $user->exists && $user->papeis()->exists();
 
         if (! $daRetaguarda) {
@@ -54,13 +56,9 @@ class LoginGovBrUser
             ->exists();
     }
 
-    /** Gestor vai para a retaguarda; cadastro não finalizado volta ao formulário; finalizado abre o portal do tipo escolhido. */
+    /** Cadastro não finalizado volta ao formulário; finalizado abre o portal do tipo escolhido. */
     public function destinoPosLogin(User $user): string
     {
-        if ($user->ehGestor()) {
-            return route('retaguarda.inicio');
-        }
-
         if (! $user->cadastroFinalizado()) {
             return route('cadastro');
         }

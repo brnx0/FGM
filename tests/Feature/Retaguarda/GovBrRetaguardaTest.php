@@ -3,8 +3,10 @@
 namespace Tests\Feature\Retaguarda;
 
 use App\Models\User;
+use Database\Seeders\PrimeiroGestorSeeder;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Support\FakesGovBr;
 use Tests\TestCase;
 
@@ -16,6 +18,9 @@ class GovBrRetaguardaTest extends TestCase
     private const CPF = '52998224725';
 
     private const SEM_ACESSO = 'Seu CPF não tem acesso à retaguarda.';
+
+    /** CPF fictício do primeiro administrador (PrimeiroGestorSeeder). */
+    private const CPF_DO_ADMINISTRADOR = '00000000000';
 
     private function usarGovBrSimulado(): void
     {
@@ -87,6 +92,50 @@ class GovBrRetaguardaTest extends TestCase
         $this->post('/auth/govbr/fake', ['cpf' => self::CPF])
             ->assertRedirect('/retaguarda/login')
             ->assertSessionHas('erro', self::SEM_ACESSO);
+
+        $this->assertGuest();
+    }
+
+    public function test_govbr_simulado_vindo_da_retaguarda_oferece_e_entra_com_o_administrador_em_local(): void
+    {
+        $this->usarGovBrSimulado();
+        $this->seed(PrimeiroGestorSeeder::class);
+        $admin = User::where('cpf', self::CPF_DO_ADMINISTRADOR)->firstOrFail();
+
+        $this->get('/auth/govbr/redirect?destino=retaguarda');
+        $this->get('/auth/govbr/fake')->assertInertia(fn (Assert $p) => $p
+            ->has('contas', 1)
+            ->where('contas.0.cpf', self::CPF_DO_ADMINISTRADOR));
+        $this->post('/auth/govbr/fake', ['cpf' => '000.000.000-00'])->assertRedirect('/retaguarda');
+
+        $this->assertAuthenticatedAs($admin);
+        $this->assertTrue(session('retaguarda.via_govbr'));
+    }
+
+    public function test_govbr_simulado_recusa_o_administrador_em_staging(): void
+    {
+        $this->usarGovBrSimulado();
+        $this->app['env'] = 'staging';
+        $this->seed(PrimeiroGestorSeeder::class);
+
+        $this->get('/auth/govbr/redirect?destino=retaguarda');
+        $this->get('/auth/govbr/fake')->assertInertia(fn (Assert $p) => $p
+            ->has('contas', 2)
+            ->where('contas.0.cpf', self::CPF));
+        $this->post('/auth/govbr/fake', ['cpf' => '000.000.000-00'])
+            ->assertSessionHasErrors(['cpf' => 'CPF inválido.']);
+
+        $this->assertGuest();
+    }
+
+    public function test_govbr_simulado_nao_completa_cpf_curto_ate_o_do_administrador(): void
+    {
+        $this->usarGovBrSimulado();
+        $this->seed(PrimeiroGestorSeeder::class);
+
+        $this->get('/auth/govbr/redirect?destino=retaguarda');
+        $this->post('/auth/govbr/fake', ['cpf' => '0'])
+            ->assertSessionHasErrors(['cpf' => 'CPF inválido.']);
 
         $this->assertGuest();
     }

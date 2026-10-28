@@ -80,15 +80,7 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => fn () => $request->user()
-                    ? [
-                        'nome' => $request->user()->name,
-                        'cpfMascarado' => Cpf::mascarar($request->user()->cpf),
-                        'ehGestor' => $request->user()->ehGestor(),
-                        // Vazio até a última etapa do cadastro; define o menu do portal (um tipo ou os dois).
-                        'tiposCadastro' => $request->user()->tipos_cadastro?->map(fn (TipoCadastro $tipo): string => $tipo->value)->all() ?? [],
-                    ]
-                    : null,
+                'user' => fn () => $this->usuarioDaArea($request),
             ],
             'ambienteTeste' => FakeLoginGate::bannerVisivel(),
             'flash' => [
@@ -96,6 +88,28 @@ class HandleInertiaRequests extends Middleware
                 'aviso' => fn () => $request->session()->get('aviso'),
                 'sucesso' => fn () => $request->session()->get('sucesso'),
             ],
+        ];
+    }
+
+    /**
+     * Cada área mostra só o seu usuário: a retaguarda, o gestor; o portal, o proponente. Gestor logado que
+     * abre o portal (para conferir o que publicou) o vê como visitante, sem caminho para a retaguarda.
+     *
+     * @return array{nome: string, cpfMascarado: string, tiposCadastro: list<string>}|null
+     */
+    private function usuarioDaArea(Request $request): ?array
+    {
+        $user = $request->user();
+
+        if ($user === null || $user->ehGestor() !== $request->is('retaguarda', 'retaguarda/*')) {
+            return null;
+        }
+
+        return [
+            'nome' => $user->name,
+            'cpfMascarado' => Cpf::mascarar($user->cpf),
+            // Vazio até a última etapa do cadastro; define o menu do portal (um tipo ou os dois).
+            'tiposCadastro' => $user->tipos_cadastro?->map(fn (TipoCadastro $tipo): string => $tipo->value)->all() ?? [],
         ];
     }
 }

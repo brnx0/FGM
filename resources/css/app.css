@@ -372,7 +372,14 @@ html.alto-contraste .barra-institucional {
         transition:
             background 0.35s ease,
             box-shadow 0.35s ease,
-            border-radius 0.35s ease;
+            border-radius 0.35s ease,
+            opacity 0.3s ease;
+    }
+
+    /* Com o modal aberto, o card "virou" o modal: some na hora e reaparece suave quando ele volta. */
+    .linha-evento.linha-evento-aberta {
+        opacity: 0;
+        transition: none;
     }
 
     @media (hover: hover) {
@@ -385,6 +392,137 @@ html.alto-contraste .barra-institucional {
             -webkit-backdrop-filter: blur(10px) saturate(160%);
             backdrop-filter: blur(10px) saturate(160%);
         }
+    }
+
+    /* Modal de evento da página inicial (ModalEvento.vue): sobe e cresce de leve com fade, e o fundo
+       escurece com desfoque. A saída é a volta curta da mesma ideia; o close() espera o fim dela. */
+    .modal-evento {
+        animation: modal-evento-entra 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    }
+
+    .modal-evento::backdrop {
+        background: rgba(6, 36, 74, 0.6);
+        -webkit-backdrop-filter: blur(8px);
+        backdrop-filter: blur(8px);
+        animation: modal-evento-fundo 0.4s ease both;
+    }
+
+    .modal-evento.fechando {
+        animation: modal-evento-sai 0.22s cubic-bezier(0.4, 0, 1, 1) both;
+    }
+
+    .modal-evento.fechando::backdrop {
+        animation: modal-evento-fundo 0.22s ease reverse both;
+    }
+
+    /* Vindo do card, o painel cresce a partir dele pela Web Animations API (ModalEvento.vue): sem as
+       animações de reserva; o fundo some no ritmo da volta para o card. A origem no canto fica na classe
+       (não no style da entrada), para o fim da entrada não trocá-la no meio de uma saída. */
+    .modal-evento.com-origem,
+    .modal-evento.com-origem.fechando {
+        animation: none;
+        transform-origin: 0 0;
+    }
+
+    .modal-evento.com-origem.fechando::backdrop {
+        animation-duration: 0.55s;
+    }
+
+    /* Partes que dependem dos detalhes (horário, endereço, descrição, mapa): surgem quando aparecem, também
+       quando a consulta termina depois da cascata de abertura. */
+    .modal-evento .surge-detalhe {
+        animation: modal-evento-surge 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both;
+    }
+
+    @keyframes modal-evento-surge {
+        from {
+            opacity: 0;
+            transform: translateY(18px);
+        }
+    }
+
+    @keyframes modal-evento-entra {
+        from {
+            opacity: 0;
+            transform: translateY(16px) scale(0.96);
+        }
+    }
+
+    @keyframes modal-evento-sai {
+        to {
+            opacity: 0;
+            transform: translateY(10px) scale(0.97);
+        }
+    }
+
+    @keyframes modal-evento-fundo {
+        from {
+            opacity: 0;
+        }
+    }
+
+    @keyframes modal-evento-sobe {
+        from {
+            transform: translateY(100%);
+        }
+    }
+
+    @keyframes modal-evento-desce {
+        to {
+            transform: translateY(100%);
+        }
+    }
+
+    /* No celular o modal é uma folha que sobe da borda de baixo. */
+    @media (width < 40rem) {
+        .modal-evento {
+            animation-name: modal-evento-sobe;
+        }
+
+        .modal-evento.fechando {
+            animation-name: modal-evento-desce;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .modal-evento .surge-detalhe {
+            animation: none;
+        }
+
+        .modal-evento,
+        .modal-evento.fechando {
+            animation-name: modal-evento-fundo;
+            animation-duration: 0.15s;
+        }
+
+        .modal-evento.fechando {
+            animation-direction: reverse;
+        }
+    }
+
+    /* A página não rola por trás do modal; o espaço da barra de rolagem fica, para nada pular. */
+    html:has(.modal-evento[open]) {
+        overflow: hidden;
+        scrollbar-gutter: stable;
+    }
+
+    /* Pin do mapa dos eventos (MapaLocal.vue): o mesmo desenho do pin dos cards da página inicial. */
+    .pino-mapa {
+        color: var(--color-home-azul);
+        filter: drop-shadow(0 6px 6px rgba(6, 36, 74, 0.35));
+    }
+
+    .pino-mapa svg {
+        width: 100%;
+        height: 100%;
+        fill: currentColor;
+        stroke: #fff;
+        stroke-width: 1.5;
+    }
+
+    .pino-mapa circle {
+        fill: #fff;
+        stroke: none;
     }
 
     /* Íris do anexo: ao ir para o login, um círculo azul abre a partir do clique e cobre a tela;

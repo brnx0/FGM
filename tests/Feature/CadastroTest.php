@@ -4,9 +4,9 @@ namespace Tests\Feature;
 
 use App\Enums\IdentidadeGenero;
 use App\Enums\RacaCor;
-use App\Enums\Territorio;
 use App\Enums\TipoCadastro;
 use App\Models\PessoaFisica;
+use App\Models\PrefeituraBairro;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -56,7 +56,7 @@ class CadastroTest extends TestCase
 
     public function test_formulario_traz_o_cadastro_ja_salvo_sem_os_caminhos_dos_arquivos(): void
     {
-        $cadastro = PessoaFisica::factory()->create(['rg' => '1234567', 'territorio' => Territorio::Cajazeiras]);
+        $cadastro = PessoaFisica::factory()->create(['rg' => '1234567', 'territorio' => 'cajazeiras']);
 
         $this->actingAs($cadastro->user)->get('/cadastro')->assertInertia(fn (Assert $page) => $page
             ->where('cadastro.rg', '1234567')
@@ -64,6 +64,40 @@ class CadastroTest extends TestCase
             ->where('cadastro.arquivos.documento_cpf', true)
             ->where('cadastro.arquivos.foto_perfil', false)
             ->missing('cadastro.documento_cpf'));
+    }
+
+    public function test_territorios_sao_as_prefeituras_bairro_ativas_e_fora_de_salvador(): void
+    {
+        PrefeituraBairro::where('codigo', 'valeria')->update(['ativo' => false]);
+
+        $this->actingAs(User::factory()->create())->get('/cadastro')->assertInertia(fn (Assert $page) => $page
+            ->has('opcoes.territorios', 10)
+            ->where('opcoes.territorios.0', ['valor' => 'centro_brotas', 'rotulo' => 'Centro/Brotas'])
+            ->where('opcoes.territorios.8', ['valor' => 'pau_da_lima', 'rotulo' => 'Pau da Lima'])
+            ->where('opcoes.territorios.9', ['valor' => 'fora_de_salvador', 'rotulo' => 'Fora de Salvador']));
+    }
+
+    public function test_prefeitura_bairro_desativada_continua_valendo_para_quem_ja_a_escolheu(): void
+    {
+        Storage::fake('local');
+        $cadastro = PessoaFisica::factory()->create(['territorio' => 'valeria']);
+        PrefeituraBairro::where('codigo', 'valeria')->update(['ativo' => false]);
+
+        $this->actingAs($cadastro->user)->get('/cadastro')->assertInertia(fn (Assert $page) => $page
+            ->where('opcoes.territorios.9', ['valor' => 'valeria', 'rotulo' => 'Valéria']));
+
+        $this->actingAs($cadastro->user)
+            ->post('/cadastro', $this->dadosValidos(['territorio' => 'valeria', 'telefone' => '(71) 99876-5432']))
+            ->assertSessionHasNoErrors();
+        $this->assertSame('valeria', $cadastro->fresh()->territorio);
+    }
+
+    public function test_prefeitura_bairro_desativada_nao_pode_ser_escolhida_por_quem_nao_a_tinha(): void
+    {
+        PrefeituraBairro::where('codigo', 'valeria')->update(['ativo' => false]);
+
+        $this->actingAs(User::factory()->create())->post('/cadastro', $this->dadosValidos(['territorio' => 'valeria']))
+            ->assertSessionHasErrors(['territorio' => 'Selecione uma opção da lista.']);
     }
 
     public function test_salvar_cadastro_exige_login(): void
@@ -88,7 +122,7 @@ class CadastroTest extends TestCase
         $this->assertSame('Maria do Samba', $cadastro->nome_artistico);
         $this->assertSame('7133334444', $cadastro->telefone_adicional);
         $this->assertSame('40020000', $cadastro->cep);
-        $this->assertSame(Territorio::CentroBrotas, $cadastro->territorio);
+        $this->assertSame('centro_brotas', $cadastro->territorio);
         $this->assertTrue($cadastro->pcd);
         $this->assertFalse($cadastro->representa_coletivo);
         Storage::disk('local')->assertExists([$cadastro->documento_cpf, $cadastro->documento_rg]);
@@ -218,7 +252,7 @@ class CadastroTest extends TestCase
             'bairro' => 'Centro',
             'cidade' => 'Salvador',
             'estado' => 'BA',
-            'territorio' => Territorio::CentroBrotas->value,
+            'territorio' => 'centro_brotas',
             ...$alteracoes,
         ];
     }
@@ -318,7 +352,7 @@ class CadastroTest extends TestCase
         $gestor = User::factory()->gestor()->create(['profile_completed_at' => now()]);
 
         $this->actingAs($gestor)->get('/cadastro/organizacao')
-            ->assertRedirect('/retaguarda')
+            ->assertRedirect('/')
             ->assertSessionHas('erro');
     }
 

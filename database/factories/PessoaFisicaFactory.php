@@ -4,8 +4,8 @@ namespace Database\Factories;
 
 use App\Enums\IdentidadeGenero;
 use App\Enums\RacaCor;
-use App\Enums\Territorio;
 use App\Models\PessoaFisica;
+use App\Models\PrefeituraBairro;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -46,7 +46,8 @@ class PessoaFisicaFactory extends Factory
             'complemento' => null,
             'cidade' => 'Salvador',
             'estado' => 'BA',
-            'territorio' => fake()->randomElement(Territorio::cases()),
+            // Códigos das Prefeituras-Bairro que a migration cadastra.
+            'territorio' => fake()->randomElement(['centro_brotas', 'barra_pituba', 'cajazeiras', PrefeituraBairro::FORA_DE_SALVADOR]),
             'comprovante_residencia' => null,
         ];
     }

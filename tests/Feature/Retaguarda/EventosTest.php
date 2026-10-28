@@ -6,9 +6,11 @@ use App\Models\Evento;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class EventosTest extends TestCase
@@ -195,7 +197,8 @@ class EventosTest extends TestCase
 
     public function test_evento_criado_aparece_na_home(): void
     {
-        $this->post('/retaguarda/eventos', $this->dados(['titulo' => 'Novo na home', 'publicado' => '1', 'data_realizacao' => '2025-05-10']))
+        $this->travelTo(Carbon::parse('2026-11-10 10:00', 'America/Bahia'));
+        $this->post('/retaguarda/eventos', $this->dados(['titulo' => 'Novo na home', 'publicado' => '1', 'data_realizacao' => '2026-12-05']))
             ->assertSessionHasNoErrors();
 
         $this->get('/')->assertInertia(fn (Assert $p) => $p->where('eventos.0.titulo', 'Novo na home'));
@@ -272,6 +275,60 @@ class EventosTest extends TestCase
             ->assertRedirect('/retaguarda/eventos/create')
             ->assertSessionHas('erro', 'Os arquivos enviados passam do tamanho máximo permitido.')
             ->assertSessionDoesntHaveErrors();
+    }
+
+    public function test_salva_e_edita_horario_endereco_e_pin_do_mapa(): void
+    {
+        $this->post('/retaguarda/eventos', $this->dados([
+            'hora_inicio' => '19:00',
+            'hora_fim' => '22:30',
+            'endereco' => 'Ladeira da Barroquinha, 2, Salvador/BA',
+            'latitude' => '-12.9747',
+            'longitude' => '-38.5102',
+        ]))->assertRedirect('/retaguarda/eventos');
+
+        $evento = Evento::sole();
+        $this->assertSame('19:00', $evento->hora_inicio);
+        $this->assertSame('22:30', $evento->hora_fim);
+        $this->assertSame('Ladeira da Barroquinha, 2, Salvador/BA', $evento->endereco);
+        $this->assertSame(-12.9747, $evento->latitude);
+        $this->assertSame(-38.5102, $evento->longitude);
+
+        $this->get("/retaguarda/eventos/{$evento->slug}/edit")->assertInertia(fn (Assert $p) => $p
+            ->where('evento.hora_inicio', '19:00')
+            ->where('evento.endereco', 'Ladeira da Barroquinha, 2, Salvador/BA')
+            ->where('evento.latitude', -12.9747));
+
+        // "Remover marcação" e horários apagados: os campos voltam a ficar vazios.
+        $this->post("/retaguarda/eventos/{$evento->slug}", $this->dados([
+            '_method' => 'put', 'hora_inicio' => '', 'hora_fim' => '', 'latitude' => '', 'longitude' => '',
+        ]))->assertRedirect('/retaguarda/eventos');
+
+        $evento->refresh();
+        $this->assertNull($evento->hora_inicio);
+        $this->assertNull($evento->latitude);
+        $this->assertNull($evento->longitude);
+    }
+
+    /** @param array<string, string> $dados */
+    #[DataProvider('horariosEPinsInvalidos')]
+    public function test_recusa_horario_e_pin_invalidos(array $dados, string $campo, string $mensagem): void
+    {
+        $this->post('/retaguarda/eventos', $this->dados($dados))->assertSessionHasErrors([$campo => $mensagem]);
+
+        $this->assertSame(0, Evento::count());
+    }
+
+    /** @return array<string, array{array<string, string>, string, string}> */
+    public static function horariosEPinsInvalidos(): array
+    {
+        return [
+            'hora fora do formato' => [['hora_inicio' => '7h'], 'hora_inicio', 'Informe o horário de início no formato HH:MM.'],
+            'término antes do início' => [['hora_inicio' => '20:00', 'hora_fim' => '19:00'], 'hora_fim', 'O horário de término deve ser depois do horário de início.'],
+            'término sem início' => [['hora_fim' => '19:00'], 'hora_inicio', 'Informe o horário de início para colocar o de término.'],
+            'latitude sem longitude' => [['latitude' => '-12.97'], 'longitude', 'Marque o local no mapa de novo: faltou uma das coordenadas.'],
+            'coordenada fora do mapa' => [['latitude' => '-120', 'longitude' => '-38.5'], 'latitude', 'A marcação está fora do mapa. Marque o local de novo.'],
+        ];
     }
 
     public function test_proponente_nao_acessa(): void

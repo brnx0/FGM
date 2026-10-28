@@ -51,7 +51,7 @@ const navegacao: { href: string; texto: string; pagina?: boolean }[] = [
                     <h3 class="text-[0.75rem] font-bold tracking-[0.22em] uppercase">Participe</h3>
                     <ul>
                         <li v-if="usuario">
-                            <Link :href="usuario.ehGestor ? '/retaguarda' : '/cadastro'" class="inline-flex min-h-11 items-center text-[0.9375rem] font-medium no-underline hover:underline">{{ usuario.ehGestor ? 'Retaguarda' : 'Meu cadastro' }}</Link>
+                            <Link href="/cadastro" class="inline-flex min-h-11 items-center text-[0.9375rem] font-medium no-underline hover:underline">Meu cadastro</Link>
                         </li>
                         <template v-else>
                             <li>
@@ -65,7 +65,7 @@ const navegacao: { href: string; texto: string; pagina?: boolean }[] = [
                                 </a>
                             </li>
                         </template>
-                        <li v-if="usuario && !usuario.ehGestor">
+                        <li v-if="usuario">
                             <Link href="/organizacoes" class="inline-flex min-h-11 items-center text-[0.9375rem] font-medium no-underline hover:underline">Minhas organizações</Link>
                         </li>
                         <li>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
+import MapaLocal from '../../Components/MapaLocal.vue';
 import type { EventosShowProps } from '../../types';
 
 defineProps<EventosShowProps>();
@@ -21,13 +22,33 @@ defineProps<EventosShowProps>();
         <dl class="mt-8 grid gap-4 rounded-card border border-hairline p-6 sm:grid-cols-2">
             <div>
                 <dt class="text-[0.875rem] text-tinta-suave">Data</dt>
-                <dd class="font-semibold">{{ evento.dataRealizacao }}</dd>
+                <dd class="font-semibold first-letter:uppercase">{{ evento.diaSemana }}, {{ evento.dataRealizacao }}</dd>
+            </div>
+            <div v-if="evento.horario">
+                <dt class="text-[0.875rem] text-tinta-suave">Horário</dt>
+                <dd class="font-semibold">{{ evento.horario }}</dd>
             </div>
             <div v-if="evento.local">
                 <dt class="text-[0.875rem] text-tinta-suave">Local</dt>
                 <dd class="font-semibold">{{ evento.local }}</dd>
             </div>
+            <div v-if="evento.endereco">
+                <dt class="text-[0.875rem] text-tinta-suave">Endereço</dt>
+                <dd class="font-semibold">{{ evento.endereco }}</dd>
+            </div>
         </dl>
+
+        <template v-if="evento.latitude !== null && evento.longitude !== null">
+            <MapaLocal :latitude="evento.latitude" :longitude="evento.longitude" :rotulo="`Mapa com o local de ${evento.titulo}`" class="mt-6 h-72" />
+            <a
+                :href="`https://www.google.com/maps/dir/?api=1&destination=${evento.latitude},${evento.longitude}`"
+                target="_blank"
+                rel="noopener"
+                class="mt-3 inline-flex min-h-11 items-center gap-1.5 font-semibold text-acao hover:underline"
+            >
+                Como chegar<span class="sr-only"> (abre o Google Maps em nova aba)</span>
+            </a>
+        </template>
 
         <p class="mt-8 text-[1.1875rem] whitespace-pre-line">{{ evento.resumo }}</p>
 

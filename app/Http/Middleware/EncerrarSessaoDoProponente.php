@@ -20,7 +20,7 @@ class EncerrarSessaoDoProponente
     {
         $user = $request->user();
 
-        // Gestor continua logado: a home mostra a ele o caminho para a retaguarda.
+        // Gestor continua logado na retaguarda; a home o mostra como visitante (HandleInertiaRequests).
         if ($user === null || $user->ehGestor()) {
             return $next($request);
         }

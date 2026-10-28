@@ -5,11 +5,10 @@ export type SituacaoEdital = 'em_breve' | 'aberto' | 'encerrado';
 /** App\Enums\TipoCadastro. */
 export type TipoCadastro = 'proponente' | 'patrocinador';
 
+/** Usuário da área da página: o proponente no portal, o gestor na retaguarda (gestor no portal chega como null). */
 export interface UsuarioAutenticado {
     nome: string;
     cpfMascarado: string;
-    /** Ativo e com pelo menos um papel: pode entrar na retaguarda. */
-    ehGestor: boolean;
     /** Vazio até a última etapa do cadastro; define o menu do portal (um tipo ou os dois). */
     tiposCadastro: TipoCadastro[];
 }
@@ -49,6 +48,8 @@ export interface Evento {
     /** Endereço da página: /eventos/{slug}. */
     slug: string;
     resumo: string;
+    /** Dia do mês ("7"). */
+    dia: string;
     /** Nome do mês em minúsculas ("agosto"). */
     mes: string;
     ano: string;
@@ -72,7 +73,7 @@ export interface EditaisShowProps {
     edital: EditalDetalhe;
 }
 
-/** Evento em EventoController@show (portal). */
+/** Evento em EventoController@show (página) e @detalhes (JSON do modal da página inicial). */
 export interface EventoDetalhe {
     titulo: string;
     resumo: string;
@@ -80,8 +81,18 @@ export interface EventoDetalhe {
     descricao: string | null;
     /** "15 de agosto de 2026". */
     dataRealizacao: string;
+    /** "sábado". */
+    diaSemana: string;
+    /** "19h às 22h30", "A partir das 19h" ou nulo. */
+    horario: string | null;
     local: string | null;
+    endereco: string | null;
+    /** Pin marcado na retaguarda; nulos quando o evento não tem mapa. */
+    latitude: number | null;
+    longitude: number | null;
     imagem: string | null;
+    /** Endereço da página do evento. */
+    url: string;
 }
 
 export interface EventosShowProps {
@@ -479,7 +490,14 @@ export interface EventoFormulario {
     /** HTML limpo; null sem descrição. */
     descricao: string | null;
     data_realizacao: string;
+    /** "HH:MM". */
+    hora_inicio: string | null;
+    hora_fim: string | null;
     local: string | null;
+    endereco: string | null;
+    /** Pin do mapa; nulos sem marcação. */
+    latitude: number | null;
+    longitude: number | null;
     publicado: boolean;
     imagemUrl: string | null;
 }
@@ -504,6 +522,72 @@ export interface RetaguardaUsuariosIndexProps {
     filtros: { busca: string };
 }
 
+/** Linha da lista de proponentes (cadastros do portal) na retaguarda (Retaguarda\ProponenteController@index). CPF já mascarado. */
+export interface ProponenteRetaguarda {
+    id: number;
+    nome: string;
+    nomeSocial: string | null;
+    cpf: string;
+    email: string | null;
+    /** "Cidade/UF". */
+    cidade: string | null;
+    /** Rótulos dos tipos de cadastro; vazio enquanto o cadastro está em andamento. */
+    tipos: string[];
+    finalizado: boolean;
+    cadastradoEm: string | null;
+}
+
+export interface RetaguardaProponentesIndexProps {
+    proponentes: Paginado<ProponenteRetaguarda>;
+    filtros: { busca: string; situacao: string; tipo: string };
+    situacoes: { valor: string; rotulo: string }[];
+    tiposCadastro: { valor: string; rotulo: string }[];
+}
+
+/** Bloco do detalhe do proponente, com os valores já formatados (nulo quando não informado). */
+export interface SecaoProponente {
+    id: string;
+    titulo: string;
+    campos: { rotulo: string; valor: string | null }[];
+}
+
+/** Anexo do cadastro: a URL é a da rota da retaguarda, nunca o caminho no disco. */
+export interface AnexoProponente {
+    campo: string;
+    rotulo: string;
+    enviado: boolean;
+    imagem: boolean;
+    url: string | null;
+    /** Nome sugerido para baixar. */
+    nome: string | null;
+}
+
+/** Pessoa Jurídica vinculada ao CPF do proponente. CPF dos representantes já mascarado. */
+export interface OrganizacaoDoProponente {
+    id: number;
+    razaoSocial: string;
+    nomeFantasia: string | null;
+    cnpj: string;
+    porte: string | null;
+    cidade: string | null;
+    responsavel: boolean;
+    representantes: { nome: string; cargo: string | null; cpf: string }[];
+}
+
+export interface RetaguardaProponenteShowProps {
+    proponente: {
+        id: number;
+        nome: string;
+        tipos: string[];
+        finalizado: boolean;
+        cadastradoEm: string | null;
+        ultimoAcesso: string | null;
+    };
+    secoes: SecaoProponente[];
+    anexos: AnexoProponente[];
+    organizacoes: OrganizacaoDoProponente[];
+}
+
 /** Papel que pode ser atribuído a um usuário. */
 export interface PapelDisponivel {
     slug: string;
@@ -523,6 +607,34 @@ export interface UsuarioFormulario {
 export interface RetaguardaUsuariosFormProps {
     usuario: UsuarioFormulario | null;
     papeisDisponiveis: PapelDisponivel[];
+}
+
+/** Linha da lista de Prefeituras-Bairro na retaguarda (Retaguarda\PrefeituraBairroController@index). */
+export interface PrefeituraBairroRetaguarda {
+    id: number;
+    /** Em algarismos romanos ("IV"). */
+    numero: string;
+    nome: string;
+    totalBairros: number;
+    ativo: boolean;
+}
+
+export interface RetaguardaPrefeiturasBairroIndexProps {
+    prefeituras: Paginado<PrefeituraBairroRetaguarda>;
+    filtros: { busca: string };
+}
+
+/** Prefeitura-Bairro em edição, com os bairros em ordem alfabética (Retaguarda\PrefeituraBairroController@edit). */
+export interface PrefeituraBairroFormulario {
+    id: number;
+    numero: number;
+    nome: string;
+    ativo: boolean;
+    bairros: { id: number; nome: string }[];
+}
+
+export interface RetaguardaPrefeiturasBairroFormProps {
+    prefeitura: PrefeituraBairroFormulario | null;
 }
 
 /** Troca da própria senha (Retaguarda\MinhaSenhaController@edit). Sem senha (só gov.br), a atual não é pedida. */

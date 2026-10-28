@@ -94,8 +94,8 @@ class MenuDoPortalTest extends TestCase
         $this->get('/portal/projetos')->assertRedirect('/');
     }
 
-    public function test_gestor_e_levado_a_retaguarda(): void
+    public function test_gestor_volta_a_home_e_nao_e_levado_a_retaguarda(): void
     {
-        $this->actingAs(User::factory()->gestor()->create())->get('/portal/editais')->assertRedirect('/retaguarda');
+        $this->actingAs(User::factory()->gestor()->create())->get('/portal/editais')->assertRedirect('/');
     }
 }

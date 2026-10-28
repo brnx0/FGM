@@ -56,10 +56,10 @@ const usuario = computed(() => usePage().props.auth?.user);
         <div v-if="edital.situacao !== 'encerrado'" class="mt-8">
             <Link
                 v-if="usuario"
-                :href="usuario.ehGestor ? '/retaguarda' : '/cadastro'"
+                href="/cadastro"
                 class="pressionavel inline-flex min-h-12 items-center rounded-pill bg-acao px-6 font-semibold text-sobre-acao no-underline hover:bg-acao-escuro"
             >
-                {{ usuario.ehGestor ? 'Ir para a retaguarda' : 'Continuar meu cadastro' }}
+                Continuar meu cadastro
             </Link>
             <GovBrButton v-else size="lg" />
         </div>

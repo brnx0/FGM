@@ -4,8 +4,8 @@ namespace App\Http\Requests;
 
 use App\Enums\IdentidadeGenero;
 use App\Enums\RacaCor;
-use App\Enums\Territorio;
 use App\Models\PessoaFisica;
+use App\Models\PrefeituraBairro;
 use App\Support\Estados;
 use App\Support\Paises;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -76,7 +76,8 @@ class SalvarPessoaFisicaRequest extends FormRequest
             'complemento' => ['nullable', 'string', 'max:120'],
             'cidade' => ['required', 'string', 'max:120'],
             'estado' => ['required', Rule::in(array_keys(Estados::TODOS))],
-            'territorio' => ['required', Rule::enum(Territorio::class)],
+            // Prefeituras-Bairro ativas (Parametrização), a já escolhida mesmo se desativada depois, ou fora de Salvador.
+            'territorio' => ['required', Rule::in(PrefeituraBairro::codigosAceitos($this->user()?->pessoaFisica?->territorio))],
             'comprovante_residencia' => ['nullable', ...self::DOCUMENTO],
         ];
     }

@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
-/** Encerra a sessão no portal (botão Sair, Voltar do navegador e página inicial). */
+/** Encerra a sessão no portal (botão Sair, Voltar do navegador e página inicial) e na retaguarda (botão Sair). */
 class EncerrarSessao
 {
     public function __construct(private GovBrClient $govbr) {}

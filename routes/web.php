@@ -20,6 +20,7 @@ Route::get('/', HomeController::class)->middleware('encerra-sessao-proponente')-
 Route::get('/editais/{edital:slug}', [EditalController::class, 'show'])->name('editais.show');
 Route::get('/editais/{edital:slug}/pdf', [EditalController::class, 'pdf'])->name('editais.pdf');
 Route::get('/eventos/{evento:slug}', [EventoController::class, 'show'])->name('eventos.show');
+Route::get('/eventos/{evento:slug}/detalhes', [EventoController::class, 'detalhes'])->name('eventos.detalhes');
 
 Route::controller(PaginaController::class)->group(function () {
     Route::get('/a-fgm', 'aFgm')->name('paginas.a-fgm');
