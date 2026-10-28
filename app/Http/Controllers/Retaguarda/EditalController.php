@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Retaguarda\SalvarEditalRequest;
 use App\Models\Edital;
 use App\Models\EditalCategoria;
+use App\Models\EditalDocumento;
 use App\Support\ArquivoArmazenado;
 use App\Support\SlugUnico;
 use Illuminate\Database\Eloquent\Builder;
@@ -132,6 +133,7 @@ class EditalController extends Controller
                         'unidade' => $categoria->{"cota_{$cota}_unidade"}?->value,
                     ]])->all(),
                 ])->all(),
+                'documentos' => $this->documentosParaEdicao($edital),
             ],
             'tiposFomento' => $this->tiposFomento(),
             'naturezas' => $this->naturezas(),
@@ -193,7 +195,7 @@ class EditalController extends Controller
     }
 
     /**
-     * Salva o edital e sincroniza as categorias numa transação; só depois apaga os arquivos substituídos.
+     * Salva o edital e sincroniza categorias e documentos numa transação; só depois apaga os arquivos substituídos.
      * Se algo falhar, os arquivos recém-gravados são descartados e os antigos ficam.
      *
      * @param  list<array{string, ?string}>  $novos
@@ -204,7 +206,8 @@ class EditalController extends Controller
         try {
             DB::transaction(function () use ($edital, $request, $novos): void {
                 ArquivoArmazenado::salvarTrocando($edital, $novos, []);
-                $this->sincronizarCategorias($edital, $request->categoriasParaSalvar());
+                $categoriasPorPosicao = $this->sincronizarCategorias($edital, $request->categoriasParaSalvar());
+                $this->sincronizarDocumentos($edital, $request->documentosParaSalvar(), $categoriasPorPosicao);
             });
         } catch (Throwable $erro) {
             foreach ($novos as [$disco, $caminho]) {
@@ -224,8 +227,9 @@ class EditalController extends Controller
      * Id de outro edital (ou inexistente) vale como categoria nova.
      *
      * @param  list<array{id: ?int, atributos: array<string, mixed>}>  $categorias
+     * @return list<int> id de cada categoria, na posição em que veio no envio
      */
-    private function sincronizarCategorias(Edital $edital, array $categorias): void
+    private function sincronizarCategorias(Edital $edital, array $categorias): array
     {
         $existentes = $edital->categorias()->get()->keyBy(fn (EditalCategoria $categoria): int => (int) $categoria->id);
         $mantidos = [];
@@ -242,6 +246,65 @@ class EditalController extends Controller
         }
 
         $existentes->except($mantidos)->each(fn (EditalCategoria $categoria): ?bool => $categoria->delete());
+
+        return $mantidos;
+    }
+
+    /**
+     * Mesmas regras das categorias: atualiza os que vieram com id deste edital, cria os novos e apaga os ausentes.
+     * As categorias de cada documento chegam como posições e são traduzidas pelo mapa posição → id.
+     *
+     * @param  list<array{id: ?int, atributos: array<string, mixed>, categorias: list<int>}>  $documentos
+     * @param  list<int>  $categoriasPorPosicao
+     */
+    private function sincronizarDocumentos(Edital $edital, array $documentos, array $categoriasPorPosicao): void
+    {
+        $existentes = $edital->documentos()->get()->keyBy(fn (EditalDocumento $documento): int => (int) $documento->id);
+        $mantidos = [];
+
+        foreach ($documentos as ['id' => $id, 'atributos' => $atributos, 'categorias' => $posicoes]) {
+            $existente = $id !== null ? $existentes->get($id) : null;
+
+            if ($existente !== null && ! in_array($id, $mantidos, true)) {
+                $existente->update($atributos);
+                $documento = $existente;
+            } else {
+                $documento = $edital->documentos()->create($atributos);
+            }
+
+            $mantidos[] = (int) $documento->id;
+            $documento->categorias()->sync(array_map(fn (int $posicao): int => $categoriasPorPosicao[$posicao], $posicoes));
+        }
+
+        $existentes->except($mantidos)->each(fn (EditalDocumento $documento): ?bool => $documento->delete());
+    }
+
+    /**
+     * Posições das categorias são as da lista `categorias` enviada no mesmo edit.
+     *
+     * @return list<array{id: int, nome: string, orientacao: ?string, obrigatorio: bool, naturezas: list<string>, todas_categorias: bool, categorias: list<int>, tamanho_max_mb: int}>
+     */
+    private function documentosParaEdicao(Edital $edital): array
+    {
+        $posicaoPorCategoria = $edital->categorias->values()->mapWithKeys(
+            fn (EditalCategoria $categoria, int $posicao): array => [(int) $categoria->id => $posicao],
+        );
+
+        return $edital->documentos()->with('categorias')->get()->map(fn (EditalDocumento $documento): array => [
+            'id' => (int) $documento->id,
+            'nome' => $documento->nome,
+            'orientacao' => $documento->orientacao,
+            'obrigatorio' => $documento->obrigatorio,
+            'naturezas' => $documento->naturezas->map(fn (NaturezaProponente $natureza): string => $natureza->value)->values()->all(),
+            'todas_categorias' => $documento->todas_categorias,
+            'categorias' => $documento->categorias
+                ->map(fn (EditalCategoria $categoria): ?int => $posicaoPorCategoria->get((int) $categoria->id))
+                ->filter(fn (?int $posicao): bool => $posicao !== null)
+                ->sort()
+                ->values()
+                ->all(),
+            'tamanho_max_mb' => $documento->tamanho_max_mb,
+        ])->all();
     }
 
     /**

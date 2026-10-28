@@ -81,6 +81,12 @@ class Edital extends Model
         return $this->hasMany(EditalCategoria::class)->orderBy('ordem');
     }
 
+    /** @return HasMany<EditalDocumento, $this> */
+    public function documentos(): HasMany
+    {
+        return $this->hasMany(EditalDocumento::class)->orderBy('ordem');
+    }
+
     public function situacao(?CarbonInterface $agora = null): SituacaoEdital
     {
         $hoje = self::hoje($agora)->toDateString();

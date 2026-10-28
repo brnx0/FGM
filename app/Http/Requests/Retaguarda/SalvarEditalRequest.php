@@ -8,6 +8,7 @@ use App\Enums\UnidadeCota;
 use App\Models\Edital;
 use App\Models\EditalCategoria;
 use App\Support\HtmlSeguro;
+use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -42,6 +43,30 @@ class SalvarEditalRequest extends FormRequest
             'publicado' => ['boolean'],
             'remover_imagem' => ['boolean'],
             ...$this->regrasDasCategorias(),
+            ...$this->regrasDosDocumentos(),
+        ];
+    }
+
+    /**
+     * Cada posição em `categorias` aponta para o array `categorias` do mesmo envio (conferido em after()).
+     *
+     * @return array<string, array<mixed>>
+     */
+    private function regrasDosDocumentos(): array
+    {
+        return [
+            'documentos' => ['nullable', 'array', 'max:50'],
+            'documentos.*.id' => ['nullable', 'integer'],
+            'documentos.*.nome' => ['required', 'string', 'max:255'],
+            'documentos.*.orientacao' => ['nullable', 'string', 'max:500'],
+            'documentos.*.obrigatorio' => ['boolean'],
+            // Sem nenhuma marcada o campo nem chega no envio: ausente vale como vazio.
+            'documentos.*.naturezas' => ['required', 'array', 'min:1', $this->semRepetidos()],
+            'documentos.*.naturezas.*' => [Rule::enum(NaturezaProponente::class)],
+            'documentos.*.todas_categorias' => ['boolean'],
+            'documentos.*.categorias' => ['nullable', 'array', $this->semRepetidos()],
+            'documentos.*.categorias.*' => ['integer', 'min:0'],
+            'documentos.*.tamanho_max_mb' => ['required', 'integer', 'min:1', 'max:20'],
         ];
     }
 
@@ -57,8 +82,8 @@ class SalvarEditalRequest extends FormRequest
             'categorias.*.valor' => ['required', 'numeric', 'min:0.01', 'max:999999999'],
             'categorias.*.vagas' => ['required', 'integer', 'min:1', 'max:10000'],
             // Sem nenhuma marcada o campo nem chega no envio: ausente vale como vazio.
-            'categorias.*.naturezas' => ['required', 'array', 'min:1'],
-            'categorias.*.naturezas.*' => ['distinct', Rule::enum(NaturezaProponente::class)],
+            'categorias.*.naturezas' => ['required', 'array', 'min:1', $this->semRepetidos()],
+            'categorias.*.naturezas.*' => [Rule::enum(NaturezaProponente::class)],
         ];
 
         foreach (EditalCategoria::COTAS as $cota) {
@@ -77,6 +102,19 @@ class SalvarEditalRequest extends FormRequest
     }
 
     /**
+     * Repetição dentro de cada lista. A regra `distinct` com curinga compara entre todos os itens
+     * (duas categorias com a mesma natureza seriam recusadas).
+     */
+    private function semRepetidos(): Closure
+    {
+        return function (string $atributo, mixed $valor, Closure $falhar): void {
+            if (is_array($valor) && count($valor) !== count(array_unique($valor))) {
+                $falhar('O campo :attribute tem um valor repetido.');
+            }
+        };
+    }
+
+    /**
      * @return array<string, string>
      */
     public function attributes(): array
@@ -92,6 +130,11 @@ class SalvarEditalRequest extends FormRequest
             'categorias.*.naturezas' => 'naturezas',
             'categorias.*.cotas.*.valor' => 'reserva de cotas',
             'categorias.*.cotas.*.unidade' => 'unidade da cota',
+            'documentos.*.nome' => 'nome do documento',
+            'documentos.*.orientacao' => 'orientação',
+            'documentos.*.naturezas' => 'naturezas',
+            'documentos.*.categorias' => 'categorias',
+            'documentos.*.tamanho_max_mb' => 'tamanho máximo',
         ];
     }
 
@@ -109,6 +152,10 @@ class SalvarEditalRequest extends FormRequest
             'pdf.mimetypes' => 'O arquivo precisa ser um PDF.',
             'categorias.*.naturezas.required' => 'Marque ao menos uma natureza.',
             'categorias.*.naturezas.min' => 'Marque ao menos uma natureza.',
+            'documentos.*.naturezas.required' => 'Marque ao menos uma natureza.',
+            'documentos.*.naturezas.min' => 'Marque ao menos uma natureza.',
+            'documentos.*.categorias.*.integer' => 'Categoria inválida.',
+            'documentos.*.categorias.*.min' => 'Categoria inválida.',
         ];
     }
 
@@ -171,7 +218,40 @@ class SalvarEditalRequest extends FormRequest
                     }
                 }
             },
+            function (Validator $validator): void {
+                $totalDeCategorias = count((array) $this->input('categorias', []));
+
+                foreach ((array) $this->input('documentos', []) as $indice => $documento) {
+                    if (! is_array($documento) || $this->documentoValeParaTodas($documento)) {
+                        continue;
+                    }
+
+                    $posicoes = (array) ($documento['categorias'] ?? []);
+
+                    if ($posicoes === []) {
+                        $validator->errors()->add("documentos.{$indice}.categorias", 'Escolha ao menos uma categoria ou marque todas.');
+                    }
+
+                    foreach ($posicoes as $chave => $posicao) {
+                        // Posição malformada já tem erro das regras; aqui só a que não existe na lista.
+                        if (! $validator->errors()->has("documentos.{$indice}.categorias.{$chave}")
+                            && (int) $posicao >= $totalDeCategorias) {
+                            $validator->errors()->add("documentos.{$indice}.categorias.{$chave}", 'Categoria inválida.');
+                        }
+                    }
+                }
+            },
         ];
+    }
+
+    /**
+     * Ausente vale como "todas" (o padrão do documento).
+     *
+     * @param  array<string, mixed>  $documento
+     */
+    private function documentoValeParaTodas(array $documento): bool
+    {
+        return filter_var($documento['todas_categorias'] ?? true, FILTER_VALIDATE_BOOLEAN);
     }
 
     /**
@@ -211,6 +291,39 @@ class SalvarEditalRequest extends FormRequest
         }
 
         return $categorias;
+    }
+
+    /**
+     * Documentos na ordem enviada, prontos para gravar. `categorias` são posições no array `categorias` enviado.
+     *
+     * @return list<array{id: ?int, atributos: array<string, mixed>, categorias: list<int>}>
+     */
+    public function documentosParaSalvar(): array
+    {
+        $documentos = [];
+
+        $validados = (array) $this->validated('documentos', []);
+        ksort($validados, SORT_NUMERIC);
+
+        foreach (array_values($validados) as $posicao => $documento) {
+            $todas = $this->documentoValeParaTodas($documento);
+
+            $documentos[] = [
+                'id' => filled($documento['id'] ?? null) ? (int) $documento['id'] : null,
+                'atributos' => [
+                    'ordem' => $posicao + 1,
+                    'nome' => $documento['nome'],
+                    'orientacao' => $documento['orientacao'] ?? null,
+                    'obrigatorio' => filter_var($documento['obrigatorio'] ?? true, FILTER_VALIDATE_BOOLEAN),
+                    'naturezas' => array_map(NaturezaProponente::from(...), array_values((array) $documento['naturezas'])),
+                    'todas_categorias' => $todas,
+                    'tamanho_max_mb' => (int) $documento['tamanho_max_mb'],
+                ],
+                'categorias' => $todas ? [] : array_values(array_map(intval(...), (array) ($documento['categorias'] ?? []))),
+            ];
+        }
+
+        return $documentos;
     }
 
     /**
