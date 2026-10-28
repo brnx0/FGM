@@ -80,12 +80,10 @@ const principais = computed(() => {
     return new Set(escolhidos.values());
 });
 
-// Troca automática (anexo: 7 s), parada pelo botão Pausar e suspensa com o mouse ou o foco no carrossel.
-const pausado = ref<boolean>(false);
+// Troca automática (anexo: 7 s), suspensa com o mouse ou o foco no carrossel.
 const mouseDentro = ref<boolean>(false);
 const focoDentro = ref<boolean>(false);
-const podeRodar = computed(() => total.value > 1 && !reduzMovimento.value);
-const rodando = computed(() => podeRodar.value && !pausado.value && !mouseDentro.value && !focoDentro.value);
+const rodando = computed(() => total.value > 1 && !reduzMovimento.value && !mouseDentro.value && !focoDentro.value);
 
 // Os slides laterais continuam visíveis, então a troca é anunciada por este texto (só quando o usuário troca).
 const anuncio = ref<string>('');
@@ -188,7 +186,6 @@ onBeforeUnmount(() => {
 <template>
     <div
         ref="regiao"
-        class="flex flex-col gap-7"
         role="region"
         aria-roledescription="carrossel"
         aria-label="Editais em destaque"
@@ -198,8 +195,10 @@ onBeforeUnmount(() => {
         @focusin="focoDentro = true"
         @focusout="aoSairFoco"
     >
+        <!-- A partir de md o card acompanha a largura da tela (até 500px) para o leque caber inteiro, com espaço branco dos lados;
+             o palco acompanha a altura dele (20/27). -->
         <div
-            class="relative h-[520px] touch-pan-y select-none md:h-[740px]"
+            class="relative h-[520px] touch-pan-y select-none md:h-[calc(var(--largura-card)*1.35_+_65px)] md:[--largura-card:clamp(360px,26vw,500px)]"
             @pointerdown="aoPressionar"
             @pointerup="aoSoltar"
             @pointercancel="cancelarArrasto"
@@ -235,7 +234,7 @@ onBeforeUnmount(() => {
                 <article
                     v-for="({ edital, indiceEdital, chave }, i) in slides"
                     :key="chave"
-                    class="slide-edital home-escuro absolute top-1/2 left-1/2 grid w-[300px] max-w-[80%] overflow-hidden rounded-[28px] bg-[#0d1117] text-white shadow-[0_50px_90px_-40px_rgba(10,20,40,0.6)] md:w-[500px]"
+                    class="slide-edital home-escuro absolute top-1/2 left-1/2 grid w-[300px] max-w-[80%] overflow-hidden rounded-[28px] bg-[#0d1117] text-white shadow-[0_50px_90px_-40px_rgba(10,20,40,0.6)] md:w-(--largura-card)"
                     :data-posicao="visivel(i) ? posicao(i) : 'fora'"
                     :inert="!visivel(i)"
                     :aria-hidden="principais.has(i) ? undefined : 'true'"
@@ -307,21 +306,5 @@ onBeforeUnmount(() => {
         </div>
 
         <p class="sr-only" aria-live="polite">{{ anuncio }}</p>
-
-        <div v-if="podeRodar" class="flex justify-center">
-            <button
-                type="button"
-                class="pressionavel inline-flex min-h-11 items-center gap-2 rounded-pill px-4 text-[0.75rem] font-bold tracking-[0.12em] text-tinta-suave uppercase hover:text-home-tinta"
-                @click="pausado = !pausado"
-            >
-                <svg v-if="pausado" aria-hidden="true" viewBox="0 0 24 24" class="size-4" fill="currentColor">
-                    <path d="M8 5.5v13l10.5-6.5z" />
-                </svg>
-                <svg v-else aria-hidden="true" viewBox="0 0 24 24" class="size-4" fill="currentColor">
-                    <path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" />
-                </svg>
-                {{ pausado ? 'Continuar' : 'Pausar' }}<span class="sr-only"> a troca automática dos editais</span>
-            </button>
-        </div>
     </div>
 </template>
