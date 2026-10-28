@@ -115,19 +115,22 @@ const limparErros = (campos: string[]): void => {
 };
 
 // Categoria removida deixa de valer para os documentos ligados a ela; reordenar não mexe na ligação (é pela chave).
-// Os erros "documentos.N.categorias.M" apontam para posições de categoria, que mudaram: saem.
+// Os erros "documentos.N.categorias.M" apontam para posições de categoria, que mudaram: saem. Com remoção, sai também o "documentos.N.categorias".
 watch(
-    () => form.categorias.map((categoria) => categoria.chave).join('|'),
-    () => {
-        const chaves = new Set(form.categorias.map((categoria) => categoria.chave));
+    () => form.categorias.map((categoria) => categoria.chave),
+    (chavesAtuais, chavesAnteriores) => {
+        const chaves = new Set(chavesAtuais);
         for (const documento of form.documentos) {
             if (documento.categorias.some((chave) => !chaves.has(chave))) {
                 documento.categorias = documento.categorias.filter((chave) => chaves.has(chave));
             }
         }
 
-        const errosDePosicao = Object.keys(form.errors).filter((chave) => /^documentos\.\d+\.categorias\.\d+$/.test(chave));
-        if (errosDePosicao.length > 0) limparErros(errosDePosicao);
+        const houveRemocao = chavesAnteriores.some((chave) => !chaves.has(chave));
+        const errosVencidos = Object.keys(form.errors).filter((chave) =>
+            houveRemocao ? /^documentos\.\d+\.categorias(\.\d+)?$/.test(chave) : /^documentos\.\d+\.categorias\.\d+$/.test(chave),
+        );
+        if (errosVencidos.length > 0) limparErros(errosVencidos);
     },
 );
 

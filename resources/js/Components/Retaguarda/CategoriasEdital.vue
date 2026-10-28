@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { nextTick, reactive, ref, watch } from 'vue';
 import CampoCadastro from '../CampoCadastro.vue';
+import { classeBotaoCartao, classeCampo, classeCampoBase, inteiro, useListaEditavel } from './listaEditavel';
 import type { CategoriaEditavel, CotaEdital } from '../../types';
 
 const props = defineProps<{
@@ -33,67 +33,42 @@ const COTAS: { chave: CotaEdital; rotulo: string }[] = [
 let proximaChave = 0;
 const novaChave = (): string => `nova-${++proximaChave}`;
 
-// Sanfona: cartões abertos, pela chave. Os já salvos começam recolhidos; o novo abre. Recolher só esconde (v-show): nada se perde.
-const abertas = reactive(new Set<string>());
-const estaAberta = (categoria: CategoriaEditavel): boolean => abertas.has(categoria.chave);
-const alternar = (categoria: CategoriaEditavel): void => {
-    if (!abertas.delete(categoria.chave)) abertas.add(categoria.chave);
-};
-const todasAbertas = (): boolean => categorias.value.length > 0 && categorias.value.every((categoria) => abertas.has(categoria.chave));
-const alternarTodas = (): void => {
-    const abrir = !todasAbertas();
-    for (const categoria of categorias.value) {
-        if (abrir) abertas.add(categoria.chave);
-        else abertas.delete(categoria.chave);
-    }
-};
-
-const anuncio = ref<string>('');
-const botaoAdicionar = ref<HTMLButtonElement | null>(null);
-
 const idCampo = (categoria: CategoriaEditavel, campo: string): string => `categoria-${categoria.chave}-${campo}`;
-const erro = (indice: number, campo: string): string | undefined => props.erros[`categorias.${indice}.${campo}`];
 
-/** Quantos campos do cartão têm erro (para o selo do cabeçalho). */
-const quantidadeDeErros = (indice: number): number => Object.keys(props.erros).filter((chave) => chave.startsWith(`categorias.${indice}.`) && props.erros[chave]).length;
+// Sanfona (os já salvos começam recolhidos; o novo abre), erros por índice, subir/descer e remoção confirmada.
+const {
+    estaAberto: estaAberta,
+    alternar,
+    todosAbertos: todasAbertas,
+    alternarTodos: alternarTodas,
+    anuncio,
+    botaoAdicionar,
+    erro,
+    quantidadeDeErros,
+    erroDaLista,
+    limpar,
+    limparLista,
+    acrescentar,
+    mover,
+    dialogo,
+    aRemover,
+    pedirRemocao,
+    cancelarRemocao,
+    remover,
+} = useListaEditavel<CategoriaEditavel>({
+    lista: categorias,
+    prefixo: 'categorias',
+    erros: () => props.erros,
+    limparErros: (campos) => emit('limparErros', campos),
+    idCampo,
+    textoMovido: (posicao, total) => `Categoria movida para a posição ${posicao} de ${total}.`,
+    textoRemovido: 'Categoria removida.',
+});
 
-// Depois de um envio recusado, abre todo cartão com erro (antes do foco no primeiro campo inválido, que o formulário dá no próximo tick).
-watch(
-    () =>
-        Object.keys(props.erros)
-            .filter((chave) => chave.startsWith('categorias.') && props.erros[chave])
-            .join('|'),
-    () => {
-        categorias.value.forEach((categoria, indice) => {
-            if (quantidadeDeErros(indice) > 0) abertas.add(categoria.chave);
-        });
-    },
-);
-
-/** Erros de uma lista de naturezas: o do campo ou o do primeiro item ("naturezas.0"). */
-const erroNaturezas = (indice: number): string | undefined => {
-    const prefixo = `categorias.${indice}.naturezas.`;
-    const doItem = Object.keys(props.erros).find((chave) => chave.startsWith(prefixo) && props.erros[chave]);
-
-    return erro(indice, 'naturezas') ?? (doItem ? props.erros[doItem] : undefined);
-};
+const erroNaturezas = (indice: number): string | undefined => erroDaLista(indice, 'naturezas');
+const limparNaturezas = (indice: number): void => limparLista(indice, 'naturezas');
 
 const erroCota = (indice: number, cota: CotaEdital): string | undefined => erro(indice, `cotas.${cota}.valor`) ?? erro(indice, `cotas.${cota}.unidade`);
-
-const limpar = (indice: number, ...campos: string[]): void => {
-    emit('limparErros', campos.map((campo) => `categorias.${indice}.${campo}`));
-};
-
-const limparNaturezas = (indice: number): void => {
-    const prefixo = `categorias.${indice}.naturezas`;
-    emit('limparErros', [prefixo, ...Object.keys(props.erros).filter((chave) => chave.startsWith(`${prefixo}.`))]);
-};
-
-// Remover ou reordenar muda os índices: os erros do servidor deixam de apontar para o cartão certo.
-const limparTodosOsErros = (): void => {
-    const chaves = Object.keys(props.erros).filter((chave) => chave === 'categorias' || chave.startsWith('categorias.'));
-    if (chaves.length > 0) emit('limparErros', chaves);
-};
 
 /** Mesma conta de EditalCategoria::vagasReservadas: percentual arredonda para cima. */
 const vagasDaCota = (categoria: CategoriaEditavel, cota: CotaEdital): number => {
@@ -124,17 +99,6 @@ const digitarValor = (indice: number, categoria: CategoriaEditavel, evento: Even
     limpar(indice, 'valor');
 };
 
-/** Só dígitos (sem sinal, ponto, vírgula ou "e"), limitado a `maximo`; devolve o número e reescreve o campo. Vazio ou zero vira null. */
-const inteiro = (evento: Event, maximo: number): number | null => {
-    const campo = evento.target as HTMLInputElement;
-    const digitos = campo.value.replace(/\D/g, '').replace(/^0+/, '').slice(0, 6);
-    const numero = digitos === '' ? null : Math.min(Number(digitos), maximo);
-
-    campo.value = numero === null ? '' : String(numero);
-
-    return numero;
-};
-
 const digitarVagas = (indice: number, categoria: CategoriaEditavel, evento: Event): void => {
     categoria.vagas = inteiro(evento, MAXIMO_VAGAS);
     limpar(indice, 'vagas', 'cotas');
@@ -145,91 +109,26 @@ const digitarCota = (indice: number, categoria: CategoriaEditavel, cota: CotaEdi
     limpar(indice, `cotas.${cota}.valor`, `cotas.${cota}.unidade`, 'cotas');
 };
 
-const focar = async (id: string): Promise<void> => {
-    await nextTick();
-    // Depois do fechamento do <dialog>, que devolve o foco ao botão que o abriu (já removido).
-    await new Promise((resolver) => setTimeout(resolver, 0));
-    document.getElementById(id)?.focus();
-};
-
 const adicionar = (): void => {
-    const nova: CategoriaEditavel = {
-        chave: novaChave(),
-        id: null,
-        nome: '',
-        valor: null,
-        vagas: null,
-        naturezas: [],
-        cotas: {
-            negros: { valor: null, unidade: 'vagas' },
-            indigenas: { valor: null, unidade: 'vagas' },
-            pcd: { valor: null, unidade: 'vagas' },
+    acrescentar(
+        {
+            chave: novaChave(),
+            id: null,
+            nome: '',
+            valor: null,
+            vagas: null,
+            naturezas: [],
+            cotas: {
+                negros: { valor: null, unidade: 'vagas' },
+                indigenas: { valor: null, unidade: 'vagas' },
+                pcd: { valor: null, unidade: 'vagas' },
+            },
         },
-    };
-    // Entra no fim: os índices das outras não mudam, então os erros delas continuam valendo.
-    categorias.value = [...categorias.value, nova];
-    abertas.add(nova.chave);
-    void focar(idCampo(nova, 'nome'));
+        'nome',
+    );
 };
-
-// Subir/Descer: o foco fica no mesmo botão do cartão movido (ou no cartão, se o botão ficou desabilitado).
-const mover = (indice: number, direcao: -1 | 1, botao: 'subir' | 'descer'): void => {
-    const destino = indice + direcao;
-    const lista = [...categorias.value];
-    const movida = lista[indice];
-    if (!movida || destino < 0 || destino >= lista.length) return;
-
-    lista.splice(indice, 1);
-    lista.splice(destino, 0, movida);
-    categorias.value = lista;
-    limparTodosOsErros();
-    anuncio.value = `Categoria movida para a posição ${destino + 1} de ${lista.length}.`;
-
-    const nasPontas = (botao === 'subir' && destino === 0) || (botao === 'descer' && destino === lista.length - 1);
-    void focar(nasPontas ? idCampo(movida, 'cartao') : idCampo(movida, botao));
-};
-
-// Remoção pede confirmação num <dialog> nativo (como ConfirmarExclusao), mas só tira da lista: vale ao salvar.
-const dialogo = ref<HTMLDialogElement | null>(null);
-const aRemover = ref<number | null>(null);
 
 const nomeDaCategoria = (indice: number): string => categorias.value[indice]?.nome.trim() || `Categoria ${indice + 1}`;
-
-const pedirRemocao = (indice: number): void => {
-    aRemover.value = indice;
-    dialogo.value?.showModal();
-};
-
-const cancelarRemocao = (): void => {
-    dialogo.value?.close();
-    aRemover.value = null;
-};
-
-const remover = (): void => {
-    const indice = aRemover.value;
-    dialogo.value?.close();
-    aRemover.value = null;
-    if (indice === null) return;
-
-    categorias.value = categorias.value.filter((_, posicao) => posicao !== indice);
-    limparTodosOsErros();
-    anuncio.value = 'Categoria removida.';
-
-    // Foca a anterior; se removeu a primeira, a que ocupa o lugar dela; sem nenhuma, o botão de adicionar.
-    const anterior = categorias.value[indice - 1] ?? categorias.value[indice];
-    if (anterior) {
-        void focar(idCampo(anterior, 'cartao'));
-    } else {
-        void nextTick(() => setTimeout(() => botaoAdicionar.value?.focus(), 0));
-    }
-};
-
-// Sem largura: os campos das cotas têm largura fixa, os demais ocupam a linha (classeCampo).
-const classeCampoBase =
-    'h-12 rounded-[12px] border border-tinta-suave/70 bg-superficie px-4 text-base text-home-tinta placeholder:text-tinta-suave aria-invalid:border-erro-texto aria-invalid:ring-1 aria-invalid:ring-erro-texto';
-const classeCampo = `${classeCampoBase} w-full`;
-const classeBotaoCartao =
-    'pressionavel inline-flex min-h-11 items-center gap-1.5 rounded-pill px-3 text-[0.8125rem] font-bold text-acao hover:bg-nevoa disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent';
 </script>
 
 <template>

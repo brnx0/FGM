@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { nextTick, reactive, ref, watch } from 'vue';
 import CampoCadastro from '../CampoCadastro.vue';
+import { classeBotaoCartao, classeCaixa, classeCampo, classeCampoBase, classeMarcacao, inteiro, useListaEditavel } from './listaEditavel';
 import type { CategoriaEditavel, DocumentoEditavel } from '../../types';
 
 const props = defineProps<{
@@ -26,69 +26,45 @@ const MAXIMO = 50;
 const TAMANHO_MAXIMO_MB = 20;
 const TAMANHO_PADRAO_MB = 2;
 
+/** Campos que aparecem no cartão: só os erros deles contam no selo (id, obrigatorio e todas_categorias não mostram mensagem). */
+const CAMPOS_VISIVEIS = /^(nome|orientacao|tamanho_max_mb|naturezas|categorias)(\.|$)/;
+
 // Chave do cartão de um documento novo (os salvos usam o id): não muda ao reordenar.
 let proximaChave = 0;
 const novaChave = (): string => `novo-${++proximaChave}`;
 
-// Sanfona: cartões abertos, pela chave. Os já salvos começam recolhidos; o novo abre. Recolher só esconde (v-show): nada se perde.
-const abertos = reactive(new Set<string>());
-const estaAberto = (documento: DocumentoEditavel): boolean => abertos.has(documento.chave);
-const alternar = (documento: DocumentoEditavel): void => {
-    if (!abertos.delete(documento.chave)) abertos.add(documento.chave);
-};
-const todosAbertos = (): boolean => documentos.value.length > 0 && documentos.value.every((documento) => abertos.has(documento.chave));
-const alternarTodos = (): void => {
-    const abrir = !todosAbertos();
-    for (const documento of documentos.value) {
-        if (abrir) abertos.add(documento.chave);
-        else abertos.delete(documento.chave);
-    }
-};
-
-const anuncio = ref<string>('');
-const botaoAdicionar = ref<HTMLButtonElement | null>(null);
-
 const idCampo = (documento: DocumentoEditavel, campo: string): string => `documento-${documento.chave}-${campo}`;
-const erro = (indice: number, campo: string): string | undefined => props.erros[`documentos.${indice}.${campo}`];
 
-/** Quantos campos do cartão têm erro (para o selo do cabeçalho). */
-const quantidadeDeErros = (indice: number): number => Object.keys(props.erros).filter((chave) => chave.startsWith(`documentos.${indice}.`) && props.erros[chave]).length;
-
-// Depois de um envio recusado, abre todo cartão com erro (antes do foco no primeiro campo inválido, que o formulário dá no próximo tick).
-watch(
-    () =>
-        Object.keys(props.erros)
-            .filter((chave) => chave.startsWith('documentos.') && props.erros[chave])
-            .join('|'),
-    () => {
-        documentos.value.forEach((documento, indice) => {
-            if (quantidadeDeErros(indice) > 0) abertos.add(documento.chave);
-        });
-    },
-);
-
-/** Erro de uma lista (naturezas ou categorias): o do campo ou o do primeiro item ("campo.0"). */
-const erroDaLista = (indice: number, campo: 'naturezas' | 'categorias'): string | undefined => {
-    const prefixo = `documentos.${indice}.${campo}.`;
-    const doItem = Object.keys(props.erros).find((chave) => chave.startsWith(prefixo) && props.erros[chave]);
-
-    return erro(indice, campo) ?? (doItem ? props.erros[doItem] : undefined);
-};
-
-const limpar = (indice: number, ...campos: string[]): void => {
-    emit('limparErros', campos.map((campo) => `documentos.${indice}.${campo}`));
-};
-
-const limparLista = (indice: number, campo: 'naturezas' | 'categorias'): void => {
-    const prefixo = `documentos.${indice}.${campo}`;
-    emit('limparErros', [prefixo, ...Object.keys(props.erros).filter((chave) => chave.startsWith(`${prefixo}.`))]);
-};
-
-// Remover ou reordenar muda os índices: os erros do servidor deixam de apontar para o cartão certo.
-const limparTodosOsErros = (): void => {
-    const chaves = Object.keys(props.erros).filter((chave) => chave === 'documentos' || chave.startsWith('documentos.'));
-    if (chaves.length > 0) emit('limparErros', chaves);
-};
+// Sanfona (os já salvos começam recolhidos; o novo abre), erros por índice, subir/descer e remoção confirmada.
+const {
+    estaAberto,
+    alternar,
+    todosAbertos,
+    alternarTodos,
+    anuncio,
+    botaoAdicionar,
+    erro,
+    quantidadeDeErros,
+    erroDaLista,
+    limpar,
+    limparLista,
+    acrescentar,
+    mover,
+    dialogo,
+    aRemover,
+    pedirRemocao,
+    cancelarRemocao,
+    remover,
+} = useListaEditavel<DocumentoEditavel>({
+    lista: documentos,
+    prefixo: 'documentos',
+    erros: () => props.erros,
+    limparErros: (campos) => emit('limparErros', campos),
+    idCampo,
+    textoMovido: (posicao, total) => `Documento movido para a posição ${posicao} de ${total}.`,
+    textoRemovido: 'Documento removido.',
+    contaNoSelo: (campo) => CAMPOS_VISIVEIS.test(campo),
+});
 
 /** Rótulo de uma categoria da aba Categorias: o nome, ou a posição enquanto não tem nome. */
 const rotuloDaCategoria = (categoria: CategoriaEditavel, posicao: number): string => categoria.nome.trim() || `Categoria ${posicao + 1}`;
@@ -106,17 +82,6 @@ const resumo = (documento: DocumentoEditavel): string =>
         naturezasNoResumo(documento.naturezas.length),
     ].join(' · ');
 
-/** Só dígitos (sem sinal, ponto, vírgula ou "e"), limitado a `maximo`; devolve o número e reescreve o campo. Vazio ou zero vira null. Mesmo filtro das categorias. */
-const inteiro = (evento: Event, maximo: number): number | null => {
-    const campo = evento.target as HTMLInputElement;
-    const digitos = campo.value.replace(/\D/g, '').replace(/^0+/, '').slice(0, 6);
-    const numero = digitos === '' ? null : Math.min(Number(digitos), maximo);
-
-    campo.value = numero === null ? '' : String(numero);
-
-    return numero;
-};
-
 const digitarTamanho = (indice: number, documento: DocumentoEditavel, evento: Event): void => {
     documento.tamanho_max_mb = inteiro(evento, TAMANHO_MAXIMO_MB);
     limpar(indice, 'tamanho_max_mb');
@@ -127,90 +92,24 @@ const escolherTodas = (indice: number, documento: DocumentoEditavel, todas: bool
     limparLista(indice, 'categorias');
 };
 
-const focar = async (id: string): Promise<void> => {
-    await nextTick();
-    // Depois do fechamento do <dialog>, que devolve o foco ao botão que o abriu (já removido).
-    await new Promise((resolver) => setTimeout(resolver, 0));
-    document.getElementById(id)?.focus();
-};
-
 const adicionar = (): void => {
-    const novo: DocumentoEditavel = {
-        chave: novaChave(),
-        id: null,
-        nome: '',
-        orientacao: '',
-        obrigatorio: true,
-        naturezas: [],
-        todas_categorias: true,
-        categorias: [],
-        tamanho_max_mb: TAMANHO_PADRAO_MB,
-    };
-    // Entra no fim: os índices dos outros não mudam, então os erros deles continuam valendo.
-    documentos.value = [...documentos.value, novo];
-    abertos.add(novo.chave);
-    void focar(idCampo(novo, 'nome'));
+    acrescentar(
+        {
+            chave: novaChave(),
+            id: null,
+            nome: '',
+            orientacao: '',
+            obrigatorio: true,
+            naturezas: [],
+            todas_categorias: true,
+            categorias: [],
+            tamanho_max_mb: TAMANHO_PADRAO_MB,
+        },
+        'nome',
+    );
 };
-
-// Subir/Descer: o foco fica no mesmo botão do cartão movido (ou no cartão, se o botão ficou desabilitado).
-const mover = (indice: number, direcao: -1 | 1, botao: 'subir' | 'descer'): void => {
-    const destino = indice + direcao;
-    const lista = [...documentos.value];
-    const movido = lista[indice];
-    if (!movido || destino < 0 || destino >= lista.length) return;
-
-    lista.splice(indice, 1);
-    lista.splice(destino, 0, movido);
-    documentos.value = lista;
-    limparTodosOsErros();
-    anuncio.value = `Documento movido para a posição ${destino + 1} de ${lista.length}.`;
-
-    const nasPontas = (botao === 'subir' && destino === 0) || (botao === 'descer' && destino === lista.length - 1);
-    void focar(nasPontas ? idCampo(movido, 'cartao') : idCampo(movido, botao));
-};
-
-// Remoção pede confirmação num <dialog> nativo (como nas categorias), mas só tira da lista: vale ao salvar.
-const dialogo = ref<HTMLDialogElement | null>(null);
-const aRemover = ref<number | null>(null);
 
 const nomeDoDocumento = (indice: number): string => documentos.value[indice]?.nome.trim() || `Documento ${indice + 1}`;
-
-const pedirRemocao = (indice: number): void => {
-    aRemover.value = indice;
-    dialogo.value?.showModal();
-};
-
-const cancelarRemocao = (): void => {
-    dialogo.value?.close();
-    aRemover.value = null;
-};
-
-const remover = (): void => {
-    const indice = aRemover.value;
-    dialogo.value?.close();
-    aRemover.value = null;
-    if (indice === null) return;
-
-    documentos.value = documentos.value.filter((_, posicao) => posicao !== indice);
-    limparTodosOsErros();
-    anuncio.value = 'Documento removido.';
-
-    // Foca o anterior; se removeu o primeiro, o que ocupa o lugar dele; sem nenhum, o botão de adicionar.
-    const anterior = documentos.value[indice - 1] ?? documentos.value[indice];
-    if (anterior) {
-        void focar(idCampo(anterior, 'cartao'));
-    } else {
-        void nextTick(() => setTimeout(() => botaoAdicionar.value?.focus(), 0));
-    }
-};
-
-const classeCampoBase =
-    'h-12 rounded-[12px] border border-tinta-suave/70 bg-superficie px-4 text-base text-home-tinta placeholder:text-tinta-suave aria-invalid:border-erro-texto aria-invalid:ring-1 aria-invalid:ring-erro-texto';
-const classeCampo = `${classeCampoBase} w-full`;
-const classeMarcacao = 'flex min-h-11 cursor-pointer items-start gap-3 py-2 text-[0.9375rem] leading-[1.5]';
-const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
-const classeBotaoCartao =
-    'pressionavel inline-flex min-h-11 items-center gap-1.5 rounded-pill px-3 text-[0.8125rem] font-bold text-acao hover:bg-nevoa disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent';
 </script>
 
 <template>
