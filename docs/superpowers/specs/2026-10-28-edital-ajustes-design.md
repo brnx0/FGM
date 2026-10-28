@@ -61,6 +61,23 @@ Lista de categorias de inscrição do edital (ex.: "Categoria 1 – Produção d
 - A tela mostra, ao lado de cada cota em percentual, quantas vagas isso representa.
 - **Na inscrição (projeto 3)**, a natureza do proponente vem do cadastro: inscrição pela própria pessoa física = Pessoa Física; por uma Pessoa Jurídica, o cadastro dela diz se é MEI (`mei`) e se tem fins lucrativos (`finalidade_lucrativa`). O formulário só oferece as categorias que aceitam aquela natureza. (Palpite confirmado pelo usuário.)
 
+## 6b. Aba Documentos (nova — acrescentada durante a execução, a pedido do usuário)
+
+Documentos exigidos na inscrição. Ficam como dados do edital (não como perguntas soltas do formulário) porque a retaguarda vai **validar cada documento enviado** (etapa "Validação de Documentos" do fluxo geral).
+
+| Campo | Regra |
+|---|---|
+| **Nome** * | Ex.: "Estatuto Social", "Roteiro". |
+| **Orientação** | Texto curto, opcional (ex.: "Em PDF, com assinatura do representante legal."). |
+| **Obrigatório** | Sim/Não (padrão Sim). |
+| **Naturezas** * | Uma ou mais das quatro naturezas (as mesmas das categorias). |
+| **Categorias** | "Todas as categorias" (padrão) ou só algumas das categorias deste edital. |
+| **Tamanho máximo** | Em MB, padrão 2, de 1 a 20. Formato aceito: só PDF. |
+
+- Adicionar, editar, remover e reordenar, como as categorias; salvos junto com o edital.
+- Na inscrição (projeto 3), a pessoa vê só os documentos da sua natureza e da categoria escolhida.
+- Um documento ligado a categorias específicas deixa de valer para uma categoria removida; se ficar sem nenhuma categoria, a gravação é recusada ("Escolha ao menos uma categoria ou marque todas.").
+
 ## 7. Restrições
 
 - Stack e regras do projeto (`CLAUDE.md`): Laravel 13, Inertia v2, Vue 3 em TypeScript strict, Tailwind v4, Oracle via `yajra/laravel-oci8`, PHPUnit, Pint. Sem dependências novas (Tiptap e symfony/html-sanitizer já estão no projeto).
@@ -83,6 +100,7 @@ Lista de categorias de inscrição do edital (ex.: "Categoria 1 – Produção d
 6. **Remover categoria:** permitido enquanto não houver inscrições (as inscrições ainda não existem; a trava entra no projeto 3).
 7. **Valor por proposta** guardado em centavos (inteiro), exibido em reais.
 8. **Divulgação vazia:** o editor vazio envia `<p></p>`; o "obrigatório" é conferido no texto já sanitizado e sem tags.
+10. **Documentos:** só PDF por enquanto (como no SalCine); tamanho máximo configurável de 1 a 20 MB, padrão 2 MB. A ligação com categorias novas (ainda sem id) é feita pela posição da categoria no mesmo envio.
 9. **Natureza de uma Pessoa Jurídica (para o projeto 3):** `mei` marcado → MEI, independentemente da finalidade lucrativa; senão, `finalidade_lucrativa` Sim → com fins lucrativos, Não → sem fins lucrativos; se a finalidade estiver em branco, a inscrição pede para a pessoa completar o cadastro da Pessoa Jurídica antes.
 
 ## 9. Deixado ao builder

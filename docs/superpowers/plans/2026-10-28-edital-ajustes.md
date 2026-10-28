@@ -128,6 +128,53 @@ Comportamento:
 
 ---
 
+### Task 6: Documentos — banco, modelo e validação (acrescentada na execução; spec §6b)
+
+**Files:**
+- Create: migrations `create_edital_documentos_table` e `create_edital_documento_categoria_table`; `app/Models/EditalDocumento.php` (+ factory)
+- Modify: `app/Models/Edital.php`, `app/Http/Requests/Retaguarda/SalvarEditalRequest.php`, `app/Http/Controllers/Retaguarda/EditalController.php`
+- Test: `tests/Feature/Retaguarda/EditalDocumentosTest.php`
+
+**Interfaces:**
+- Consumes: `NaturezaProponente`, `EditalCategoria`, a sincronização de categorias da Task 3.
+- Produces:
+  - `edital_documentos`: `id`, `edital_id` (FK cascade), `ordem` (int), `nome` (string 255), `orientacao` (string 500, nullable), `obrigatorio` (bool, padrão true), `naturezas` (string 200, JSON como em `edital_categorias.naturezas`), `todas_categorias` (bool, padrão true), `tamanho_max_mb` (integer, padrão 2), timestamps.
+  - `edital_documento_categoria`: `edital_documento_id` (FK cascade), `edital_categoria_id` (FK cascade), único no par.
+  - `EditalDocumento`: casts (naturezas igual a `EditalCategoria`, booleanos), `categorias(): BelongsToMany` (EditalCategoria), `valeParaCategoria(EditalCategoria $categoria): bool` (todas_categorias ou está na lista) e `valeParaNatureza(NaturezaProponente $n): bool`.
+  - `Edital::documentos(): HasMany` ordenado por `ordem`.
+  - Request — `documentos` nullable array max:50; cada item: `id` nullable integer; `nome` required max:255; `orientacao` nullable max:500; `obrigatorio` boolean; `naturezas` required array min:1 com `Rule::enum(NaturezaProponente::class)` distinct (mensagem `Marque ao menos uma natureza.`); `todas_categorias` boolean; `categorias` array de **posições** (inteiros ≥ 0) no array `categorias` do mesmo envio, cada posição precisa existir (`Categoria inválida.`); se `todas_categorias` é falso e `categorias` vazio → `Escolha ao menos uma categoria ou marque todas.` em `documentos.N.categorias`; `tamanho_max_mb` required integer 1–20. Incluir os nomes legíveis em `attributes()` (como os da rodada de correções).
+  - Controller: na mesma transação, depois de sincronizar as categorias (guardando o mapa posição → id), sincroniza os documentos por id (mesmas regras da Task 3: ids de outro edital viram novos; ausentes apagados; `ordem` pela posição) e faz `sync` das categorias de cada documento pelo mapa. Ausência de `documentos` = apagar todos (mesmo contrato das categorias).
+  - `edit` envia `documentos: list<{id, nome, orientacao, obrigatorio, naturezas: string[], todas_categorias, categorias: number[] (posições na lista categorias enviada no mesmo edit), tamanho_max_mb}>`.
+
+- [ ] **Step 1: Testes que falham** — criar edital com 2 categorias e 3 documentos (um para todas, um só para a categoria nova de posição 1, um opcional) e conferir banco e pivô; editar: reordenar categorias e documentos e conferir que o documento continua ligado à mesma categoria (pelo id, depois do mapa de posições); remover a categoria ligada → o documento que ficaria sem categoria é recusado com a mensagem exata; posição inexistente → `Categoria inválida.`; sem natureza → mensagem; tamanho 0 e 21 recusados; id de documento de outro edital não altera o outro; edit envia `documentos` no formato acima; `valeParaCategoria`/`valeParaNatureza`.
+- [ ] **Step 2: Rodar e ver falhar.**
+- [ ] **Step 3: Implementar.**
+- [ ] **Step 4:** `php artisan migrate`; rodar `EditalDocumentosTest`, `EditalCategoriasTest`, `EditaisTest` — PASS.
+- [ ] **Step 5: Commit** `feat: documentos exigidos no edital`
+
+---
+
+### Task 7: Documentos — tela
+
+**Files:**
+- Create: `resources/js/Components/Retaguarda/DocumentosEdital.vue`
+- Modify: `resources/js/Pages/Retaguarda/Editais/Form.vue`, `resources/js/types/index.ts`
+
+Comportamento:
+- Nova aba **Documentos** depois de "Categorias", título "Documentos exigidos", texto: "O que o proponente envia na inscrição. Cada documento vale para as naturezas e categorias marcadas."
+- Mesmo padrão visual e de sanfona das categorias (cabeçalho com nome + resumo "Obrigatório · PDF até 2 MB · 2 naturezas", marcador de erros; Subir/Descer/Remover; novo abre aberto; com erro abre sozinho).
+- Campos: Nome, Orientação, Obrigatório (caixa), Naturezas (caixas), Categorias: opção "Todas as categorias" ou caixas com as categorias **atuais da aba Categorias** (nome ou "Categoria N"), Tamanho máximo (só inteiros 1–20, mesmo filtro dos campos numéricos das categorias) com "MB".
+- As caixas de categoria usam a posição atual na lista de categorias; ao reordenar ou remover categorias, os documentos acompanham (guardar a referência pela chave estável do cartão da categoria e converter para posição só no envio).
+- `campos` da aba: `['documentos', 'documentos.*']`. Sempre enviar a lista completa.
+
+- [ ] **Step 1: Implementar.**
+- [ ] **Step 2:** `npm run build` — OK.
+- [ ] **Step 3: Conferir no navegador:** edital de teste com 2 categorias e 3 documentos; reordenar categorias e conferir que o documento ligado continua ligado à mesma; remover a categoria ligada e ver o erro; 375 px e modo noturno. Apagar o edital de teste.
+- [ ] **Step 4:** rodar `EditalDocumentosTest` — PASS.
+- [ ] **Step 5: Commit** `feat: aba de documentos no formulário do edital`
+
+---
+
 ### Task 5: Fechamento
 
 - [ ] **Step 1:** `docker compose exec -T app php artisan test --compact` — todos passando.
