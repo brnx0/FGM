@@ -19,7 +19,8 @@ class EventoFactory extends Factory
             'titulo' => $titulo,
             'slug' => Str::slug($titulo).'-'.fake()->unique()->numberBetween(1, 999999),
             'resumo' => fake()->sentence(12),
-            'data_realizacao' => now()->subMonths(2)->toDateString(),
+            // Ainda vai acontecer: o evento padrão aparece na agenda da home.
+            'data_realizacao' => now()->addMonths(2)->toDateString(),
             'local' => 'Salvador/BA',
             'imagem' => null,
             'publicado' => true,

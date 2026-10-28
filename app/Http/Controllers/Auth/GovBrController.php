@@ -72,6 +72,10 @@ class GovBrController extends Controller
             nivelConfiabilidade: $nivel,
         ));
 
+        if ($user === null) {
+            return redirect('/')->with('erro', LoginGovBrUser::GESTOR_RECUSADO);
+        }
+
         return redirect($login->destinoPosLogin($user));
     }
 
@@ -87,9 +91,11 @@ class GovBrController extends Controller
             return redirect()->route('retaguarda.login')->with('erro', self::ERRO);
         }
 
-        // Retorno repetido (duplo clique) com sessão já autenticada: segue o fluxo, sem erro.
-        if (auth()->check()) {
-            return redirect($login->destinoPosLogin(auth()->user()));
+        // Retorno repetido (duplo clique) com o proponente já autenticado: segue o fluxo, sem erro.
+        // Sessão de gestor não conta: o portal nunca leva à retaguarda.
+        $user = auth()->user();
+        if ($user !== null && ! $user->ehGestor()) {
+            return redirect($login->destinoPosLogin($user));
         }
 
         return redirect('/')->with('erro', self::ERRO);

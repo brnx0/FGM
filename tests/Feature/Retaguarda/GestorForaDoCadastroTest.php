@@ -2,26 +2,29 @@
 
 namespace Tests\Feature\Retaguarda;
 
+use App\Actions\LoginGovBrUser;
 use App\Models\User;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
+/** O portal nunca leva à retaguarda: gestor logado é visitante no portal e o gov.br do portal não o deixa entrar. */
 class GestorForaDoCadastroTest extends TestCase
 {
     use RefreshDatabase;
 
     private const ERRO = 'A área de cadastro é para proponentes. Você está conectado como usuário da retaguarda.';
 
-    public function test_gestor_e_redirecionado_ao_abrir_o_cadastro(): void
+    public function test_gestor_que_abre_o_cadastro_volta_a_home(): void
     {
         $gestor = User::factory()->gestor()->create();
 
         $this->actingAs($gestor)->get('/cadastro')
-            ->assertRedirect('/retaguarda')
+            ->assertRedirect('/')
             ->assertSessionHas('erro', self::ERRO);
 
-        $this->actingAs($gestor)->get('/cadastro/pessoa-juridica')->assertRedirect('/retaguarda');
+        $this->actingAs($gestor)->get('/cadastro/pessoa-juridica')->assertRedirect('/');
+        $this->assertAuthenticatedAs($gestor);
     }
 
     public function test_gestor_nao_grava_cadastro(): void
@@ -30,7 +33,7 @@ class GestorForaDoCadastroTest extends TestCase
         $gestor = User::factory()->gestor()->create();
 
         $this->actingAs($gestor)->post('/cadastro', ['nome_social' => 'Fulano'])
-            ->assertRedirect('/retaguarda')
+            ->assertRedirect('/')
             ->assertSessionHas('erro', self::ERRO);
 
         $this->assertDatabaseCount('pessoas_fisicas', 0);
@@ -49,7 +52,7 @@ class GestorForaDoCadastroTest extends TestCase
         $this->actingAs(User::factory()->create())->get('/cadastro')->assertOk();
     }
 
-    public function test_govbr_pelo_portal_com_cpf_de_gestor_vai_para_a_retaguarda(): void
+    public function test_govbr_simulado_pelo_portal_recusa_cpf_de_gestor_sem_entrar_nem_alterar_os_dados(): void
     {
         $this->withoutMiddleware(PreventRequestForgery::class);
         $this->app['env'] = 'local';
@@ -60,23 +63,25 @@ class GestorForaDoCadastroTest extends TestCase
             'email' => 'gestor@fgm.test',
         ]);
 
-        $this->post('/auth/govbr/fake', ['cpf' => '52998224725'])->assertRedirect('/retaguarda');
+        $this->post('/auth/govbr/fake', ['cpf' => '52998224725'])
+            ->assertRedirect('/')
+            ->assertSessionHas('erro', LoginGovBrUser::GESTOR_RECUSADO);
 
-        $this->assertAuthenticatedAs($gestor);
+        $this->assertGuest();
         $gestor->refresh();
         $this->assertSame('Gestor Original', $gestor->name);
         $this->assertSame('gestor@fgm.test', $gestor->email);
     }
 
-    public function test_home_informa_que_o_usuario_e_gestor(): void
+    public function test_portal_mostra_o_gestor_logado_como_visitante(): void
     {
-        $this->actingAs(User::factory()->gestor()->create())->get('/')
-            ->assertInertia(fn ($page) => $page->where('auth.user.ehGestor', true));
+        $this->actingAs(User::factory()->gestor()->create())->get('/privacidade')
+            ->assertInertia(fn ($page) => $page->where('auth.user', null));
     }
 
-    public function test_aviso_chega_ate_a_listagem_da_retaguarda(): void
+    public function test_aviso_chega_a_home(): void
     {
         $this->actingAs(User::factory()->gestor()->create())->followingRedirects()->get('/cadastro')
-            ->assertInertia(fn ($page) => $page->where('flash.erro', self::ERRO));
+            ->assertInertia(fn ($page) => $page->component('Home')->where('flash.erro', self::ERRO));
     }
 }

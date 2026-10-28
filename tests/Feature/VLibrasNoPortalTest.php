@@ -44,7 +44,7 @@ class VLibrasNoPortalTest extends TestCase
 
         $this->assertMatchesRegularExpression("#script-src 'self' 'nonce-[A-Za-z0-9+/=]+' https://vlibras\.gov\.br/app/ https://cdn\.jsdelivr\.net/gh/spbgovbr-vlibras/;#", $csp);
         $this->assertStringContainsString("style-src 'self' 'unsafe-inline';", $csp);
-        $this->assertStringContainsString("img-src 'self' data: https://vlibras.gov.br/app/ https://cdn.jsdelivr.net/gh/spbgovbr-vlibras/;", $csp);
+        $this->assertStringContainsString("img-src 'self' data: https://tile.openstreetmap.org https://vlibras.gov.br/app/ https://cdn.jsdelivr.net/gh/spbgovbr-vlibras/;", $csp);
         $this->assertStringContainsString("font-src 'self' data: https://vlibras.gov.br/app/ https://cdn.jsdelivr.net/gh/spbgovbr-vlibras/;", $csp);
         $this->assertStringContainsString("connect-src 'self' https://vlibras.gov.br/app/ https://traducao2.vlibras.gov.br https://dicionario2.vlibras.gov.br https://repositorio.vlibras.gov.br https://pt.wiktionary.org;", $csp);
         $this->assertStringContainsString('frame-src https://www.youtube-nocookie.com https://vlibras.gov.br/app/;', $csp);

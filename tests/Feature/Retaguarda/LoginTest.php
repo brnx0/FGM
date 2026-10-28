@@ -164,16 +164,16 @@ class LoginTest extends TestCase
         $this->assertGuest();
     }
 
-    public function test_gestor_ve_a_retaguarda_e_e_marcado_como_gestor(): void
+    public function test_gestor_ve_a_retaguarda_como_usuario_logado(): void
     {
-        $gestor = User::factory()->gestor()->create();
+        $gestor = User::factory()->gestor()->create(['name' => 'Gestora da Retaguarda']);
 
         $this->actingAs($gestor)
             ->get('/retaguarda/editais')
             ->assertOk()
             ->assertInertia(fn (Assert $p) => $p
                 ->component('Retaguarda/Editais/Index')
-                ->where('auth.user.ehGestor', true));
+                ->where('auth.user.nome', 'Gestora da Retaguarda'));
     }
 
     public function test_sair_encerra_sessao(): void
@@ -186,5 +186,15 @@ class LoginTest extends TestCase
             ->assertRedirect('/retaguarda/login');
 
         $this->assertGuest();
+    }
+
+    public function test_sair_limpa_o_historico_para_as_telas_de_proponentes_nao_reabrirem(): void
+    {
+        $this->actingAs(User::factory()->gestor()->create());
+
+        $resposta = $this->followingRedirects()->post('/retaguarda/sair');
+
+        $resposta->assertInertia(fn (Assert $p) => $p->component('Retaguarda/Login'));
+        $this->assertTrue($resposta->viewData('page')['clearHistory']);
     }
 }

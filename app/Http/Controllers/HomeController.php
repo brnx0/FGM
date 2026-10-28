@@ -9,8 +9,6 @@ use Inertia\Response;
 
 class HomeController extends Controller
 {
-    private const LIMITE_EVENTOS = 6;
-
     public function __invoke(): Response
     {
         return Inertia::render('Home', [
@@ -27,16 +25,16 @@ class HomeController extends Controller
                 // Imagem enviada na retaguarda; sem ela, o carrossel usa as fotos fixas da vitrine.
                 'imagem' => $edital->imagemUrl(),
             ])->all(),
-            // Sem a descrição (CLOB): a home só mostra o card.
-            'eventos' => Evento::realizados()
+            // Sem a descrição (CLOB): a home só mostra o card. Vão todos os próximos eventos; a home pagina de 6 em 6.
+            'eventos' => Evento::proximos()
                 ->select(['id', 'titulo', 'slug', 'resumo', 'data_realizacao', 'local', 'imagem'])
-                ->limit(self::LIMITE_EVENTOS)
                 ->get()
                 ->map(fn (Evento $evento) => [
                     'titulo' => $evento->titulo,
                     'slug' => $evento->slug,
                     'resumo' => $evento->resumo,
-                    // "agosto" e "2026": a home mostra "AGO / 2026".
+                    // "agosto" e "2026": a home mostra "AGO / 2026"; o dia completa a data no modal do evento.
+                    'dia' => $evento->data_realizacao->format('j'),
                     'mes' => $evento->data_realizacao->locale('pt_BR')->translatedFormat('F'),
                     'ano' => $evento->data_realizacao->format('Y'),
                     'local' => $evento->local,

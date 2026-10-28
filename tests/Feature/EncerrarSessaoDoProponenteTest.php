@@ -37,14 +37,14 @@ class EncerrarSessaoDoProponenteTest extends TestCase
         $this->assertGuest();
     }
 
-    public function test_gestor_continua_logado_na_home(): void
+    public function test_gestor_continua_logado_na_retaguarda_e_a_home_o_mostra_como_visitante(): void
     {
         $gestor = User::factory()->gestor()->create();
         $this->actingAs($gestor);
 
         $resposta = $this->get('/');
 
-        $resposta->assertOk()->assertInertia(fn (Assert $p) => $p->where('auth.user.ehGestor', true));
+        $resposta->assertOk()->assertInertia(fn (Assert $p) => $p->where('auth.user', null));
         $this->assertAuthenticatedAs($gestor);
     }
 

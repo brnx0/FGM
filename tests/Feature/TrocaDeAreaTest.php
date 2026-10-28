@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Auth\GovBr\GovBrClient;
-use App\Http\Middleware\BloquearGestorNoCadastro;
 use App\Http\Middleware\GarantirGestor;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -45,20 +44,6 @@ class TrocaDeAreaTest extends TestCase
 
         $this->get('/a-fgm', $this->visitaInertia($versaoDoSite))->assertOk()->assertHeader('X-Inertia', 'true');
         $this->get('/retaguarda/eventos', $this->visitaInertia($versaoDaRetaguarda))->assertOk()->assertHeader('X-Inertia', 'true');
-    }
-
-    public function test_redirecionamento_para_a_retaguarda_carrega_direto_o_destino_e_mantem_o_aviso(): void
-    {
-        $versaoDoSite = $this->versaoDa('/privacidade');
-        $this->actingAs(User::factory()->gestor()->create());
-        // O navegador segue o redirecionamento repetindo os cabeçalhos do Inertia.
-        $this->get('/cadastro', $this->visitaInertia($versaoDoSite))->assertRedirect('/retaguarda');
-
-        $resposta = $this->get('/retaguarda', $this->visitaInertia($versaoDoSite));
-
-        $resposta->assertConflict()->assertHeader('X-Inertia-Location', url('/retaguarda/editais'));
-        $this->get('/retaguarda/editais')
-            ->assertInertia(fn (Assert $p) => $p->where('flash.erro', BloquearGestorNoCadastro::ERRO));
     }
 
     public function test_gestor_desativado_que_volta_para_a_retaguarda_ve_o_aviso_no_login(): void

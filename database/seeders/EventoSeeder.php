@@ -20,19 +20,36 @@ class EventoSeeder extends Seeder
             'publicado' => $publicado,
         ];
 
+        // A home só mostra os próximos eventos: cada um cai na próxima vez do seu dia ("07-02" é 2 de julho).
+        $proxima = function (string $mesDia): string {
+            [$mes, $dia] = array_map('intval', explode('-', $mesDia));
+            $data = today()->setDate(today()->year, $mes, $dia);
+
+            return ($data->lt(today()) ? $data->addYear() : $data)->toDateString();
+        };
+
         $eventos = [
-            $evento('VII Conferência Municipal de Cultura', 'Encontro de artistas, gestores e sociedade civil para debater as políticas culturais da cidade.', '2026-09-27', 'Teatro Gregório de Mattos, Salvador/BA'),
-            $evento('Capoeira Viva', 'Rodas, oficinas e encontros de mestres celebrando a capoeira como patrimônio de Salvador.', '2026-09-06', 'Espaço Cultural da Barroquinha, Salvador/BA'),
-            $evento('Jornada do Patrimônio Cultural', 'Roteiros, oficinas e conversas sobre o patrimônio cultural de Salvador.', '2026-08-15', 'Centro Histórico, Salvador/BA'),
-            $evento('Dois de Julho', 'Cortejo e programação cultural da Independência da Bahia pelas ruas da cidade.', '2026-07-02', 'Lapinha ao Campo Grande, Salvador/BA'),
-            $evento('Sacola Literária', 'Distribuição de livros e rodas de leitura em bairros e equipamentos culturais.', '2026-04-23', 'Bibliotecas municipais, Salvador/BA'),
-            $evento('Curto Circuito das Artes', 'Circulação de apresentações artísticas curtas por espaços da cidade.', '2025-11-08', 'Salvador/BA'),
-            $evento('Kaê Erê — Ler Criança', 'Contação de histórias e oficinas de leitura para crianças da rede municipal.', '2025-10-12', 'Espaço Boca de Brasa Subúrbio 360, Salvador/BA'),
-            $evento('Mostra Escolas Criativas', 'Mostra de trabalhos artísticos desenvolvidos por estudantes da rede municipal.', '2025-06-20', 'Salvador/BA'),
-            $evento('Circuito #Reconectar', 'Circuito de ações culturais que reconecta a população aos equipamentos da FGM.', '2025-03-29', 'Salvador/BA'),
-            // Fora da home: ainda vai acontecer / não publicado.
+            $evento('VII Conferência Municipal de Cultura', 'Encontro de artistas, gestores e sociedade civil para debater as políticas culturais da cidade.', $proxima('09-27'), 'Teatro Gregório de Mattos, Salvador/BA'),
+            $evento('Capoeira Viva', 'Rodas, oficinas e encontros de mestres celebrando a capoeira como patrimônio de Salvador.', $proxima('09-06'), 'Espaço Cultural da Barroquinha, Salvador/BA'),
+            $evento('Jornada do Patrimônio Cultural', 'Roteiros, oficinas e conversas sobre o patrimônio cultural de Salvador.', $proxima('08-15'), 'Centro Histórico, Salvador/BA'),
+            $evento('Dois de Julho', 'Cortejo e programação cultural da Independência da Bahia pelas ruas da cidade.', $proxima('07-02'), 'Lapinha ao Campo Grande, Salvador/BA'),
+            $evento('Sacola Literária', 'Distribuição de livros e rodas de leitura em bairros e equipamentos culturais.', $proxima('04-23'), 'Bibliotecas municipais, Salvador/BA'),
+            $evento('Curto Circuito das Artes', 'Circulação de apresentações artísticas curtas por espaços da cidade.', $proxima('11-08'), 'Salvador/BA'),
+            $evento('Kaê Erê — Ler Criança', 'Contação de histórias e oficinas de leitura para crianças da rede municipal.', $proxima('10-12'), 'Espaço Boca de Brasa Subúrbio 360, Salvador/BA'),
+            $evento('Mostra Escolas Criativas', 'Mostra de trabalhos artísticos desenvolvidos por estudantes da rede municipal.', $proxima('06-20'), 'Salvador/BA'),
+            $evento('Circuito #Reconectar', 'Circuito de ações culturais que reconecta a população aos equipamentos da FGM.', $proxima('03-29'), 'Salvador/BA'),
             $evento('Festival Boca de Brasa', 'Mostra das produções dos espaços Boca de Brasa da cidade.', now()->addMonth()->toDateString(), 'Espaço Boca de Brasa Cajazeiras, Salvador/BA'),
-            $evento('Esqueça um Livro', 'Ação de leitura em pontos de ônibus e praças.', '2025-08-09', 'Salvador/BA', publicado: false),
+            // Fora da home: não publicado.
+            $evento('Esqueça um Livro', 'Ação de leitura em pontos de ônibus e praças.', $proxima('08-09'), 'Salvador/BA', publicado: false),
+        ];
+
+        // Pin do mapa dos locais com ponto definido (coordenadas do OpenStreetMap). Eventos em "Salvador/BA",
+        // em vários lugares ou em local que o mapa não conhece ficam sem pin, para não marcar o lugar errado.
+        $localizacoes = [
+            'vii-conferencia-municipal-de-cultura' => ['Praça Castro Alves, s/n, Centro, Salvador/BA', -12.9770006, -38.5147733],
+            'capoeira-viva' => ['Ladeira da Barroquinha, Centro Histórico, Salvador/BA', -12.9773792, -38.5137469],
+            'jornada-do-patrimonio-cultural' => ['Largo do Pelourinho, Centro Histórico, Salvador/BA', -12.9714690, -38.5083536],
+            'dois-de-julho' => ['Saída no Largo da Lapinha, Salvador/BA', -12.9554615, -38.4999956],
         ];
 
         foreach ($eventos as $dados) {
@@ -41,6 +58,12 @@ class EventoSeeder extends Seeder
             // Só preenche o que é novo: nunca sobrescreve o que a retaguarda editou.
             if (! $registro->exists) {
                 $registro->fill($dados)->save();
+            }
+
+            // O pin também só entra em evento ainda sem marcação (o endereço, só se estiver vazio).
+            if (isset($localizacoes[$dados['slug']]) && ! $registro->temLocalizacao()) {
+                [$endereco, $latitude, $longitude] = $localizacoes[$dados['slug']];
+                $registro->fill(['endereco' => $registro->endereco ?? $endereco, 'latitude' => $latitude, 'longitude' => $longitude])->save();
             }
         }
     }

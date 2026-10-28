@@ -34,4 +34,10 @@ return [
         ['cpf' => '11144477735', 'nome' => 'João Preposto Teste', 'email' => 'joao.teste@example.com'],
     ],
 
+    // Conta do login simulado para a retaguarda, aceita só no ambiente local: o primeiro administrador do
+    // PrimeiroGestorSeeder, de CPF fictício. Em staging a retaguarda segue sem entrada por conta de teste.
+    'fake_accounts_retaguarda' => [
+        ['cpf' => '00000000000', 'nome' => 'Administrador', 'email' => 'admin@admin'],
+    ],
+
 ];

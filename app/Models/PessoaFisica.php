@@ -4,7 +4,6 @@ namespace App\Models;
 
 use App\Enums\IdentidadeGenero;
 use App\Enums\RacaCor;
-use App\Enums\Territorio;
 use Database\Factories\PessoaFisicaFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -42,7 +41,6 @@ class PessoaFisica extends Model
             'pcd' => 'boolean',
             'identidade_genero' => IdentidadeGenero::class,
             'raca_cor' => RacaCor::class,
-            'territorio' => Territorio::class,
         ];
     }
 

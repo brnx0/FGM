@@ -13,6 +13,9 @@ class SecurityHeaders
 {
     private const VITE_DEV_SERVER = 'http://localhost:5173';
 
+    /** Tiles do mapa dos eventos (Leaflet, MapaLocal.vue): imagens do OpenStreetMap, nada de script. */
+    private const TILES_DO_MAPA = 'https://tile.openstreetmap.org';
+
     public function handle(Request $request, Closure $next): Response
     {
         // Nonce novo a cada request; o Vite o aplica nas tags que gera e o Blade
@@ -54,7 +57,7 @@ class SecurityHeaders
             "script-src 'self' 'nonce-{$nonce}'{$dev}".$vlibras('script-src'),
             // Sem nonce nem hash: com eles o navegador ignora 'unsafe-inline', e o VLibras injeta os próprios estilos.
             "style-src 'self' 'unsafe-inline'{$dev}",
-            "img-src 'self' data:{$dev}".$vlibras('img-src'),
+            "img-src 'self' data:{$dev} ".self::TILES_DO_MAPA.$vlibras('img-src'),
             "font-src 'self' data:{$dev}".$vlibras('font-src'),
             "connect-src 'self'{$dev}{$devWs}".$vlibras('connect-src'),
             // Vídeos do YouTube na descrição do evento (HtmlSeguro só deixa este domínio) e o intérprete do VLibras.

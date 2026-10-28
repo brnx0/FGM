@@ -326,9 +326,9 @@ class OrganizacaoTest extends TestCase
         $this->actingAs(User::factory()->create())->get('/cadastro/pessoa-juridica')->assertRedirect('/cadastro');
     }
 
-    public function test_gestor_da_retaguarda_e_redirecionado(): void
+    public function test_gestor_da_retaguarda_volta_a_home(): void
     {
-        $this->actingAs(User::factory()->gestor()->create())->get('/cadastro/pessoa-juridica')->assertRedirect('/retaguarda');
+        $this->actingAs(User::factory()->gestor()->create())->get('/cadastro/pessoa-juridica')->assertRedirect('/');
     }
 
     public function test_index_lista_so_organizacoes_vinculadas(): void
