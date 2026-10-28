@@ -9,7 +9,7 @@ use Symfony\Component\HtmlSanitizer\HtmlSanitizerConfig;
 use Symfony\Component\HtmlSanitizer\Visitor\AttributeSanitizer\AttributeSanitizerInterface;
 
 /**
- * Limpa o HTML do editor de texto rico (descrição do evento) antes de gravar.
+ * Limpa o HTML do editor de texto rico (descrição dos eventos e divulgação dos editais) antes de gravar.
  *
  * Allowlist explícita: só os elementos e atributos que o editor produz, com valores conferidos
  * um a um. Imagens só do próprio disco (eventos/conteudo) e com texto alternativo; vídeo só do

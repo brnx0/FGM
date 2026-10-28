@@ -131,6 +131,25 @@ class EditaisTest extends TestCase
         $this->assertSame(0, Edital::count());
     }
 
+    public function test_divulgacao_so_com_imagem_e_aceita(): void
+    {
+        $this->post('/retaguarda/editais', $this->dados([
+            'divulgacao' => '<img src="/storage/eventos/conteudo/a.png" alt="Cartaz">',
+        ]))->assertSessionHasNoErrors();
+
+        $this->assertSame('<img src="/storage/eventos/conteudo/a.png" alt="Cartaz">', Edital::sole()->divulgacao);
+    }
+
+    public function test_mensagens_usam_nomes_legiveis_dos_campos(): void
+    {
+        $this->post('/retaguarda/editais', $this->dados(['vigencia_inicio' => '']))
+            ->assertSessionHasErrors(['vigencia_inicio' => 'O campo início da vigência é obrigatório.']);
+
+        $this->post('/retaguarda/editais', $this->dados([
+            'categorias' => [['nome' => 'A', 'valor' => '10', 'vagas' => '0', 'naturezas' => ['sem_fins']]],
+        ]))->assertSessionHasErrors(['categorias.0.vagas' => 'O campo vagas deve ser ao menos 1.']);
+    }
+
     public function test_edicao_envia_os_campos_novos_e_as_opcoes_de_fomento(): void
     {
         $edital = Edital::factory()->create([
@@ -167,6 +186,26 @@ class EditaisTest extends TestCase
 
         $selects = array_filter($consultas, fn (string $sql): bool => str_contains($sql, 'from "editais"') && str_starts_with($sql, 'select') && ! str_contains($sql, 'count('));
         $this->assertNotEmpty($selects);
+        foreach ($selects as $sql) {
+            $this->assertStringNotContainsString('divulgacao', $sql);
+            $this->assertStringNotContainsString('select *', $sql);
+        }
+    }
+
+    public function test_home_e_portal_nao_carregam_a_divulgacao(): void
+    {
+        Edital::factory()->create();
+        $consultas = [];
+        DB::listen(function ($consulta) use (&$consultas): void {
+            $consultas[] = strtolower($consulta->sql);
+        });
+
+        $this->get('/')->assertOk();
+        auth()->logout();
+        $this->actingAs(User::factory()->proponente()->create())->get('/portal/editais')->assertOk();
+
+        $selects = array_filter($consultas, fn (string $sql): bool => str_contains($sql, 'from "editais"') && str_starts_with($sql, 'select') && ! str_contains($sql, 'count('));
+        $this->assertGreaterThanOrEqual(2, count($selects));
         foreach ($selects as $sql) {
             $this->assertStringNotContainsString('divulgacao', $sql);
             $this->assertStringNotContainsString('select *', $sql);

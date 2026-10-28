@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, ref } from 'vue';
+import { nextTick, reactive, ref, watch } from 'vue';
 import CampoCadastro from '../CampoCadastro.vue';
 import type { CategoriaEditavel, CotaEdital } from '../../types';
 
@@ -20,6 +20,9 @@ const categorias = defineModel<CategoriaEditavel[]>({ required: true });
 /** Mesmo limite do SalvarEditalRequest. */
 const MAXIMO = 30;
 
+/** Mesmo limite de vagas do SalvarEditalRequest. */
+const MAXIMO_VAGAS = 10000;
+
 const COTAS: { chave: CotaEdital; rotulo: string }[] = [
     { chave: 'negros', rotulo: 'Pessoas negras' },
     { chave: 'indigenas', rotulo: 'Pessoas indígenas' },
@@ -30,11 +33,42 @@ const COTAS: { chave: CotaEdital; rotulo: string }[] = [
 let proximaChave = 0;
 const novaChave = (): string => `nova-${++proximaChave}`;
 
+// Sanfona: cartões abertos, pela chave. Os já salvos começam recolhidos; o novo abre. Recolher só esconde (v-show): nada se perde.
+const abertas = reactive(new Set<string>());
+const estaAberta = (categoria: CategoriaEditavel): boolean => abertas.has(categoria.chave);
+const alternar = (categoria: CategoriaEditavel): void => {
+    if (!abertas.delete(categoria.chave)) abertas.add(categoria.chave);
+};
+const todasAbertas = (): boolean => categorias.value.length > 0 && categorias.value.every((categoria) => abertas.has(categoria.chave));
+const alternarTodas = (): void => {
+    const abrir = !todasAbertas();
+    for (const categoria of categorias.value) {
+        if (abrir) abertas.add(categoria.chave);
+        else abertas.delete(categoria.chave);
+    }
+};
+
 const anuncio = ref<string>('');
 const botaoAdicionar = ref<HTMLButtonElement | null>(null);
 
 const idCampo = (categoria: CategoriaEditavel, campo: string): string => `categoria-${categoria.chave}-${campo}`;
 const erro = (indice: number, campo: string): string | undefined => props.erros[`categorias.${indice}.${campo}`];
+
+/** Quantos campos do cartão têm erro (para o selo do cabeçalho). */
+const quantidadeDeErros = (indice: number): number => Object.keys(props.erros).filter((chave) => chave.startsWith(`categorias.${indice}.`) && props.erros[chave]).length;
+
+// Depois de um envio recusado, abre todo cartão com erro (antes do foco no primeiro campo inválido, que o formulário dá no próximo tick).
+watch(
+    () =>
+        Object.keys(props.erros)
+            .filter((chave) => chave.startsWith('categorias.') && props.erros[chave])
+            .join('|'),
+    () => {
+        categorias.value.forEach((categoria, indice) => {
+            if (quantidadeDeErros(indice) > 0) abertas.add(categoria.chave);
+        });
+    },
+);
 
 /** Erros de uma lista de naturezas: o do campo ou o do primeiro item ("naturezas.0"). */
 const erroNaturezas = (indice: number): string | undefined => {
@@ -79,6 +113,9 @@ const vagas = (quantidade: number): string => `${quantidade} ${quantidade === 1 
 const formatoReais = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const textoValor = (valor: number | null): string => (valor === null ? '' : formatoReais.format(valor));
 
+const resumo = (categoria: CategoriaEditavel): string =>
+    [categoria.valor === null ? null : textoValor(categoria.valor), categoria.vagas === null ? null : vagas(categoria.vagas)].filter(Boolean).join(' · ') || 'Valor e vagas a preencher';
+
 const digitarValor = (indice: number, categoria: CategoriaEditavel, evento: Event): void => {
     const campo = evento.target as HTMLInputElement;
     const digitos = campo.value.replace(/\D/g, '').replace(/^0+/, '').slice(0, 11);
@@ -87,26 +124,31 @@ const digitarValor = (indice: number, categoria: CategoriaEditavel, evento: Even
     limpar(indice, 'valor');
 };
 
-/** Número inteiro de um campo numérico; vazio vira null. */
-const inteiro = (evento: Event): number | null => {
-    const texto = (evento.target as HTMLInputElement).value.trim();
-    const numero = Number.parseInt(texto, 10);
+/** Só dígitos (sem sinal, ponto, vírgula ou "e"), limitado a `maximo`; devolve o número e reescreve o campo. Vazio ou zero vira null. */
+const inteiro = (evento: Event, maximo: number): number | null => {
+    const campo = evento.target as HTMLInputElement;
+    const digitos = campo.value.replace(/\D/g, '').replace(/^0+/, '').slice(0, 6);
+    const numero = digitos === '' ? null : Math.min(Number(digitos), maximo);
 
-    return texto === '' || Number.isNaN(numero) ? null : numero;
+    campo.value = numero === null ? '' : String(numero);
+
+    return numero;
 };
 
 const digitarVagas = (indice: number, categoria: CategoriaEditavel, evento: Event): void => {
-    categoria.vagas = inteiro(evento);
+    categoria.vagas = inteiro(evento, MAXIMO_VAGAS);
     limpar(indice, 'vagas', 'cotas');
 };
 
 const digitarCota = (indice: number, categoria: CategoriaEditavel, cota: CotaEdital, evento: Event): void => {
-    categoria.cotas[cota].valor = inteiro(evento);
+    categoria.cotas[cota].valor = inteiro(evento, categoria.cotas[cota].unidade === 'percentual' ? 100 : MAXIMO_VAGAS);
     limpar(indice, `cotas.${cota}.valor`, `cotas.${cota}.unidade`, 'cotas');
 };
 
 const focar = async (id: string): Promise<void> => {
     await nextTick();
+    // Depois do fechamento do <dialog>, que devolve o foco ao botão que o abriu (já removido).
+    await new Promise((resolver) => setTimeout(resolver, 0));
     document.getElementById(id)?.focus();
 };
 
@@ -126,6 +168,7 @@ const adicionar = (): void => {
     };
     // Entra no fim: os índices das outras não mudam, então os erros delas continuam valendo.
     categorias.value = [...categorias.value, nova];
+    abertas.add(nova.chave);
     void focar(idCampo(nova, 'nome'));
 };
 
@@ -172,11 +215,12 @@ const remover = (): void => {
     limparTodosOsErros();
     anuncio.value = 'Categoria removida.';
 
-    const anterior = categorias.value[indice - 1];
+    // Foca a anterior; se removeu a primeira, a que ocupa o lugar dela; sem nenhuma, o botão de adicionar.
+    const anterior = categorias.value[indice - 1] ?? categorias.value[indice];
     if (anterior) {
         void focar(idCampo(anterior, 'cartao'));
     } else {
-        void nextTick(() => botaoAdicionar.value?.focus());
+        void nextTick(() => setTimeout(() => botaoAdicionar.value?.focus(), 0));
     }
 };
 
@@ -196,7 +240,13 @@ const classeBotaoCartao =
             Nenhuma categoria cadastrada. O edital pode ser publicado sem categorias; a inscrição pelo portal vai exigir ao menos uma.
         </p>
 
-        <ol v-else class="flex flex-col gap-5">
+        <div v-if="categorias.length >= 2" class="-mb-2">
+            <button type="button" class="pressionavel inline-flex min-h-11 items-center rounded-pill px-3 text-[0.8125rem] font-bold text-acao hover:bg-nevoa" @click="alternarTodas">
+                {{ todasAbertas() ? 'Recolher todas' : 'Expandir todas' }}
+            </button>
+        </div>
+
+        <ol v-if="categorias.length > 0" class="flex flex-col gap-5">
             <li v-for="(categoria, indice) in categorias" :key="categoria.chave">
                 <article
                     :id="idCampo(categoria, 'cartao')"
@@ -204,8 +254,41 @@ const classeBotaoCartao =
                     :aria-labelledby="idCampo(categoria, 'titulo')"
                     class="rounded-[20px] border border-hairline p-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acao md:p-6"
                 >
-                    <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-                        <h3 :id="idCampo(categoria, 'titulo')" class="text-[1.125rem] font-bold">Categoria {{ indice + 1 }}</h3>
+                    <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+                        <h3 :id="idCampo(categoria, 'titulo')" class="min-w-0 flex-1 basis-64 text-[1.125rem] font-bold">
+                            <button
+                                :id="idCampo(categoria, 'alternar')"
+                                type="button"
+                                :aria-expanded="estaAberta(categoria)"
+                                :aria-controls="idCampo(categoria, 'corpo')"
+                                class="pressionavel flex min-h-11 w-full items-center gap-3 rounded-[12px] py-1 text-left"
+                                @click="alternar(categoria)"
+                            >
+                                <svg
+                                    aria-hidden="true"
+                                    viewBox="0 0 24 24"
+                                    class="size-5 shrink-0 text-acao transition-transform duration-200 motion-reduce:transition-none"
+                                    :class="estaAberta(categoria) ? 'rotate-180' : ''"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2.2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                >
+                                    <path d="M6 9l6 6 6-6" />
+                                </svg>
+                                <span class="flex min-w-0 flex-col">
+                                    <span class="truncate">Categoria {{ indice + 1 }}<span class="font-semibold"> · {{ categoria.nome.trim() || 'Sem nome' }}</span></span>
+                                    <span class="text-[0.875rem] font-normal text-tinta-suave tabular-nums">{{ resumo(categoria) }}</span>
+                                </span>
+                                <span
+                                    v-if="quantidadeDeErros(indice) > 0"
+                                    class="ml-auto shrink-0 rounded-pill bg-erro-fundo px-2.5 py-0.5 text-[0.8125rem] font-bold text-erro-texto"
+                                >
+                                    {{ quantidadeDeErros(indice) }}<span class="sr-only"> {{ quantidadeDeErros(indice) === 1 ? 'erro' : 'erros' }} nesta categoria</span>
+                                </span>
+                            </button>
+                        </h3>
 
                         <div class="-mx-3 flex flex-wrap items-center">
                             <button
@@ -246,7 +329,7 @@ const classeBotaoCartao =
                     </div>
 
                     <!-- Consultas de contêiner: a largura do cartão depende das abas laterais, não só da tela. -->
-                    <div class="@container mt-4 grid gap-x-6 gap-y-5">
+                    <div :id="idCampo(categoria, 'corpo')" v-show="estaAberta(categoria)" class="@container mt-4 grid gap-x-6 gap-y-5">
                         <CampoCadastro :id="idCampo(categoria, 'nome')" rotulo="Nome" obrigatorio :erro="erro(indice, 'nome')" v-slot="{ descricao, invalido }">
                             <input
                                 :id="idCampo(categoria, 'nome')"
@@ -283,10 +366,9 @@ const classeBotaoCartao =
                                 <input
                                     :id="idCampo(categoria, 'vagas')"
                                     :value="categoria.vagas ?? ''"
-                                    type="number"
-                                    min="1"
-                                    max="10000"
-                                    step="1"
+                                    type="text"
+                                    inputmode="numeric"
+                                    autocomplete="off"
                                     required
                                     :class="[classeCampo, 'tabular-nums']"
                                     :aria-invalid="invalido || undefined"
@@ -329,10 +411,9 @@ const classeBotaoCartao =
                                         <input
                                             :id="idCampo(categoria, `cota-${cota.chave}`)"
                                             :value="categoria.cotas[cota.chave].valor ?? ''"
-                                            type="number"
-                                            min="1"
-                                            :max="categoria.cotas[cota.chave].unidade === 'percentual' ? 100 : undefined"
-                                            step="1"
+                                            type="text"
+                                            inputmode="numeric"
+                                            autocomplete="off"
                                             :class="[classeCampoBase, 'w-24 tabular-nums']"
                                             :aria-invalid="erroCota(indice, cota.chave) || (erro(indice, 'cotas') && categoria.cotas[cota.chave].valor !== null) ? true : undefined"
                                             :aria-describedby="

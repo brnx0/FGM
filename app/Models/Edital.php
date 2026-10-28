@@ -103,6 +103,12 @@ class Edital extends Model
         return $this->imagem ? Storage::disk('public')->url($this->imagem) : null;
     }
 
+    /** Só o que os cartões das listagens públicas leem: deixa de fora a divulgação (CLOB). */
+    public function scopeParaCartao(Builder $query): void
+    {
+        $query->select(['id', 'slug', 'titulo', 'categoria', 'inscricoes_inicio', 'inscricoes_fim', 'imagem', 'pdf']);
+    }
+
     public function scopePublicados(Builder $query): void
     {
         $query->where('publicado', true);

@@ -40,7 +40,7 @@ const usuario = computed(() => usePage().props.auth?.user);
             </div>
         </dl>
 
-        <div class="conteudo-rico mt-8" v-html="edital.divulgacao"></div>
+        <div v-if="edital.divulgacao" class="conteudo-rico mt-8" v-html="edital.divulgacao"></div>
 
         <div v-if="edital.situacao === 'encerrado'" role="note" class="mt-8 rounded-card border border-hairline bg-parchment p-6">
             <p class="text-[1.25rem] font-extrabold tracking-[-0.025em]">Inscrições encerradas em {{ edital.inscricoesFim }}.</p>

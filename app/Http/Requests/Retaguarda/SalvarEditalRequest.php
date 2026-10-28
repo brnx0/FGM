@@ -79,6 +79,25 @@ class SalvarEditalRequest extends FormRequest
     /**
      * @return array<string, string>
      */
+    public function attributes(): array
+    {
+        return [
+            'tipo_fomento' => 'tipo de fomento',
+            'vigencia_inicio' => 'início da vigência',
+            'vigencia_fim' => 'fim da vigência',
+            'divulgacao' => 'divulgação',
+            'categorias.*.nome' => 'nome da categoria',
+            'categorias.*.valor' => 'valor por proposta',
+            'categorias.*.vagas' => 'vagas',
+            'categorias.*.naturezas' => 'naturezas',
+            'categorias.*.cotas.*.valor' => 'reserva de cotas',
+            'categorias.*.cotas.*.unidade' => 'unidade da cota',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
     public function messages(): array
     {
         return [
@@ -93,6 +112,16 @@ class SalvarEditalRequest extends FormRequest
         ];
     }
 
+    /** HTML sem imagem, vídeo, linha ou tabela e só com espaços (inclusive &nbsp;) no texto. */
+    private function soTemEspacos(string $html): bool
+    {
+        if (preg_match('/<(img|iframe|hr|table)\b/i', $html) === 1) {
+            return false;
+        }
+
+        return preg_replace('/[\s\x{00A0}]+/u', '', html_entity_decode(strip_tags($html))) === '';
+    }
+
     /**
      * Edital publicado precisa de PDF: o enviado agora ou o já salvo.
      *
@@ -104,9 +133,14 @@ class SalvarEditalRequest extends FormRequest
             function (Validator $validator): void {
                 $divulgacao = $this->input('divulgacao');
 
-                // Parágrafos vazios e espaços não são conteúdo.
-                if (is_string($divulgacao) && ! $validator->errors()->has('divulgacao')
-                    && preg_replace('/[\s\x{00A0}]+/u', '', html_entity_decode(strip_tags(HtmlSeguro::limpar($divulgacao)))) === '') {
+                if (! is_string($divulgacao) || $validator->errors()->has('divulgacao')) {
+                    return;
+                }
+
+                // Parágrafos vazios e espaços não são conteúdo; imagem e vídeo são.
+                $limpo = HtmlSeguro::limpar($divulgacao);
+
+                if ($limpo === null || $this->soTemEspacos($limpo)) {
                     $validator->errors()->add('divulgacao', 'Este campo é obrigatório.');
                 }
             },

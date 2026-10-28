@@ -173,7 +173,7 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                             rotulo="Descrição"
                             :descricao="descricao"
                             :invalido="invalido"
-                            :url-imagem="`${BASE}/conteudo/imagem`"
+                            url-imagem="/retaguarda/conteudo/imagem"
                             @update:model-value="form.clearErrors('descricao')"
                         />
                     </CampoCadastro>

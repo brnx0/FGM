@@ -56,6 +56,18 @@ class EditalCategoriasTest extends TestCase
         ];
     }
 
+    public function test_vagas_e_cota_negativas_sao_recusadas(): void
+    {
+        $this->post('/retaguarda/editais', $this->dados([
+            'categorias' => [
+                $this->categoria(['vagas' => '-5']),
+                $this->categoria(['cotas' => ['negros' => ['valor' => '-2', 'unidade' => 'vagas']]]),
+            ],
+        ]))->assertSessionHasErrors(['categorias.0.vagas', 'categorias.1.cotas.negros.valor']);
+
+        $this->assertSame(0, Edital::count());
+    }
+
     public function test_cria_edital_com_categorias_em_ordem(): void
     {
         $resposta = $this->post('/retaguarda/editais', $this->dados([

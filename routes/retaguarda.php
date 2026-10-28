@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Retaguarda\ConteudoImagemController;
 use App\Http\Controllers\Retaguarda\EditalController;
 use App\Http\Controllers\Retaguarda\EventoController;
 use App\Http\Controllers\Retaguarda\LoginController;
@@ -37,10 +38,10 @@ Route::prefix('retaguarda')->name('retaguarda.')->group(function () {
         Route::patch('/editais/{edital}/publicacao', [EditalController::class, 'publicacao'])->name('editais.publicacao');
         Route::get('/editais/{edital}/pdf', [EditalController::class, 'pdf'])->name('editais.pdf');
 
-        // Imagens da descrição (editor de texto rico): responde JSON com a URL.
-        Route::post('/eventos/conteudo/imagem', [EventoController::class, 'imagemConteudo'])
+        // Imagens do editor de texto rico (eventos e editais): responde JSON com a URL.
+        Route::post('/conteudo/imagem', ConteudoImagemController::class)
             ->middleware('throttle:30,1')
-            ->name('eventos.conteudo.imagem');
+            ->name('conteudo.imagem');
         Route::resource('eventos', EventoController::class)->except('show');
         Route::patch('/eventos/{evento}/publicacao', [EventoController::class, 'publicacao'])->name('eventos.publicacao');
 

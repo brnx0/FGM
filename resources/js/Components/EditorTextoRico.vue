@@ -25,6 +25,8 @@ const props = defineProps<{
     invalido?: boolean;
     /** Rota que recebe a imagem e devolve { url }. */
     urlImagem: string;
+    /** Texto de dica da área vazia. */
+    placeholder?: string;
 }>();
 
 const modelo = defineModel<string>({ required: true });
@@ -85,7 +87,7 @@ const editor = useEditor({
         TableCell,
         Image.configure({ allowBase64: false }),
         Youtube.configure({ nocookie: true, allowFullscreen: true, width: 640, height: 360 }),
-        Placeholder.configure({ placeholder: 'Programação, convidados, como participar…' }),
+        Placeholder.configure({ placeholder: props.placeholder ?? 'Programação, convidados, como participar…' }),
     ],
     editorProps: { attributes: atributosDaArea() },
     onUpdate: ({ editor: atual }) => {

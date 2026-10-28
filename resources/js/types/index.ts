@@ -40,7 +40,7 @@ export interface EditalResumo {
 /** Edital em EditalController@show. */
 export interface EditalDetalhe extends Omit<EditalResumo, 'pdf' | 'imagem'> {
     /** HTML já limpo ao salvar (App\Support\HtmlSeguro). */
-    divulgacao: string;
+    divulgacao: string | null;
     pdf: string | null;
 }
 
@@ -372,7 +372,7 @@ export interface EditalFormulario {
     categoria: string;
     /** Valor do enum TipoFomento; null em edital antigo. */
     tipo_fomento: string | null;
-    divulgacao: string;
+    divulgacao: string | null;
     inscricoes_inicio: string;
     inscricoes_fim: string;
     vigencia_inicio: string | null;

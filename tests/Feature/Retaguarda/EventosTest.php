@@ -234,7 +234,7 @@ class EventosTest extends TestCase
 
     public function test_envia_imagem_do_conteudo(): void
     {
-        $resposta = $this->postJson('/retaguarda/eventos/conteudo/imagem', ['imagem' => $this->imagem()])
+        $resposta = $this->postJson('/retaguarda/conteudo/imagem', ['imagem' => $this->imagem()])
             ->assertOk();
 
         $url = $resposta->json('url');
@@ -244,7 +244,7 @@ class EventosTest extends TestCase
 
     public function test_imagem_do_conteudo_so_aceita_imagem(): void
     {
-        $this->postJson('/retaguarda/eventos/conteudo/imagem', ['imagem' => UploadedFile::fake()->create('x.pdf', 10, 'application/pdf')])
+        $this->postJson('/retaguarda/conteudo/imagem', ['imagem' => UploadedFile::fake()->create('x.pdf', 10, 'application/pdf')])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('imagem');
 
@@ -254,10 +254,10 @@ class EventosTest extends TestCase
     public function test_proponente_e_visitante_nao_enviam_imagem_do_conteudo(): void
     {
         $this->actingAs(User::factory()->create());
-        $this->post('/retaguarda/eventos/conteudo/imagem', ['imagem' => $this->imagem()])->assertRedirect('/retaguarda/login');
+        $this->post('/retaguarda/conteudo/imagem', ['imagem' => $this->imagem()])->assertRedirect('/retaguarda/login');
 
         auth()->logout();
-        $this->post('/retaguarda/eventos/conteudo/imagem', ['imagem' => $this->imagem()])->assertRedirect('/retaguarda/login');
+        $this->post('/retaguarda/conteudo/imagem', ['imagem' => $this->imagem()])->assertRedirect('/retaguarda/login');
 
         $this->assertSame([], Storage::disk('public')->allFiles());
     }

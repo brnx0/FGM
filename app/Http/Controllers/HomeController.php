@@ -15,7 +15,7 @@ class HomeController extends Controller
     {
         return Inertia::render('Home', [
             'totalAbertos' => Edital::contarAbertos(),
-            'editais' => Edital::naVitrine()->get()->map(fn (Edital $edital) => [
+            'editais' => Edital::naVitrine()->paraCartao()->get()->map(fn (Edital $edital) => [
                 'titulo' => $edital->titulo,
                 'slug' => $edital->slug,
                 'pdf' => $edital->pdfUrl(),

@@ -18,8 +18,8 @@ const props = defineProps<RetaguardaEditaisFormProps>();
 
 // Caminhos das rotas retaguarda.editais.* (o front não tem helper de rotas nomeadas).
 const BASE = '/retaguarda/editais';
-// Imagens do texto rico usam o mesmo envio dos eventos (retaguarda.eventos.conteudo.imagem).
-const URL_IMAGEM_CONTEUDO = '/retaguarda/eventos/conteudo/imagem';
+// Imagens do texto rico: mesmo envio dos eventos (retaguarda.conteudo.imagem).
+const URL_IMAGEM_CONTEUDO = '/retaguarda/conteudo/imagem';
 
 const salvo = props.edital;
 const editando = salvo !== null;
@@ -256,6 +256,7 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                                     :descricao="descricao"
                                     :invalido="invalido"
                                     :url-imagem="URL_IMAGEM_CONTEUDO"
+                                    placeholder="Objetivo do edital, quem pode participar, valores, etapas e como se inscrever…"
                                     @update:model-value="form.clearErrors('divulgacao')"
                                 />
                             </CampoCadastro>
