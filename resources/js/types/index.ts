@@ -384,6 +384,8 @@ export interface EditalFormulario {
     imagemUrl: string | null;
     /** Na ordem de exibição. */
     categorias: CategoriaEdital[];
+    /** Na ordem de exibição. */
+    documentos: DocumentoEdital[];
 }
 
 /** App\Models\EditalCategoria::COTAS. */
@@ -414,6 +416,36 @@ export interface CategoriaEditavel {
     vagas: number | null;
     naturezas: string[];
     cotas: Record<CotaEdital, { valor: number | null; unidade: UnidadeCota }>;
+}
+
+/** Documento exigido na inscrição (Retaguarda\EditalController@edit). */
+export interface DocumentoEdital {
+    id: number;
+    nome: string;
+    orientacao: string | null;
+    obrigatorio: boolean;
+    /** Valores do enum NaturezaProponente. */
+    naturezas: string[];
+    todas_categorias: boolean;
+    /** Posições (a partir de 0) na lista `categorias` do mesmo edital. */
+    categorias: number[];
+    tamanho_max_mb: number;
+}
+
+/**
+ * Documento no formulário do edital: `chave` identifica o cartão (não vai ao servidor); `id` só nos já salvos.
+ * `categorias` guarda as chaves dos cartões das categorias: viram posições só no envio, então reordenar não desfaz a ligação.
+ */
+export interface DocumentoEditavel {
+    chave: string;
+    id: number | null;
+    nome: string;
+    orientacao: string;
+    obrigatorio: boolean;
+    naturezas: string[];
+    todas_categorias: boolean;
+    categorias: string[];
+    tamanho_max_mb: number | null;
 }
 
 export interface RetaguardaEditaisFormProps {
