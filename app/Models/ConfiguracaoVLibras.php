@@ -47,10 +47,19 @@ class ConfiguracaoVLibras extends Model
     /**
      * A configuração salva ou, enquanto ninguém salvou, uma nova com os padrões. Fica em cache
      * (lida a cada página do portal, muda raramente) e o cache é limpo quando ela é salva ou apagada.
+     *
+     * O cache guarda só as colunas da linha ([] quando não há linha), não o model: com
+     * cache.serializable_classes = false nenhum objeto volta do cache (viraria __PHP_Incomplete_Class).
      */
     public static function atual(): self
     {
-        return Cache::rememberForever(self::CHAVE_CACHE, fn (): self => self::query()->orderBy('id')->first() ?? new self);
+        /** @var array<string, mixed> $colunas */
+        $colunas = Cache::rememberForever(
+            self::CHAVE_CACHE,
+            fn (): array => self::query()->orderBy('id')->first()?->getAttributes() ?? [],
+        );
+
+        return $colunas === [] ? new self : (new self)->newFromBuilder($colunas);
     }
 
     protected static function booted(): void

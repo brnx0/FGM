@@ -6,12 +6,25 @@ use App\Enums\AvatarVLibras;
 use App\Models\ConfiguracaoVLibras;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class ConfiguracaoVLibrasCacheTest extends TestCase
 {
     use RefreshDatabase;
+
+    /**
+     * Como nos stores reais (file, redis, database): valores serializados e, por cache.serializable_classes,
+     * nenhum objeto pode voltar do cache. O array dos testes, por padrão, guarda o valor sem serializar.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config(['cache.stores.array.serialize' => true]);
+        Cache::purge('array');
+    }
 
     public function test_configuracao_e_lida_do_banco_uma_vez_so(): void
     {
