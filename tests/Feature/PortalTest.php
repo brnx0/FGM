@@ -102,7 +102,7 @@ class PortalTest extends TestCase
             'titulo' => 'SalCine 2',
             'slug' => 'salcine-2',
             'categoria' => 'Audiovisual',
-            'resumo' => 'Apoio ao audiovisual.',
+            'divulgacao' => '<p>Apoio ao audiovisual.</p>',
             'inscricoes_inicio' => '2026-11-05',
             'inscricoes_fim' => '2026-11-30',
         ]);
@@ -113,7 +113,8 @@ class PortalTest extends TestCase
                 ->where('titulo', 'SalCine 2')
                 ->where('slug', 'salcine-2')
                 ->where('categoria', 'Audiovisual')
-                ->where('resumo', 'Apoio ao audiovisual.')
+                ->where('divulgacao', '<p>Apoio ao audiovisual.</p>')
+                ->missing('resumo')
                 ->where('situacao', 'aberto')
                 ->where('situacaoRotulo', 'Aberto')
                 ->where('inscricoesInicio', '05/11/2026')

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Retaguarda;
 
 use App\Enums\SituacaoEdital;
+use App\Enums\TipoFomento;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Retaguarda\SalvarEditalRequest;
 use App\Models\Edital;
@@ -28,6 +29,8 @@ class EditalController extends Controller
         $publicado = in_array($request->query('publicado'), ['sim', 'nao'], true) ? $request->query('publicado') : null;
 
         $editais = Edital::query()
+            // Sem a divulgação (CLOB): a lista não precisa do texto.
+            ->select(['id', 'slug', 'titulo', 'categoria', 'inscricoes_inicio', 'inscricoes_fim', 'publicado', 'pdf'])
             // No Oracle a comparação de texto diferencia maiúsculas; % e _ digitados valem literalmente.
             ->when($busca !== '', fn (Builder $q) => $q->whereRaw(
                 "LOWER(titulo) LIKE ? ESCAPE '\\'",
@@ -70,7 +73,10 @@ class EditalController extends Controller
 
     public function create(): Response
     {
-        return Inertia::render('Retaguarda/Editais/Form', ['edital' => null]);
+        return Inertia::render('Retaguarda/Editais/Form', [
+            'edital' => null,
+            'tiposFomento' => $this->tiposFomento(),
+        ]);
     }
 
     public function store(SalvarEditalRequest $request): RedirectResponse
@@ -99,15 +105,19 @@ class EditalController extends Controller
             'edital' => [
                 'slug' => $edital->slug,
                 'titulo' => $edital->titulo,
-                'resumo' => $edital->resumo,
                 'categoria' => $edital->categoria,
+                'tipo_fomento' => $edital->tipo_fomento?->value,
+                'divulgacao' => $edital->divulgacao,
                 'inscricoes_inicio' => $edital->inscricoes_inicio->toDateString(),
                 'inscricoes_fim' => $edital->inscricoes_fim->toDateString(),
+                'vigencia_inicio' => $edital->vigencia_inicio?->toDateString(),
+                'vigencia_fim' => $edital->vigencia_fim?->toDateString(),
                 'publicado' => $edital->publicado,
                 'pdfUrl' => $edital->pdf ? route('retaguarda.editais.pdf', $edital) : null,
                 'pdfNome' => $edital->pdf ? $this->nomeDoPdf($edital) : null,
                 'imagemUrl' => $edital->imagemUrl(),
             ],
+            'tiposFomento' => $this->tiposFomento(),
         ]);
     }
 
@@ -163,6 +173,17 @@ class EditalController extends Controller
         abort_unless(filled($edital->pdf) && Storage::disk('local')->exists($edital->pdf), 404);
 
         return Storage::disk('local')->download($edital->pdf, $this->nomeDoPdf($edital));
+    }
+
+    /**
+     * @return list<array{valor: string, rotulo: string}>
+     */
+    private function tiposFomento(): array
+    {
+        return array_map(
+            fn (TipoFomento $tipo): array => ['valor' => $tipo->value, 'rotulo' => $tipo->rotulo()],
+            TipoFomento::cases(),
+        );
     }
 
     private function nomeDoPdf(Edital $edital): string

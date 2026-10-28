@@ -21,7 +21,7 @@ class EditalController extends Controller
                 'titulo' => $edital->titulo,
                 'slug' => $edital->slug,
                 'categoria' => $edital->categoria,
-                'resumo' => $edital->resumo,
+                'divulgacao' => $edital->divulgacao,
                 'pdf' => $edital->pdfUrl(),
                 'situacao' => $situacao->value,
                 'situacaoRotulo' => $situacao->rotulo(),

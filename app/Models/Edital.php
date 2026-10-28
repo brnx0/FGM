@@ -3,7 +3,9 @@
 namespace App\Models;
 
 use App\Enums\SituacaoEdital;
+use App\Enums\TipoFomento;
 use App\Models\Concerns\UsaDiaCivil;
+use App\Support\HtmlSeguro;
 use Carbon\CarbonInterface;
 use Database\Factories\EditalFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -24,8 +26,9 @@ class Edital extends Model
     protected $table = 'editais';
 
     protected $fillable = [
-        'titulo', 'slug', 'resumo', 'categoria',
-        'inscricoes_inicio', 'inscricoes_fim', 'imagem', 'pdf', 'publicado',
+        'titulo', 'slug', 'categoria', 'tipo_fomento', 'divulgacao',
+        'inscricoes_inicio', 'inscricoes_fim', 'vigencia_inicio', 'vigencia_fim',
+        'imagem', 'pdf', 'publicado',
     ];
 
     protected function casts(): array
@@ -33,6 +36,9 @@ class Edital extends Model
         return [
             'inscricoes_inicio' => 'date',
             'inscricoes_fim' => 'date',
+            'vigencia_inicio' => 'date',
+            'vigencia_fim' => 'date',
+            'tipo_fomento' => TipoFomento::class,
             'publicado' => 'boolean',
         ];
     }
@@ -50,6 +56,22 @@ class Edital extends Model
     protected function inscricoesFim(): Attribute
     {
         return Attribute::set(fn ($v) => self::diaParaGravar($v));
+    }
+
+    protected function vigenciaInicio(): Attribute
+    {
+        return Attribute::set(fn ($v) => self::diaParaGravar($v));
+    }
+
+    protected function vigenciaFim(): Attribute
+    {
+        return Attribute::set(fn ($v) => self::diaParaGravar($v));
+    }
+
+    /** Toda gravação passa pela allowlist (HtmlSeguro é idempotente). */
+    protected function divulgacao(): Attribute
+    {
+        return Attribute::set(fn (?string $html) => HtmlSeguro::limpar($html));
     }
 
     public function situacao(?CarbonInterface $agora = null): SituacaoEdital

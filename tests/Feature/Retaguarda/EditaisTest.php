@@ -2,11 +2,13 @@
 
 namespace Tests\Feature\Retaguarda;
 
+use App\Enums\TipoFomento;
 use App\Models\Edital;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 use RuntimeException;
@@ -58,13 +60,117 @@ class EditaisTest extends TestCase
     {
         return [
             'titulo' => 'Prêmio Cultura Viva',
-            'resumo' => 'Apoio a pontos de cultura.',
+            'tipo_fomento' => 'direto',
+            'divulgacao' => '<p>Apoio a pontos de cultura.</p>',
             'categoria' => 'Fomento',
+            'vigencia_inicio' => '2026-11-01',
+            'vigencia_fim' => '2027-10-31',
             'inscricoes_inicio' => '2026-11-01',
             'inscricoes_fim' => '2026-11-30',
             'publicado' => '0',
             ...$alteracoes,
         ];
+    }
+
+    public function test_grava_tipo_de_fomento_vigencia_e_divulgacao(): void
+    {
+        $this->post('/retaguarda/editais', $this->dados())->assertSessionHasNoErrors();
+
+        $edital = Edital::sole();
+        $this->assertSame(TipoFomento::Direto, $edital->tipo_fomento);
+        $this->assertSame('2026-11-01', $edital->vigencia_inicio->toDateString());
+        $this->assertSame('2027-10-31', $edital->vigencia_fim->toDateString());
+        $this->assertSame('<p>Apoio a pontos de cultura.</p>', $edital->divulgacao);
+    }
+
+    public function test_tipo_de_fomento_e_obrigatorio_e_da_lista(): void
+    {
+        $this->post('/retaguarda/editais', $this->dados(['tipo_fomento' => '']))
+            ->assertSessionHasErrors('tipo_fomento');
+        $this->post('/retaguarda/editais', $this->dados(['tipo_fomento' => 'outro']))
+            ->assertSessionHasErrors(['tipo_fomento' => 'Selecione uma opção da lista.']);
+
+        $this->assertSame(0, Edital::count());
+    }
+
+    public function test_fim_da_vigencia_nao_pode_ser_antes_do_inicio(): void
+    {
+        $this->post('/retaguarda/editais', $this->dados(['vigencia_inicio' => '2026-11-01', 'vigencia_fim' => '2026-10-31']))
+            ->assertSessionHasErrors(['vigencia_fim' => 'O fim da vigência não pode ser antes do início.']);
+    }
+
+    public function test_fim_da_vigencia_pode_ficar_vazio(): void
+    {
+        $this->post('/retaguarda/editais', $this->dados(['vigencia_fim' => '']))->assertSessionHasNoErrors();
+
+        $this->assertNull(Edital::sole()->vigencia_fim);
+    }
+
+    public function test_inicio_da_vigencia_e_obrigatorio(): void
+    {
+        $this->post('/retaguarda/editais', $this->dados(['vigencia_inicio' => '']))
+            ->assertSessionHasErrors('vigencia_inicio');
+    }
+
+    public function test_divulgacao_e_limpa_ao_gravar(): void
+    {
+        $this->post('/retaguarda/editais', $this->dados([
+            'divulgacao' => '<script>alert(1)</script><p onclick="x">Oi</p>',
+        ]))->assertSessionHasNoErrors();
+
+        $this->assertSame('<p>Oi</p>', Edital::sole()->divulgacao);
+    }
+
+    public function test_divulgacao_vazia_e_recusada(): void
+    {
+        foreach (['', '<p></p>', '<p> </p>', '<p>&nbsp;</p>'] as $vazia) {
+            $this->post('/retaguarda/editais', $this->dados(['divulgacao' => $vazia]))
+                ->assertSessionHasErrors(['divulgacao' => 'Este campo é obrigatório.']);
+        }
+
+        $this->assertSame(0, Edital::count());
+    }
+
+    public function test_edicao_envia_os_campos_novos_e_as_opcoes_de_fomento(): void
+    {
+        $edital = Edital::factory()->create([
+            'tipo_fomento' => TipoFomento::Indireto,
+            'vigencia_inicio' => '2026-11-01',
+            'vigencia_fim' => null,
+            'divulgacao' => '<p>Texto.</p>',
+        ]);
+
+        $opcoes = [['valor' => 'direto', 'rotulo' => 'Direto'], ['valor' => 'indireto', 'rotulo' => 'Indireto']];
+
+        $this->get("/retaguarda/editais/{$edital->slug}/edit")->assertInertia(fn (Assert $p) => $p
+            ->component('Retaguarda/Editais/Form')
+            ->where('edital.tipo_fomento', 'indireto')
+            ->where('edital.vigencia_inicio', '2026-11-01')
+            ->where('edital.vigencia_fim', null)
+            ->where('edital.divulgacao', '<p>Texto.</p>')
+            ->missing('edital.resumo')
+            ->where('tiposFomento', $opcoes));
+
+        $this->get('/retaguarda/editais/create')->assertInertia(fn (Assert $p) => $p
+            ->where('tiposFomento', $opcoes));
+    }
+
+    public function test_lista_nao_carrega_a_divulgacao(): void
+    {
+        Edital::factory()->create();
+        $consultas = [];
+        DB::listen(function ($consulta) use (&$consultas): void {
+            $consultas[] = strtolower($consulta->sql);
+        });
+
+        $this->get('/retaguarda/editais')->assertOk();
+
+        $selects = array_filter($consultas, fn (string $sql): bool => str_contains($sql, 'from "editais"') && str_starts_with($sql, 'select') && ! str_contains($sql, 'count('));
+        $this->assertNotEmpty($selects);
+        foreach ($selects as $sql) {
+            $this->assertStringNotContainsString('divulgacao', $sql);
+            $this->assertStringNotContainsString('select *', $sql);
+        }
     }
 
     public function test_lista_com_busca_e_filtros(): void
