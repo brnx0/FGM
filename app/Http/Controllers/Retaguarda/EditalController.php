@@ -2,20 +2,24 @@
 
 namespace App\Http\Controllers\Retaguarda;
 
+use App\Enums\NaturezaProponente;
 use App\Enums\SituacaoEdital;
 use App\Enums\TipoFomento;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Retaguarda\SalvarEditalRequest;
 use App\Models\Edital;
+use App\Models\EditalCategoria;
 use App\Support\ArquivoArmazenado;
 use App\Support\SlugUnico;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Throwable;
 
 /** Gestão de editais na retaguarda. PDF no disco local (privado), imagem no public, ambos em editais/. */
 class EditalController extends Controller
@@ -76,6 +80,7 @@ class EditalController extends Controller
         return Inertia::render('Retaguarda/Editais/Form', [
             'edital' => null,
             'tiposFomento' => $this->tiposFomento(),
+            'naturezas' => $this->naturezas(),
         ]);
     }
 
@@ -94,7 +99,7 @@ class EditalController extends Controller
             $novos[] = ['public', $edital->imagem];
         }
 
-        ArquivoArmazenado::salvarTrocando($edital, $novos, []);
+        $this->salvarComCategorias($edital, $request, $novos, []);
 
         return redirect()->route('retaguarda.editais.index')->with('sucesso', 'Edital salvo.');
     }
@@ -116,8 +121,20 @@ class EditalController extends Controller
                 'pdfUrl' => $edital->pdf ? route('retaguarda.editais.pdf', $edital) : null,
                 'pdfNome' => $edital->pdf ? $this->nomeDoPdf($edital) : null,
                 'imagemUrl' => $edital->imagemUrl(),
+                'categorias' => $edital->categorias->map(fn (EditalCategoria $categoria): array => [
+                    'id' => (int) $categoria->id,
+                    'nome' => $categoria->nome,
+                    'valor' => $categoria->valor_centavos / 100,
+                    'vagas' => $categoria->vagas,
+                    'naturezas' => $categoria->naturezas->map(fn (NaturezaProponente $natureza): string => $natureza->value)->values()->all(),
+                    'cotas' => collect(EditalCategoria::COTAS)->mapWithKeys(fn (string $cota): array => [$cota => [
+                        'valor' => $categoria->{"cota_{$cota}_valor"} === null ? null : (int) $categoria->{"cota_{$cota}_valor"},
+                        'unidade' => $categoria->{"cota_{$cota}_unidade"}?->value,
+                    ]])->all(),
+                ])->all(),
             ],
             'tiposFomento' => $this->tiposFomento(),
+            'naturezas' => $this->naturezas(),
         ]);
     }
 
@@ -143,7 +160,7 @@ class EditalController extends Controller
             $edital->imagem = null;
         }
 
-        ArquivoArmazenado::salvarTrocando($edital, $novos, $antigos);
+        $this->salvarComCategorias($edital, $request, $novos, $antigos);
 
         return redirect()->route('retaguarda.editais.index')->with('sucesso', 'Edital salvo.');
     }
@@ -173,6 +190,69 @@ class EditalController extends Controller
         abort_unless(filled($edital->pdf) && Storage::disk('local')->exists($edital->pdf), 404);
 
         return Storage::disk('local')->download($edital->pdf, $this->nomeDoPdf($edital));
+    }
+
+    /**
+     * Salva o edital e sincroniza as categorias numa transação; só depois apaga os arquivos substituídos.
+     * Se algo falhar, os arquivos recém-gravados são descartados e os antigos ficam.
+     *
+     * @param  list<array{string, ?string}>  $novos
+     * @param  list<array{string, ?string}>  $antigos
+     */
+    private function salvarComCategorias(Edital $edital, SalvarEditalRequest $request, array $novos, array $antigos): void
+    {
+        try {
+            DB::transaction(function () use ($edital, $request, $novos): void {
+                ArquivoArmazenado::salvarTrocando($edital, $novos, []);
+                $this->sincronizarCategorias($edital, $request->categoriasParaSalvar());
+            });
+        } catch (Throwable $erro) {
+            foreach ($novos as [$disco, $caminho]) {
+                ArquivoArmazenado::apagar($disco, $caminho);
+            }
+
+            throw $erro;
+        }
+
+        foreach ($antigos as [$disco, $caminho]) {
+            ArquivoArmazenado::apagar($disco, $caminho);
+        }
+    }
+
+    /**
+     * Atualiza as categorias deste edital que vieram com id, cria as novas e apaga as que não vieram.
+     * Id de outro edital (ou inexistente) vale como categoria nova.
+     *
+     * @param  list<array{id: ?int, atributos: array<string, mixed>}>  $categorias
+     */
+    private function sincronizarCategorias(Edital $edital, array $categorias): void
+    {
+        $existentes = $edital->categorias()->get()->keyBy(fn (EditalCategoria $categoria): int => (int) $categoria->id);
+        $mantidos = [];
+
+        foreach ($categorias as ['id' => $id, 'atributos' => $atributos]) {
+            $existente = $id !== null ? $existentes->get($id) : null;
+
+            if ($existente !== null && ! in_array($id, $mantidos, true)) {
+                $existente->update($atributos);
+                $mantidos[] = $id;
+            } else {
+                $mantidos[] = (int) $edital->categorias()->create($atributos)->id;
+            }
+        }
+
+        $existentes->except($mantidos)->each(fn (EditalCategoria $categoria): ?bool => $categoria->delete());
+    }
+
+    /**
+     * @return list<array{valor: string, rotulo: string}>
+     */
+    private function naturezas(): array
+    {
+        return array_map(
+            fn (NaturezaProponente $natureza): array => ['valor' => $natureza->value, 'rotulo' => $natureza->rotulo()],
+            NaturezaProponente::cases(),
+        );
     }
 
     /**

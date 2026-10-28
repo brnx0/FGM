@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
 
@@ -72,6 +73,12 @@ class Edital extends Model
     protected function divulgacao(): Attribute
     {
         return Attribute::set(fn (?string $html) => HtmlSeguro::limpar($html));
+    }
+
+    /** @return HasMany<EditalCategoria, $this> */
+    public function categorias(): HasMany
+    {
+        return $this->hasMany(EditalCategoria::class)->orderBy('ordem');
     }
 
     public function situacao(?CarbonInterface $agora = null): SituacaoEdital

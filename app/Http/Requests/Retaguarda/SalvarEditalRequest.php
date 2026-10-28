@@ -2,8 +2,11 @@
 
 namespace App\Http\Requests\Retaguarda;
 
+use App\Enums\NaturezaProponente;
 use App\Enums\TipoFomento;
+use App\Enums\UnidadeCota;
 use App\Models\Edital;
+use App\Models\EditalCategoria;
 use App\Support\HtmlSeguro;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -38,7 +41,39 @@ class SalvarEditalRequest extends FormRequest
             'pdf' => ['nullable', 'file', 'mimes:pdf', 'mimetypes:application/pdf', 'max:20480'],
             'publicado' => ['boolean'],
             'remover_imagem' => ['boolean'],
+            ...$this->regrasDasCategorias(),
         ];
+    }
+
+    /**
+     * @return array<string, array<mixed>>
+     */
+    private function regrasDasCategorias(): array
+    {
+        $regras = [
+            'categorias' => ['nullable', 'array', 'max:30'],
+            'categorias.*.id' => ['nullable', 'integer'],
+            'categorias.*.nome' => ['required', 'string', 'max:255'],
+            'categorias.*.valor' => ['required', 'numeric', 'min:0.01', 'max:999999999'],
+            'categorias.*.vagas' => ['required', 'integer', 'min:1', 'max:10000'],
+            // Sem nenhuma marcada o campo nem chega no envio: ausente vale como vazio.
+            'categorias.*.naturezas' => ['required', 'array', 'min:1'],
+            'categorias.*.naturezas.*' => ['distinct', Rule::enum(NaturezaProponente::class)],
+        ];
+
+        foreach (EditalCategoria::COTAS as $cota) {
+            $regras["categorias.*.cotas.{$cota}.valor"] = ['nullable', 'integer', 'min:1'];
+            $regras["categorias.*.cotas.{$cota}.unidade"] = ["required_with:categorias.*.cotas.{$cota}.valor", 'nullable', Rule::enum(UnidadeCota::class)];
+
+            // Percentual não passa de 100; a regra depende da unidade de cada categoria.
+            foreach (array_keys((array) $this->input('categorias', [])) as $indice) {
+                if ($this->input("categorias.{$indice}.cotas.{$cota}.unidade") === UnidadeCota::Percentual->value) {
+                    $regras["categorias.{$indice}.cotas.{$cota}.valor"] = ['nullable', 'integer', 'min:1', 'max:100'];
+                }
+            }
+        }
+
+        return $regras;
     }
 
     /**
@@ -53,6 +88,8 @@ class SalvarEditalRequest extends FormRequest
             'pdf.file' => 'O arquivo precisa ser um PDF.',
             'pdf.mimes' => 'O arquivo precisa ser um PDF.',
             'pdf.mimetypes' => 'O arquivo precisa ser um PDF.',
+            'categorias.*.naturezas.required' => 'Marque ao menos uma natureza.',
+            'categorias.*.naturezas.min' => 'Marque ao menos uma natureza.',
         ];
     }
 
@@ -81,6 +118,25 @@ class SalvarEditalRequest extends FormRequest
                     $validator->errors()->add('pdf', 'Envie o PDF do edital para publicar.');
                 }
             },
+            function (Validator $validator): void {
+                foreach (array_keys((array) $this->input('categorias', [])) as $indice) {
+                    // Só confere a soma quando vagas e cotas daquela categoria passaram nas regras.
+                    $comErro = array_filter(
+                        $validator->errors()->keys(),
+                        fn (string $chave): bool => str_starts_with($chave, "categorias.{$indice}."),
+                    );
+
+                    if ($comErro !== []) {
+                        continue;
+                    }
+
+                    $categoria = new EditalCategoria($this->atributosDaCategoria((array) $this->input("categorias.{$indice}")));
+
+                    if ($categoria->totalReservado() > $categoria->vagas) {
+                        $validator->errors()->add("categorias.{$indice}.cotas", 'As cotas somam mais vagas do que a categoria tem.');
+                    }
+                }
+            },
         ];
     }
 
@@ -98,5 +154,55 @@ class SalvarEditalRequest extends FormRequest
             'vigencia_fim' => $this->safe()->input('vigencia_fim'),
             'publicado' => $this->boolean('publicado'),
         ];
+    }
+
+    /**
+     * Categorias na ordem enviada, prontas para gravar; `id` é o da categoria já salva (se veio).
+     *
+     * @return list<array{id: ?int, atributos: array<string, mixed>}>
+     */
+    public function categoriasParaSalvar(): array
+    {
+        $categorias = [];
+
+        // A validação monta os itens na ordem das regras (os com id primeiro): a posição enviada manda.
+        $validadas = (array) $this->validated('categorias', []);
+        ksort($validadas, SORT_NUMERIC);
+
+        foreach (array_values($validadas) as $posicao => $categoria) {
+            $categorias[] = [
+                'id' => filled($categoria['id'] ?? null) ? (int) $categoria['id'] : null,
+                'atributos' => [...$this->atributosDaCategoria($categoria), 'ordem' => $posicao + 1],
+            ];
+        }
+
+        return $categorias;
+    }
+
+    /**
+     * Atributos do modelo a partir do item enviado (valor em reais vira centavos).
+     *
+     * @param  array<string, mixed>  $categoria
+     * @return array<string, mixed>
+     */
+    private function atributosDaCategoria(array $categoria): array
+    {
+        $atributos = [
+            'nome' => $categoria['nome'] ?? null,
+            'valor_centavos' => (int) round((float) ($categoria['valor'] ?? 0) * 100),
+            'vagas' => (int) ($categoria['vagas'] ?? 0),
+            'naturezas' => array_map(NaturezaProponente::from(...), array_values((array) ($categoria['naturezas'] ?? []))),
+        ];
+
+        foreach (EditalCategoria::COTAS as $cota) {
+            $valor = $categoria['cotas'][$cota]['valor'] ?? null;
+            $unidade = $categoria['cotas'][$cota]['unidade'] ?? null;
+            $informada = filled($valor) && filled($unidade);
+
+            $atributos["cota_{$cota}_valor"] = $informada ? (int) $valor : null;
+            $atributos["cota_{$cota}_unidade"] = $informada ? UnidadeCota::from($unidade) : null;
+        }
+
+        return $atributos;
     }
 }
