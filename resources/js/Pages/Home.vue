@@ -42,7 +42,8 @@ const iluminarVidro = (evento: PointerEvent): void => {
 
 <template>
     <!-- Página inicial conforme o anexo portal-fgm.html. As faixas se sobrepõem em curva:
-         cada uma sobe 130px (64px no celular) sobre a anterior. -->
+         cada uma sobe 130px (64px no celular) sobre a anterior; a primeira, sobre a abertura,
+         encolhe até 88px em tela baixa (notebook) para sobrar espaço sob o cabeçalho. -->
     <div class="home font-montserrat overflow-x-clip" :class="{ lente }" @pointermove="iluminarVidro">
         <Head title="Início" />
 
@@ -60,7 +61,7 @@ const iluminarVidro = (evento: PointerEvent): void => {
             <main id="conteudo" tabindex="-1" class="focus:outline-none">
                 <section
                     id="topo"
-                    class="home-escuro relative isolate flex min-h-svh flex-col overflow-hidden bg-home-azul px-6 pt-[75px] pb-24 text-white md:pt-[103px] md:pb-[clamp(150px,20vh,230px)]"
+                    class="home-escuro relative isolate flex min-h-svh flex-col overflow-hidden bg-home-azul px-6 pt-[75px] pb-24 text-white md:pt-[103px] md:pb-[clamp(110px,min(20vh,31vh_-_100px),230px)]"
                     aria-labelledby="topo-titulo"
                 >
                     <div aria-hidden="true" class="absolute inset-0 -z-10 overflow-hidden bg-[#0d1117]">
@@ -75,73 +76,77 @@ const iluminarVidro = (evento: PointerEvent): void => {
                         ></div>
                     </div>
 
-                    <div class="flex w-full flex-1 flex-col items-start justify-center gap-[clamp(14px,3vh,28px)] md:px-[clamp(0px,4vw,80px)]">
-                        <FlashMessage />
-                        <h1
-                            id="topo-titulo"
-                            class="font-barlow text-[2.5rem] leading-[0.95] font-extrabold tracking-[0.01em] uppercase md:text-[clamp(2.8rem,6vw,5.4rem)]"
-                        >
-                            Cultura que<br />move Salvador
-                        </h1>
-                        <div aria-hidden="true" class="h-1 w-20 bg-white"></div>
-                        <p class="max-w-[520px] text-base leading-[1.7] md:text-[1.1875rem]">
-                            Editais de fomento, inscrições e a agenda cultural da cidade reunidos em um só lugar.
-                        </p>
-                        <div class="mt-2 flex flex-wrap gap-4">
-                            <Link
-                                v-if="usuario"
-                                :href="usuario.ehGestor ? '/retaguarda' : '/cadastro'"
-                                class="botao-claro pressionavel inline-flex min-h-12 items-center gap-3 rounded-pill bg-white px-[22px] text-[0.75rem] font-bold tracking-[0.12em] text-home-azul uppercase no-underline shadow-[0_20px_40px_-16px_rgba(0,0,0,0.45)] md:min-h-[58px] md:px-9 md:text-[0.875rem]"
+                    <!-- Centralizado na altura livre pelos pseudo-elementos, mas em tela baixa (notebook) o de cima
+                         garante uma folga sob o cabeçalho. -->
+                    <div class="flex w-full flex-1 flex-col before:flex-1 after:flex-1 md:px-[clamp(0px,4vw,80px)] md:before:min-h-9">
+                        <div class="flex flex-col items-start gap-[clamp(14px,3vh,28px)]">
+                            <FlashMessage />
+                            <h1
+                                id="topo-titulo"
+                                class="font-barlow text-[2.5rem] leading-[0.95] font-extrabold tracking-[0.01em] uppercase md:text-[clamp(2.8rem,6vw,5.4rem)]"
                             >
-                                {{ usuario.ehGestor ? 'Ir para a retaguarda' : 'Continuar meu cadastro' }}
-                            </Link>
-                            <!-- Link comum (não Inertia): a conta é criada no primeiro login gov.br. -->
-                            <a
-                                v-else
-                                href="/auth/govbr/redirect"
-                                data-iris
-                                class="botao-claro pressionavel inline-flex min-h-12 items-center gap-3 rounded-pill bg-white px-[22px] text-[0.75rem] font-bold tracking-[0.12em] text-home-azul uppercase no-underline shadow-[0_20px_40px_-16px_rgba(0,0,0,0.45)] md:min-h-[58px] md:px-9 md:text-[0.875rem]"
-                            >
-                                Cadastre-se<span class="sr-only"> com a conta gov.br</span>
-                                <svg aria-hidden="true" viewBox="0 0 24 24" class="size-[18px]" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M5 12h14M13 6l6 6-6 6" />
-                                </svg>
-                            </a>
-                            <Link
-                                v-if="usuario && !usuario.ehGestor"
-                                href="/organizacoes"
-                                class="vidro pressionavel inline-flex min-h-12 items-center rounded-pill px-[22px] text-[0.75rem] font-bold tracking-[0.12em] text-white uppercase no-underline md:min-h-[58px] md:px-9 md:text-[0.875rem]"
-                            >
-                                Minhas organizações
-                            </Link>
-                            <a
-                                href="#editais"
-                                class="vidro pressionavel inline-flex min-h-12 items-center rounded-pill px-[22px] text-[0.75rem] font-bold tracking-[0.12em] text-white uppercase no-underline md:min-h-[58px] md:px-9 md:text-[0.875rem]"
-                            >
-                                Ver editais abertos
-                            </a>
-                        </div>
-                        <div class="mt-[clamp(8px,3vh,40px)] hidden flex-wrap items-center gap-x-12 gap-y-6 md:flex">
-                            <p class="flex items-center gap-4">
-                                <span class="font-barlow text-[4.75rem] leading-none font-extrabold">{{ totalAbertos }}</span>
-                                <span class="text-[0.8125rem] leading-normal font-semibold tracking-[0.12em] uppercase">
-                                    {{ totalAbertos === 1 ? 'Edital com' : 'Editais com' }}<br />inscrições abertas
-                                </span>
+                                Cultura que<br />move Salvador
+                            </h1>
+                            <div aria-hidden="true" class="h-1 w-20 bg-white"></div>
+                            <p class="max-w-[520px] text-base leading-[1.7] md:text-[1.1875rem]">
+                                Editais de fomento, inscrições e a agenda cultural da cidade reunidos em um só lugar.
                             </p>
-                            <span aria-hidden="true" class="h-[52px] w-px bg-white/40"></span>
-                            <p class="flex items-center gap-4">
-                                <span class="font-barlow text-[4.75rem] leading-none font-extrabold">{{ eventos.length }}</span>
-                                <span class="text-[0.8125rem] leading-normal font-semibold tracking-[0.12em] uppercase">
-                                    {{ eventos.length === 1 ? 'Evento na' : 'Eventos na' }}<br />agenda cultural
-                                </span>
-                            </p>
+                            <div class="mt-2 flex flex-wrap gap-4">
+                                <Link
+                                    v-if="usuario"
+                                    :href="usuario.ehGestor ? '/retaguarda' : '/cadastro'"
+                                    class="botao-claro pressionavel inline-flex min-h-12 items-center gap-3 rounded-pill bg-white px-[22px] text-[0.75rem] font-bold tracking-[0.12em] text-home-azul uppercase no-underline shadow-[0_20px_40px_-16px_rgba(0,0,0,0.45)] md:min-h-[58px] md:px-9 md:text-[0.875rem]"
+                                >
+                                    {{ usuario.ehGestor ? 'Ir para a retaguarda' : 'Continuar meu cadastro' }}
+                                </Link>
+                                <!-- Link comum (não Inertia): a conta é criada no primeiro login gov.br. -->
+                                <a
+                                    v-else
+                                    href="/auth/govbr/redirect"
+                                    data-iris
+                                    class="botao-claro pressionavel inline-flex min-h-12 items-center gap-3 rounded-pill bg-white px-[22px] text-[0.75rem] font-bold tracking-[0.12em] text-home-azul uppercase no-underline shadow-[0_20px_40px_-16px_rgba(0,0,0,0.45)] md:min-h-[58px] md:px-9 md:text-[0.875rem]"
+                                >
+                                    Cadastre-se<span class="sr-only"> com a conta gov.br</span>
+                                    <svg aria-hidden="true" viewBox="0 0 24 24" class="size-[18px]" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M5 12h14M13 6l6 6-6 6" />
+                                    </svg>
+                                </a>
+                                <Link
+                                    v-if="usuario && !usuario.ehGestor"
+                                    href="/organizacoes"
+                                    class="vidro pressionavel inline-flex min-h-12 items-center rounded-pill px-[22px] text-[0.75rem] font-bold tracking-[0.12em] text-white uppercase no-underline md:min-h-[58px] md:px-9 md:text-[0.875rem]"
+                                >
+                                    Minhas organizações
+                                </Link>
+                                <a
+                                    href="#editais"
+                                    class="vidro pressionavel inline-flex min-h-12 items-center rounded-pill px-[22px] text-[0.75rem] font-bold tracking-[0.12em] text-white uppercase no-underline md:min-h-[58px] md:px-9 md:text-[0.875rem]"
+                                >
+                                    Ver editais abertos
+                                </a>
+                            </div>
+                            <div class="mt-[clamp(8px,3vh,40px)] hidden flex-wrap items-center gap-x-12 gap-y-6 md:flex">
+                                <p class="flex items-center gap-4">
+                                    <span class="font-barlow text-[4.75rem] leading-none font-extrabold">{{ totalAbertos }}</span>
+                                    <span class="text-[0.8125rem] leading-normal font-semibold tracking-[0.12em] uppercase">
+                                        {{ totalAbertos === 1 ? 'Edital com' : 'Editais com' }}<br />inscrições abertas
+                                    </span>
+                                </p>
+                                <span aria-hidden="true" class="h-[52px] w-px bg-white/40"></span>
+                                <p class="flex items-center gap-4">
+                                    <span class="font-barlow text-[4.75rem] leading-none font-extrabold">{{ eventos.length }}</span>
+                                    <span class="text-[0.8125rem] leading-normal font-semibold tracking-[0.12em] uppercase">
+                                        {{ eventos.length === 1 ? 'Evento na' : 'Eventos na' }}<br />agenda cultural
+                                    </span>
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </section>
 
                 <section
                     id="editais"
-                    class="home-curva relative z-[2] -mt-16 rounded-[50%/64px] bg-superficie px-6 pt-24 pb-[220px] text-home-tinta md:-mt-[130px] md:rounded-[50%/130px] md:pt-[150px]"
+                    class="home-curva relative z-[2] -mt-16 rounded-[50%/64px] bg-superficie px-6 pt-24 pb-[220px] text-home-tinta md:-mt-[clamp(88px,14vh,130px)] md:rounded-[50%/clamp(88px,14vh,130px)] md:pt-[150px]"
                     aria-labelledby="editais-titulo"
                 >
                     <div class="mx-auto flex max-w-[1200px] flex-col gap-16">

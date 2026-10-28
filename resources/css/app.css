@@ -7,6 +7,9 @@
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
+/* Tela baixa (notebook): menos altura útil que nos monitores, então as telas que devem caber sem rolagem apertam o espaçamento. */
+@custom-variant tela-baixa (@media (height < 53rem));
+
 /* Tokens do Mapa Cultura (DESIGN.md › Adaptações Mapa Cultura). */
 @theme {
     --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;

@@ -8,24 +8,14 @@ let indiceAnterior = -1;
 import { computed, onMounted, ref } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
 
-type ItemMenu = { href: string; texto: string; ativoEm: string[]; excetoEm?: string[]; icone: string };
+type ItemMenu = { href: string; texto: string; ativoEm: string[]; icone: string };
 
-// As etapas da Pessoa Jurídica no cadastro fazem parte de "Pessoas Jurídicas", não de "Cadastro".
-const ROTAS_DA_PESSOA_JURIDICA = ['/cadastro/organizacao', '/cadastro/pessoa-juridica'];
-
-// Caminhos das rotas cadastro, organizacoes.index, portal.editais e portal.projetos (o front não tem helper de rotas nomeadas).
+// Caminhos das rotas cadastro, portal.editais e portal.projetos (o front não tem helper de rotas nomeadas).
 const cadastro: ItemMenu = {
     href: '/cadastro',
     texto: 'Cadastro',
     ativoEm: ['/cadastro'],
-    excetoEm: ROTAS_DA_PESSOA_JURIDICA,
     icone: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20a8 8 0 0 1 16 0',
-};
-const pessoasJuridicas: ItemMenu = {
-    href: '/organizacoes',
-    texto: 'Pessoas Jurídicas',
-    ativoEm: ['/organizacoes', ...ROTAS_DA_PESSOA_JURIDICA],
-    icone: 'M3 21h18M5 21V7l7-4 7 4v14M9 10h.01M15 10h.01M9 14h.01M15 14h.01M10 21v-3h4v3',
 };
 const editais: ItemMenu = {
     href: '/portal/editais',
@@ -43,20 +33,19 @@ const projetos: ItemMenu = {
 const page = usePage();
 const tiposCadastro = computed(() => page.props.auth.user?.tiposCadastro ?? []);
 
-// Editais é do proponente e Projetos, do patrocinador (quem marcou os dois vê os dois); Pessoas Jurídicas e
-// Cadastro, comuns a todos, vêm por último.
+// Editais é do proponente e Projetos, do patrocinador (quem marcou os dois vê os dois); Cadastro, comum a todos,
+// vem por último.
 const itens = computed<ItemMenu[]>(() => {
     if (!tiposCadastro.value.length) return [];
     return [
         ...(tiposCadastro.value.includes('proponente') ? [editais] : []),
         ...(tiposCadastro.value.includes('patrocinador') ? [projetos] : []),
-        pessoasJuridicas,
         cadastro,
     ];
 });
 
 const naRota = (caminho: string): boolean => page.url === caminho || page.url.startsWith(`${caminho}/`) || page.url.startsWith(`${caminho}?`);
-const atual = (item: ItemMenu): boolean => item.ativoEm.some(naRota) && !(item.excetoEm ?? []).some(naRota);
+const atual = (item: ItemMenu): boolean => item.ativoEm.some(naRota);
 
 // Os itens têm a mesma largura: a posição do destaque é só o índice do item.
 const indiceAtual = computed(() => itens.value.findIndex(atual));
