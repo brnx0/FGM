@@ -85,9 +85,9 @@ const nova = (): ChamadaEditavel => ({ chave: novaChave(), id: null, nome: `Cham
                 </div>
             </fieldset>
 
-            <fieldset class="min-w-0">
+            <fieldset class="min-w-0" :aria-describedby="idCampo('validacao-ajuda')">
                 <legend class="text-[0.9375rem] font-semibold">Validação</legend>
-                <p :class="[classeDica, 'mt-1']">Opcional. Preencha quando o edital trouxer as datas.</p>
+                <p :id="idCampo('validacao-ajuda')" :class="[classeDica, 'mt-1']">Opcional. Preencha as duas datas, ou nenhuma, quando o edital trouxer o período.</p>
                 <div class="mt-3 grid gap-x-6 gap-y-5 @lg:grid-cols-2">
                     <CampoCadastro :id="idCampo('validacao_inicio')" rotulo="Início" :erro="erro('validacao_inicio')" v-slot="{ descricao, invalido }">
                         <input
@@ -116,9 +116,9 @@ const nova = (): ChamadaEditavel => ({ chave: novaChave(), id: null, nome: `Cham
                 </div>
             </fieldset>
 
-            <fieldset class="min-w-0">
+            <fieldset class="min-w-0" :aria-describedby="idCampo('homologacao-ajuda')">
                 <legend class="text-[0.9375rem] font-semibold">Homologação</legend>
-                <p :class="[classeDica, 'mt-1']">Opcional. Preencha quando o edital trouxer as datas.</p>
+                <p :id="idCampo('homologacao-ajuda')" :class="[classeDica, 'mt-1']">Opcional. Preencha as duas datas, ou nenhuma, quando o edital trouxer o período.</p>
                 <div class="mt-3 grid gap-x-6 gap-y-5 @lg:grid-cols-2">
                     <CampoCadastro :id="idCampo('homologacao_inicio')" rotulo="Início" :erro="erro('homologacao_inicio')" v-slot="{ descricao, invalido }">
                         <input
