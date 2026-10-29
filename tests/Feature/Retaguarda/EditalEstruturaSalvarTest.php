@@ -91,6 +91,7 @@ class EditalEstruturaSalvarTest extends TestCase
                     'nome' => 'Declaração de endereço',
                     'orientacao' => 'Assinada.',
                     'etapa' => 'habilitacao',
+                    'checagem' => 'aceita_sem_validar',
                     'obrigatorio' => '1',
                     'naturezas' => ['mei'],
                     'todas_categorias' => '0',
@@ -100,6 +101,7 @@ class EditalEstruturaSalvarTest extends TestCase
                 [
                     'nome' => 'Autodeclaração racial',
                     'etapa' => 'validacao_cotas',
+                    'checagem' => 'rigorosa',
                     'obrigatorio' => '0',
                     'todas_categorias' => '1',
                     'modalidade_cota' => 'negros',
@@ -350,8 +352,8 @@ class EditalEstruturaSalvarTest extends TestCase
                 ['nome' => 'Dança', 'naturezas' => ['pessoa_fisica']],
             ],
             'documentos' => [
-                ['nome' => 'Doc 1', 'etapa' => 'inscricao', 'todas_categorias' => '0', 'categorias' => ['0'], 'naturezas' => ['mei']],
-                ['nome' => 'Doc 2', 'etapa' => 'inscricao', 'todas_categorias' => '0', 'categorias' => ['0'], 'naturezas' => ['mei']],
+                ['nome' => 'Doc 1', 'etapa' => 'inscricao', 'checagem' => 'nenhuma', 'todas_categorias' => '0', 'categorias' => ['0'], 'naturezas' => ['mei']],
+                ['nome' => 'Doc 2', 'etapa' => 'inscricao', 'checagem' => 'nenhuma', 'todas_categorias' => '0', 'categorias' => ['0'], 'naturezas' => ['mei']],
             ],
             'requisitos' => [
                 ['descricao' => 'Req 1', 'documentos' => ['0']],
@@ -458,7 +460,7 @@ class EditalEstruturaSalvarTest extends TestCase
         $documento = fn (array $extra = []): array => [
             'com_listas' => '1',
             'titulo' => $edital->titulo,
-            'documentos' => [['nome' => 'Declaração', 'etapa' => 'inscricao', 'todas_categorias' => '1', ...$extra]],
+            'documentos' => [['nome' => 'Declaração', 'etapa' => 'inscricao', 'checagem' => 'nenhuma', 'todas_categorias' => '1', ...$extra]],
         ];
 
         $this->put("/retaguarda/editais/{$edital->slug}", $documento(['modelo' => $this->modelo('declaração.pdf')]))
@@ -505,7 +507,7 @@ class EditalEstruturaSalvarTest extends TestCase
 
         $this->put("/retaguarda/editais/{$edital->slug}", [
             'com_listas' => '1',
-            'documentos' => [['nome' => 'Doc', 'etapa' => 'inscricao', 'todas_categorias' => '1', 'modelo' => UploadedFile::fake()->createWithContent('x.exe', 'MZ binário')]],
+            'documentos' => [['nome' => 'Doc', 'etapa' => 'inscricao', 'checagem' => 'nenhuma', 'todas_categorias' => '1', 'modelo' => UploadedFile::fake()->createWithContent('x.exe', 'MZ binário')]],
         ])->assertSessionHasErrors(['documentos.0.modelo' => 'Envie um arquivo PDF, DOC, DOCX, XLS, XLSX, ODT ou ODS.']);
     }
 

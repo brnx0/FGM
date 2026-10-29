@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Retaguarda;
 
 use App\Enums\AlcanceCota;
 use App\Enums\BaseCota;
+use App\Enums\ChecagemDocumento;
 use App\Enums\EtapaDocumento;
 use App\Enums\ModalidadeCota;
 use App\Enums\NaturezaProponente;
@@ -198,6 +199,8 @@ class EditalController extends Controller
                     'categorias' => $this->posicoesDe($documento->categorias, $posicaoDaCategoria),
                     'modalidade_cota' => $documento->modalidade_cota?->value,
                     'anexo_referencia' => $documento->anexo_referencia,
+                    'checagem' => $documento->checagem->value,
+                    'instrucao_ia' => $documento->instrucao_ia,
                     'modeloUrl' => $documento->modelo ? route('retaguarda.editais.documentos.modelo', [$edital, $documento]) : null,
                     'modeloNome' => $documento->modelo ? $documento->modelo_nome : null,
                 ])->all(),
@@ -419,6 +422,7 @@ class EditalController extends Controller
             'naturezas' => $opcoes(NaturezaProponente::class),
             'etapas' => $opcoes(EtapaDocumento::class),
             'modalidadesCota' => $opcoes(ModalidadeCota::class),
+            'checagensDocumento' => $opcoes(ChecagemDocumento::class),
             'basesCota' => $opcoes(BaseCota::class),
             'alcancesCota' => $opcoes(AlcanceCota::class),
             'tiposEdital' => $opcoes(TipoEdital::class),

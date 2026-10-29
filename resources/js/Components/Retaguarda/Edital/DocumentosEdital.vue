@@ -11,6 +11,7 @@ const props = defineProps<{
     naturezas: OpcaoFormulario[];
     etapas: OpcaoFormulario[];
     modalidadesCota: OpcaoFormulario[];
+    checagensDocumento: OpcaoFormulario[];
     /** Categorias atuais da aba Categorias, na ordem em que estão. */
     categorias: CategoriaEditavel[];
 }>();
@@ -29,7 +30,7 @@ const ACEITOS_MODELO =
     '.pdf,.doc,.docx,.xls,.xlsx,.odt,.ods,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.oasis.opendocument.text,application/vnd.oasis.opendocument.spreadsheet';
 
 /** Campos que aparecem no cartão: só os erros deles contam no selo (id e remover_modelo não mostram mensagem). */
-const CAMPOS_VISIVEIS = /^(nome|orientacao|etapa|obrigatorio|naturezas|todas_categorias|categorias|modalidade_cota|anexo_referencia|modelo)(\.|$)/;
+const CAMPOS_VISIVEIS = /^(nome|orientacao|etapa|obrigatorio|naturezas|todas_categorias|categorias|modalidade_cota|anexo_referencia|checagem|instrucao_ia|modelo)(\.|$)/;
 
 const rotulo = (opcoes: OpcaoFormulario[], valor: string): string | undefined => opcoes.find((opcao) => opcao.valor === valor)?.rotulo;
 
@@ -69,6 +70,8 @@ const novo = (): DocumentoEditavel => ({
     categorias: [],
     modalidade_cota: '',
     anexo_referencia: '',
+    checagem: 'aceita_sem_validar',
+    instrucao_ia: '',
     modelo: null,
     remover_modelo: false,
     modeloUrl: null,
@@ -238,6 +241,39 @@ const novo = (): DocumentoEditavel => ({
                     :aria-invalid="invalido || undefined"
                     :aria-describedby="descricao"
                     @input="limpar('anexo_referencia')"
+                />
+            </CampoCadastro>
+
+            <CampoCadastro :id="idCampo('checagem')" rotulo="Checagem pela IA" obrigatorio :erro="erro('checagem')" v-slot="{ descricao, invalido }">
+                <select
+                    :id="idCampo('checagem')"
+                    v-model="documento.checagem"
+                    required
+                    :class="classeCampo"
+                    :aria-invalid="invalido || undefined"
+                    :aria-describedby="descricao"
+                    @change="limpar('checagem')"
+                >
+                    <option v-for="checagem in checagensDocumento" :key="checagem.valor" :value="checagem.valor">{{ checagem.rotulo }}</option>
+                </select>
+            </CampoCadastro>
+
+            <CampoCadastro
+                :id="idCampo('instrucao_ia')"
+                rotulo="Instrução para a IA"
+                ajuda="O que a IA deve conferir neste documento. Não aparece para o proponente."
+                :erro="erro('instrucao_ia')"
+                v-slot="{ descricao, invalido }"
+            >
+                <textarea
+                    :id="idCampo('instrucao_ia')"
+                    v-model="documento.instrucao_ia"
+                    rows="3"
+                    maxlength="2000"
+                    :class="classeTexto"
+                    :aria-invalid="invalido || undefined"
+                    :aria-describedby="descricao"
+                    @input="limpar('instrucao_ia')"
                 />
             </CampoCadastro>
 

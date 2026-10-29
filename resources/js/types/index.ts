@@ -555,6 +555,8 @@ export interface DocumentoFormulario {
     categorias: number[];
     modalidade_cota: string | null;
     anexo_referencia: string | null;
+    checagem: string;
+    instrucao_ia: string | null;
     modeloUrl: string | null;
     modeloNome: string | null;
 }
@@ -625,6 +627,8 @@ export interface DocumentoEditavel extends ItemEditavel {
     categorias: string[];
     modalidade_cota: string;
     anexo_referencia: string;
+    checagem: string;
+    instrucao_ia: string;
     /** Arquivo-modelo novo (só vai quando escolhido). */
     modelo: File | null;
     remover_modelo: boolean;
@@ -723,6 +727,7 @@ export interface RetaguardaEditaisFormProps {
     naturezas: OpcaoFormulario[];
     etapas: OpcaoFormulario[];
     modalidadesCota: OpcaoFormulario[];
+    checagensDocumento: OpcaoFormulario[];
     basesCota: OpcaoFormulario[];
     alcancesCota: OpcaoFormulario[];
     tiposEdital: OpcaoFormulario[];

@@ -404,6 +404,52 @@ class EditaisTest extends TestCase
         $this->get("/retaguarda/editais/{$manual->slug}/edit")->assertInertia(fn (Assert $p) => $p->where('importacao', null));
     }
 
+    public function test_salva_modo_de_checagem_e_instrucao_do_documento(): void
+    {
+        $edital = Edital::factory()->create();
+
+        $this->put("/retaguarda/editais/{$edital->slug}", [
+            'com_listas' => '1',
+            'documentos' => [[
+                'nome' => 'Comprovante de residência',
+                'etapa' => 'inscricao',
+                'todas_categorias' => '1',
+                'checagem' => 'rigorosa',
+                'instrucao_ia' => 'Conferir se o comprovante tem no máximo 90 dias.',
+            ]],
+        ])->assertSessionHasNoErrors();
+
+        $this->get("/retaguarda/editais/{$edital->slug}/edit")->assertInertia(fn (Assert $p) => $p
+            ->where('edital.documentos.0.checagem', 'rigorosa')
+            ->where('edital.documentos.0.instrucao_ia', 'Conferir se o comprovante tem no máximo 90 dias.')
+            ->where('checagensDocumento.0', ['valor' => 'rigorosa', 'rotulo' => 'Rigorosa']));
+    }
+
+    public function test_modo_de_checagem_invalido_e_recusado(): void
+    {
+        $edital = Edital::factory()->create();
+
+        $this->put("/retaguarda/editais/{$edital->slug}", [
+            'com_listas' => '1',
+            'documentos' => [['nome' => 'Doc', 'etapa' => 'inscricao', 'todas_categorias' => '1', 'checagem' => 'qualquer']],
+        ])->assertSessionHasErrors('documentos.0.checagem');
+
+        $this->put("/retaguarda/editais/{$edital->slug}", [
+            'com_listas' => '1',
+            'documentos' => [['nome' => 'Doc', 'etapa' => 'inscricao', 'todas_categorias' => '1']],
+        ])->assertSessionHasErrors('documentos.0.checagem');
+    }
+
+    public function test_instrucao_acima_de_2000_bytes_e_recusada(): void
+    {
+        $edital = Edital::factory()->create();
+
+        $this->put("/retaguarda/editais/{$edital->slug}", [
+            'com_listas' => '1',
+            'documentos' => [['nome' => 'Doc', 'etapa' => 'inscricao', 'todas_categorias' => '1', 'checagem' => 'rigorosa', 'instrucao_ia' => str_repeat('ç', 1100)]],
+        ])->assertSessionHasErrors('documentos.0.instrucao_ia');
+    }
+
     public function test_proponente_nao_acessa(): void
     {
         $edital = Edital::factory()->create();
