@@ -4,6 +4,7 @@ use App\Http\Controllers\Retaguarda\ConexaoIaController;
 use App\Http\Controllers\Retaguarda\EditalController;
 use App\Http\Controllers\Retaguarda\EventoController;
 use App\Http\Controllers\Retaguarda\ImportacaoEditalController;
+use App\Http\Controllers\Retaguarda\InstrucaoDocumentoController;
 use App\Http\Controllers\Retaguarda\IntegracaoIaController;
 use App\Http\Controllers\Retaguarda\LocalizacaoEventoController;
 use App\Http\Controllers\Retaguarda\LoginController;
@@ -46,6 +47,11 @@ Route::prefix('retaguarda')->name('retaguarda.')->group(function () {
             Route::delete('/{importacao}', 'destroy')->whereNumber('importacao')->name('destroy');
         });
         Route::post('/editais/{edital}/importacao/conferida', [ImportacaoEditalController::class, 'conferida'])->name('editais.importacao.conferida');
+        // Instruções da IA para os documentos, do formulário (edital salvo ou não); responde JSON. Cada chamada pode
+        // custar: limite próprio (o prefixo separa esta contagem da importação e dos outros limites por usuário).
+        Route::post('/editais/instrucoes-ia', InstrucaoDocumentoController::class)
+            ->middleware('throttle:10,1,instrucoes-ia')
+            ->name('editais.instrucoes-ia');
 
         Route::resource('editais', EditalController::class)
             ->except('show')

@@ -708,6 +708,7 @@ const tituloDaPagina = editando ? salvo.titulo || 'Edital sem título' : 'Novo e
                             :modalidades-cota="modalidadesCota"
                             :checagens-documento="checagensDocumento"
                             :categorias="form.categorias"
+                            :contexto-edital="{ titulo: form.titulo, objeto: form.objeto, naturezas: form.naturezas }"
                             @limpar-erros="limparErros"
                             @definir-erro="definirErro"
                         />
