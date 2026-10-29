@@ -378,6 +378,11 @@ class EditalEstruturaSalvarTest extends TestCase
             'com_listas' => '1',
             'chamadas' => [['nome' => 'C', 'inicio' => '2026-11-01', 'fim' => '2026-11-30', $enviada => '2026-12-05']],
         ])->assertSessionHasErrors(["chamadas.0.{$faltante}" => $mensagens[$faltante]]);
+
+        if (str_ends_with($enviada, '_fim')) {
+            $this->assertFalse(session('errors')->has("chamadas.0.{$enviada}"));
+        }
+
         $this->assertSame(0, Edital::count());
     }
 
