@@ -375,13 +375,13 @@ class EditaisTest extends TestCase
                     'geral' => 70,
                     'blocos' => [
                         ['bloco' => 'identificacao', 'rotulo' => 'Identificação', 'nota' => 90, 'justificativa' => 'Cabeçalho claro.'],
-                        ['bloco' => 'inscricao', 'rotulo' => 'Inscrição', 'nota' => 60, 'justificativa' => 'Prazos divergentes.'],
+                        ['bloco' => 'inscricao', 'rotulo' => 'Períodos', 'nota' => 60, 'justificativa' => 'Prazos divergentes.'],
                     ],
                 ],
                 'atencao' => [
                     [
                         'bloco' => 'inscricao',
-                        'blocoRotulo' => 'Inscrição',
+                        'blocoRotulo' => 'Períodos',
                         'tipo' => 'divergencia',
                         'tipoRotulo' => 'Divergência no edital',
                         'texto' => 'O item 5.1 diz 01 a 31/07 e o 11.1 dá outro prazo.',

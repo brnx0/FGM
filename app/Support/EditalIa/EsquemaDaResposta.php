@@ -21,7 +21,7 @@ final class EsquemaDaResposta
     /** Blocos com nota de confiabilidade, na ordem de exibição: chave => rótulo. */
     public const array BLOCOS = [
         'identificacao' => 'Identificação',
-        'inscricao' => 'Inscrição',
+        'inscricao' => 'Períodos',
         'participacao' => 'Participação',
         'categorias' => 'Categorias',
         'cotas' => 'Cotas',

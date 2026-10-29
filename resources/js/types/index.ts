@@ -438,7 +438,7 @@ export interface RetaguardaEditaisIndexProps {
     situacoes: { valor: SituacaoEdital; rotulo: string }[];
     /** Provedor principal com modelo e chave na Integração com IA. "Importar com IA" aparece sempre; sem isso, o envio é recusado. */
     importacaoConfigurada: boolean;
-    /** Tamanho máximo do PDF da importação (Integração com IA). */
+    /** Tamanho máximo do PDF da importação, fixo no código (14 MB). */
     tamanhoMaximoPdfMb: number;
     importacoes: ImportacaoResumo[];
 }

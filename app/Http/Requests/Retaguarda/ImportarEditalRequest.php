@@ -6,7 +6,7 @@ use App\Models\ConfiguracaoIa;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
-/** PDF de edital para a IA analisar, até o tamanho máximo da importação (Integração com IA). */
+/** PDF de edital para a IA analisar, até o tamanho máximo fixo da importação (14 MB). */
 class ImportarEditalRequest extends FormRequest
 {
     public function authorize(): bool
