@@ -2,33 +2,39 @@
 
 namespace App\Models;
 
+use App\Enums\EtapaDocumento;
+use App\Enums\ModalidadeCota;
 use App\Enums\NaturezaProponente;
 use Database\Factories\EditalDocumentoFactory;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Casts\AsEnumCollection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
-/** Documento exigido na inscrição de um edital. */
+/** Documento exigido numa etapa do edital; naturezas nulas = todas, categorias só contam sem todas_categorias. */
+#[Fillable([
+    'nome', 'orientacao', 'etapa', 'obrigatorio', 'naturezas', 'todas_categorias',
+    'modalidade_cota', 'anexo_referencia', 'modelo', 'modelo_nome', 'ordem',
+])]
 class EditalDocumento extends Model
 {
     /** @use HasFactory<EditalDocumentoFactory> */
     use HasFactory;
 
-    protected $table = 'edital_documentos';
-
-    protected $fillable = [
-        'ordem', 'nome', 'orientacao', 'obrigatorio', 'naturezas', 'todas_categorias', 'tamanho_max_mb',
-    ];
-
+    /**
+     * @return array<string, mixed>
+     */
     protected function casts(): array
     {
         return [
-            'naturezas' => AsEnumCollection::of(NaturezaProponente::class),
+            'etapa' => EtapaDocumento::class,
             'obrigatorio' => 'boolean',
+            'naturezas' => AsEnumCollection::of(NaturezaProponente::class),
             'todas_categorias' => 'boolean',
-            'tamanho_max_mb' => 'integer',
+            'modalidade_cota' => ModalidadeCota::class,
+            'ordem' => 'integer',
         ];
     }
 
@@ -42,15 +48,5 @@ class EditalDocumento extends Model
     public function categorias(): BelongsToMany
     {
         return $this->belongsToMany(EditalCategoria::class, 'edital_documento_categoria');
-    }
-
-    public function valeParaCategoria(EditalCategoria $categoria): bool
-    {
-        return $this->todas_categorias || $this->categorias->contains('id', $categoria->id);
-    }
-
-    public function valeParaNatureza(NaturezaProponente $natureza): bool
-    {
-        return $this->naturezas->contains($natureza);
     }
 }

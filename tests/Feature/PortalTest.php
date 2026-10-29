@@ -2,7 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Enums\EtapaDocumento;
+use App\Enums\NaturezaProponente;
+use App\Enums\TipoEdital;
 use App\Models\Edital;
+use App\Models\EditalCategoria;
+use App\Models\EditalCategoriaItem;
+use App\Models\EditalChamada;
+use App\Models\EditalDocumento;
 use App\Models\Evento;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -106,7 +113,7 @@ class PortalTest extends TestCase
             'titulo' => 'SalCine 2',
             'slug' => 'salcine-2',
             'categoria' => 'Audiovisual',
-            'divulgacao' => '<p>Apoio ao audiovisual.</p>',
+            'resumo' => 'Apoio ao audiovisual.',
             'inscricoes_inicio' => '2026-11-05',
             'inscricoes_fim' => '2026-11-30',
         ]);
@@ -117,13 +124,125 @@ class PortalTest extends TestCase
                 ->where('titulo', 'SalCine 2')
                 ->where('slug', 'salcine-2')
                 ->where('categoria', 'Audiovisual')
-                ->where('divulgacao', '<p>Apoio ao audiovisual.</p>')
-                ->missing('resumo')
+                ->where('resumo', 'Apoio ao audiovisual.')
                 ->where('situacao', 'aberto')
                 ->where('situacaoRotulo', 'Aberto')
                 ->where('inscricoesInicio', '05/11/2026')
                 ->where('inscricoesFim', '30/11/2026')
-                ->where('pdf', route('editais.pdf', 'salcine-2'))));
+                ->where('pdf', route('editais.pdf', 'salcine-2'))
+                ->etc()));
+    }
+
+    public function test_pagina_do_edital_completo_envia_os_blocos_estruturados(): void
+    {
+        $this->travelTo(Carbon::parse('2026-11-10 10:00', 'America/Bahia'));
+        $edital = Edital::factory()->create([
+            'slug' => 'completo',
+            'inscricoes_inicio' => '2026-11-05',
+            'inscricoes_fim' => '2026-11-30',
+            'numero' => '12/2026',
+            'tipo' => TipoEdital::Chamamento,
+            'objeto' => 'Apoiar a produção cultural.',
+            'naturezas' => [NaturezaProponente::PessoaFisica, NaturezaProponente::Mei],
+            'aceita_coletivos' => true,
+            'inscricoes_por_proponente' => 2,
+            'cotas' => [
+                'negros' => ['ativa' => true, 'percentual' => 20, 'quantidade' => null],
+                'indigenas' => ['ativa' => false, 'percentual' => 5, 'quantidade' => null],
+                'pcd' => ['ativa' => true, 'percentual' => null, 'quantidade' => 3],
+            ],
+            'informacoes' => [
+                'vedacoes' => "Primeira linha\nSegunda linha",
+                'contatos' => '',
+                'base_legal' => '  ',
+                'anexos' => 'Anexo I',
+            ],
+        ]);
+        EditalChamada::factory()->for($edital)->create(['nome' => 'Chamada 1', 'inicio' => '2026-11-01', 'fim' => '2026-11-08', 'ordem' => 1]);
+        EditalChamada::factory()->for($edital)->create(['nome' => 'Chamada 2', 'inicio' => '2026-11-05', 'fim' => '2026-11-30', 'ordem' => 2]);
+        EditalChamada::factory()->for($edital)->create(['nome' => 'Chamada 3', 'inicio' => '2026-12-01', 'fim' => '2026-12-10', 'ordem' => 3]);
+        $categoria = EditalCategoria::factory()->for($edital)->create(['nome' => 'Apoio', 'valor_centavos' => 1234567, 'vagas' => 4]);
+        EditalCategoriaItem::factory()->for($categoria, 'categoria')->create(['nome' => 'Casarão', 'valor_centavos' => 50000, 'vagas' => 1, 'suplentes' => 2]);
+        $outra = EditalCategoria::factory()->for($edital)->create(['nome' => 'Outra', 'ordem' => 2]);
+        $porCategoria = EditalDocumento::factory()->for($edital)->create([
+            'nome' => 'Portfólio', 'obrigatorio' => false, 'todas_categorias' => false,
+            'naturezas' => [NaturezaProponente::Mei], 'ordem' => 1,
+        ]);
+        $porCategoria->categorias()->attach($outra->id);
+        EditalDocumento::factory()->for($edital)->create(['nome' => 'Comprovante de cota', 'etapa' => EtapaDocumento::ValidacaoCotas, 'ordem' => 2]);
+        EditalDocumento::factory()->for($edital)->create(['nome' => 'Laudo', 'etapa' => EtapaDocumento::Habilitacao, 'ordem' => 3]);
+
+        $this->get('/editais/completo')->assertOk()->assertInertia(fn (Assert $p) => $p
+            ->where('edital.numero', '12/2026')
+            ->where('edital.tipoRotulo', TipoEdital::Chamamento->rotulo())
+            ->where('edital.objeto', 'Apoiar a produção cultural.')
+            ->has('edital.chamadas', 3)
+            ->where('edital.chamadas.0.nome', 'Chamada 1')
+            ->where('edital.chamadas.0.situacao', 'encerrado')
+            ->where('edital.chamadas.1.situacao', 'aberto')
+            ->where('edital.chamadas.1.inicio', '05/11/2026')
+            ->where('edital.chamadas.2.situacao', 'em_breve')
+            ->where('edital.naturezas', [NaturezaProponente::PessoaFisica->rotulo(), NaturezaProponente::Mei->rotulo()])
+            ->where('edital.aceitaColetivos', true)
+            ->where('edital.inscricoesPorProponente', 2)
+            ->has('edital.categorias', 2)
+            ->where('edital.categorias.0.nome', 'Apoio')
+            ->where('edital.categorias.0.valor', 'R$ 12.345,67')
+            ->where('edital.categorias.0.vagas', 4)
+            ->where('edital.categorias.0.itens.0.nome', 'Casarão')
+            ->where('edital.categorias.0.itens.0.valor', 'R$ 500,00')
+            ->where('edital.categorias.0.itens.0.suplentes', 2)
+            ->has('edital.cotas', 2)
+            ->where('edital.cotas.0', ['modalidade' => 'Pessoas negras', 'percentual' => 20, 'quantidade' => null, 'base' => null])
+            ->where('edital.cotas.1', ['modalidade' => 'Pessoas com deficiência', 'percentual' => null, 'quantidade' => 3, 'base' => null])
+            ->has('edital.documentosInscricao', 1)
+            ->where('edital.documentosInscricao.0.nome', 'Portfólio')
+            ->where('edital.documentosInscricao.0.obrigatorio', false)
+            ->where('edital.documentosInscricao.0.naturezas', [NaturezaProponente::Mei->rotulo()])
+            ->where('edital.documentosInscricao.0.categorias', ['Outra'])
+            ->where('edital.documentosInscricao.0.modeloUrl', null)
+            ->has('edital.informacoes', 2)
+            ->where('edital.informacoes.0', ['chave' => 'vedacoes', 'titulo' => 'Vedações', 'texto' => "Primeira linha\nSegunda linha"])
+            ->where('edital.informacoes.1.chave', 'anexos'));
+    }
+
+    public function test_cotas_sobre_os_recursos_informam_a_base(): void
+    {
+        Edital::factory()->create([
+            'slug' => 'cotas-em-recursos',
+            'cotas' => [
+                'negros' => ['ativa' => true, 'percentual' => 25, 'quantidade' => 50000],
+                'base' => 'recursos',
+            ],
+        ]);
+
+        $this->get('/editais/cotas-em-recursos')->assertInertia(fn (Assert $p) => $p
+            ->where('edital.cotas', [['modalidade' => 'Pessoas negras', 'percentual' => 25, 'quantidade' => 50000, 'base' => 'recursos']]));
+    }
+
+    public function test_documento_com_modelo_envia_o_link_de_download(): void
+    {
+        $edital = Edital::factory()->create(['slug' => 'com-modelo']);
+        $documento = EditalDocumento::factory()->for($edital)->create(['modelo' => 'x/modelo.docx', 'modelo_nome' => 'modelo.docx']);
+
+        $this->get('/editais/com-modelo')->assertInertia(fn (Assert $p) => $p
+            ->where('edital.documentosInscricao.0.modeloUrl', route('editais.documentos.modelo', [$edital, $documento])));
+    }
+
+    public function test_edital_antigo_sem_blocos_abre_sem_secoes_vazias(): void
+    {
+        Edital::factory()->create(['slug' => 'antigo']);
+
+        $this->get('/editais/antigo')->assertOk()->assertInertia(fn (Assert $p) => $p
+            ->where('edital.numero', null)
+            ->where('edital.tipoRotulo', null)
+            ->where('edital.objeto', null)
+            ->where('edital.chamadas', [])
+            ->where('edital.naturezas', [])
+            ->where('edital.categorias', [])
+            ->where('edital.cotas', [])
+            ->where('edital.documentosInscricao', [])
+            ->where('edital.informacoes', []));
     }
 
     public function test_baixa_o_pdf_do_edital(): void

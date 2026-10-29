@@ -2,21 +2,32 @@
 
 namespace App\Http\Requests\Retaguarda;
 
+use App\Enums\AlcanceCota;
+use App\Enums\BaseCota;
+use App\Enums\EtapaDocumento;
+use App\Enums\ModalidadeCota;
 use App\Enums\NaturezaProponente;
-use App\Enums\TipoFomento;
-use App\Enums\UnidadeCota;
+use App\Enums\TipoEdital;
 use App\Models\Edital;
-use App\Models\EditalCategoria;
-use App\Support\HtmlSeguro;
-use Closure;
+use App\Rules\TamanhoEmBytes;
+use App\Support\Edital\SincronizadorDoEdital;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Enum;
 use Illuminate\Validation\Validator;
 
-/** Criação e edição de edital na retaguarda. Sem novo upload, o PDF e a imagem atuais ficam. */
+/**
+ * Criação e edição de edital na retaguarda. Tudo é opcional no rascunho; publicado exige título, resumo e categoria
+ * (e, ao passar a publicado, o edital completo — ver EditalController).
+ * Sem novo upload, o PDF, a imagem e os arquivos-modelo atuais ficam.
+ * As listas (chamadas, categorias, documentos, requisitos, critérios) só são tocadas com o marcador `com_listas`;
+ * com ele, lista ausente = apagar todas. Referências entre listas vão por posição (índice na lista enviada).
+ */
 class SalvarEditalRequest extends FormRequest
 {
+    public const int MAXIMO_ITENS = 50;
+
     public function authorize(): bool
     {
         return true;
@@ -27,146 +38,223 @@ class SalvarEditalRequest extends FormRequest
      */
     public function rules(): array
     {
+        $lista = ['nullable', 'array', 'list', 'max:'.self::MAXIMO_ITENS];
+        $natureza = Rule::enum(NaturezaProponente::class);
+        $posicaoDeChamada = ['nullable', 'integer', Rule::in($this->posicoes('chamadas'))];
+        $posicaoDeCategoria = ['integer', Rule::in($this->posicoes('categorias'))];
+
         return [
-            'titulo' => ['required', 'string', 'max:255'],
-            'categoria' => ['required', 'string', 'max:255'],
-            'tipo_fomento' => ['required', Rule::enum(TipoFomento::class)],
-            // Limite antes de sanitizar: o HTML do editor, não o texto visível.
-            'divulgacao' => ['required', 'string', 'max:200000'],
-            'inscricoes_inicio' => ['required', 'date'],
-            'inscricoes_fim' => ['required', 'date', 'after_or_equal:inscricoes_inicio'],
-            'vigencia_inicio' => ['required', 'date'],
-            'vigencia_fim' => ['nullable', 'date', 'after_or_equal:vigencia_inicio'],
+            'com_listas' => ['boolean'],
+
+            'titulo' => ['required_if_accepted:publicado', 'nullable', 'string', 'max:255', new TamanhoEmBytes(255)],
+            'resumo' => ['required_if_accepted:publicado', 'nullable', 'string'],
+            'categoria' => ['required_if_accepted:publicado', 'nullable', 'string', 'max:255'],
+            'numero' => ['nullable', 'string', 'max:30', new TamanhoEmBytes(30)],
+            'tipo' => ['nullable', Rule::enum(TipoEdital::class)],
+            'objeto' => ['nullable', 'string', 'max:1000', new TamanhoEmBytes(1000)],
+            'dom_data' => ['nullable', 'date'],
+            'dom_numero' => ['nullable', 'string', 'max:20', new TamanhoEmBytes(20)],
+            'naturezas' => ['nullable', 'array'],
+            'naturezas.*' => ['distinct', $natureza],
+            'aceita_coletivos' => ['nullable', 'boolean'],
+            'inscricoes_por_proponente' => ['nullable', 'integer', 'min:1', 'max:1000'],
+            'limite_por_chamada' => ['nullable', 'boolean'],
+            'forma_inscricao_original' => ['nullable', 'string', 'max:1000', new TamanhoEmBytes(1000)],
+            'nota_maxima' => ['nullable', 'integer', 'min:0', 'max:1000000'],
+            'nota_corte' => ['nullable', 'numeric', 'min:0', 'max:999.99'],
+
             'imagem' => ['nullable', 'image', 'mimes:jpg,png,webp', 'max:5120'],
             // mimetypes confere o conteúdo do arquivo, não só a extensão.
             'pdf' => ['nullable', 'file', 'mimes:pdf', 'mimetypes:application/pdf', 'max:20480'],
             'publicado' => ['boolean'],
             'remover_imagem' => ['boolean'],
-            ...$this->regrasDasCategorias(),
-            ...$this->regrasDosDocumentos(),
-        ];
-    }
 
-    /**
-     * Cada posição em `categorias` aponta para o array `categorias` do mesmo envio (conferido em after()).
-     *
-     * @return array<string, array<mixed>>
-     */
-    private function regrasDosDocumentos(): array
-    {
-        return [
-            'documentos' => ['nullable', 'array', 'max:50'],
+            'chamadas' => $lista,
+            'chamadas.*.id' => ['nullable', 'integer'],
+            'chamadas.*.nome' => ['required', 'string', 'max:100', new TamanhoEmBytes(100)],
+            'chamadas.*.inicio' => ['required', 'date'],
+            'chamadas.*.fim' => ['required', 'date', 'after_or_equal:chamadas.*.inicio'],
+
+            'categorias' => $lista,
+            'categorias.*.id' => ['nullable', 'integer'],
+            'categorias.*.nome' => ['required', 'string', 'max:255', new TamanhoEmBytes(255)],
+            'categorias.*.descricao' => ['nullable', 'string', 'max:2000', new TamanhoEmBytes(2000)],
+            'categorias.*.valor' => ['nullable', 'numeric', 'min:0.01', 'max:10000000000'],
+            'categorias.*.vagas' => ['nullable', 'integer', 'min:1', 'max:1000000'],
+            'categorias.*.naturezas' => ['nullable', 'array'],
+            'categorias.*.naturezas.*' => [$natureza],
+            'categorias.*.chamada' => $posicaoDeChamada,
+            'categorias.*.itens' => $lista,
+            'categorias.*.itens.*.id' => ['nullable', 'integer'],
+            'categorias.*.itens.*.nome' => ['required', 'string', 'max:255', new TamanhoEmBytes(255)],
+            'categorias.*.itens.*.valor' => ['nullable', 'numeric', 'min:0.01', 'max:10000000000'],
+            'categorias.*.itens.*.vagas' => ['nullable', 'integer', 'min:1', 'max:1000000'],
+            'categorias.*.itens.*.suplentes' => ['nullable', 'integer', 'min:0', 'max:1000000'],
+
+            'documentos' => $lista,
             'documentos.*.id' => ['nullable', 'integer'],
-            'documentos.*.nome' => ['required', 'string', 'max:255'],
-            'documentos.*.orientacao' => ['nullable', 'string', 'max:500'],
+            'documentos.*.nome' => ['required', 'string', 'max:255', new TamanhoEmBytes(255)],
+            'documentos.*.orientacao' => ['nullable', 'string', 'max:1000', new TamanhoEmBytes(1000)],
+            'documentos.*.etapa' => ['required', Rule::enum(EtapaDocumento::class)],
             'documentos.*.obrigatorio' => ['boolean'],
-            // Sem nenhuma marcada o campo nem chega no envio: ausente vale como vazio.
-            'documentos.*.naturezas' => ['required', 'array', 'min:1', $this->semRepetidos()],
-            'documentos.*.naturezas.*' => [Rule::enum(NaturezaProponente::class)],
+            'documentos.*.naturezas' => ['nullable', 'array'],
+            'documentos.*.naturezas.*' => [$natureza],
             'documentos.*.todas_categorias' => ['boolean'],
-            'documentos.*.categorias' => ['nullable', 'array', $this->semRepetidos()],
-            'documentos.*.categorias.*' => ['integer', 'min:0'],
-            'documentos.*.tamanho_max_mb' => ['required', 'integer', 'min:1', 'max:20'],
+            'documentos.*.categorias' => ['required_if_declined:documentos.*.todas_categorias', 'nullable', 'array'],
+            'documentos.*.categorias.*' => $posicaoDeCategoria,
+            'documentos.*.modalidade_cota' => ['nullable', Rule::enum(ModalidadeCota::class)],
+            'documentos.*.anexo_referencia' => ['nullable', 'string', 'max:255', new TamanhoEmBytes(255)],
+            'documentos.*.modelo' => ['nullable', 'file', 'mimes:pdf,doc,docx,xls,xlsx,odt,ods', 'max:10240'],
+            'documentos.*.remover_modelo' => ['boolean'],
+
+            'requisitos' => $lista,
+            'requisitos.*.id' => ['nullable', 'integer'],
+            'requisitos.*.descricao' => ['required', 'string', 'max:1000', new TamanhoEmBytes(1000)],
+            'requisitos.*.documentos' => ['nullable', 'array'],
+            'requisitos.*.documentos.*' => ['integer', Rule::in($this->posicoes('documentos'))],
+
+            'criterios' => $lista,
+            'criterios.*.id' => ['nullable', 'integer'],
+            'criterios.*.nome' => ['required', 'string', 'max:500', new TamanhoEmBytes(500)],
+            'criterios.*.descricao' => ['nullable', 'string', 'max:2000', new TamanhoEmBytes(2000)],
+            'criterios.*.peso' => ['nullable', 'numeric', 'min:0', 'max:9999.99'],
+            'criterios.*.pontos_maximos' => ['nullable', 'numeric', 'min:0', 'max:9999.99'],
+            'criterios.*.todas_categorias' => ['boolean'],
+            'criterios.*.categorias' => ['required_if_declined:criterios.*.todas_categorias', 'nullable', 'array'],
+            'criterios.*.categorias.*' => $posicaoDeCategoria,
+
+            ...$this->regrasDasCotas(),
+
+            'pontuacao_extra' => ['nullable', 'array'],
+            'pontuacao_extra.grupos' => $lista,
+            'pontuacao_extra.grupos.*.grupo' => ['required', 'string', 'max:255'],
+            'pontuacao_extra.grupos.*.pontos_por_pessoa' => ['nullable', 'numeric', 'min:0', 'max:9999.99'],
+            'pontuacao_extra.grupos.*.maximo' => ['nullable', 'numeric', 'min:0', 'max:9999.99'],
+            'pontuacao_extra.teto' => ['nullable', 'numeric', 'min:0', 'max:9999.99'],
+            'pontuacao_extra.conta_para_corte' => ['nullable', 'boolean'],
+
+            'informacoes' => ['nullable', 'array:'.implode(',', array_keys(Edital::SECOES_INFORMATIVAS))],
+            'informacoes.*' => ['nullable', 'string', 'max:20000'],
         ];
     }
 
     /**
-     * @return array<string, array<mixed>>
+     * @return array<string, mixed>
      */
-    private function regrasDasCategorias(): array
+    private function regrasDasCotas(): array
     {
         $regras = [
-            'categorias' => ['nullable', 'array', 'max:30'],
-            'categorias.*.id' => ['nullable', 'integer'],
-            'categorias.*.nome' => ['required', 'string', 'max:255'],
-            'categorias.*.valor' => ['required', 'numeric', 'min:0.01', 'max:999999999'],
-            'categorias.*.vagas' => ['required', 'integer', 'min:1', 'max:10000'],
-            // Sem nenhuma marcada o campo nem chega no envio: ausente vale como vazio.
-            'categorias.*.naturezas' => ['required', 'array', 'min:1', $this->semRepetidos()],
-            'categorias.*.naturezas.*' => [Rule::enum(NaturezaProponente::class)],
+            'cotas' => ['nullable', 'array'],
+            'cotas.base' => ['nullable', Rule::enum(BaseCota::class)],
+            'cotas.alcance' => ['nullable', Rule::enum(AlcanceCota::class)],
+            'cotas.veda_negro_indigena' => ['nullable', 'boolean'],
+            'cotas.heteroidentificacao' => ['nullable', 'boolean'],
         ];
 
-        foreach (EditalCategoria::COTAS as $cota) {
-            $regras["categorias.*.cotas.{$cota}.valor"] = ['nullable', 'integer', 'min:1'];
-            $regras["categorias.*.cotas.{$cota}.unidade"] = ["required_with:categorias.*.cotas.{$cota}.valor", 'nullable', Rule::enum(UnidadeCota::class)];
-
-            // Percentual não passa de 100; a regra depende da unidade de cada categoria.
-            foreach (array_keys((array) $this->input('categorias', [])) as $indice) {
-                if ($this->input("categorias.{$indice}.cotas.{$cota}.unidade") === UnidadeCota::Percentual->value) {
-                    $regras["categorias.{$indice}.cotas.{$cota}.valor"] = ['nullable', 'integer', 'min:1', 'max:100'];
-                }
-            }
+        foreach (ModalidadeCota::cases() as $modalidade) {
+            $regras["cotas.{$modalidade->value}"] = ['nullable', 'array'];
+            $regras["cotas.{$modalidade->value}.ativa"] = ['nullable', 'boolean'];
+            $regras["cotas.{$modalidade->value}.percentual"] = ['nullable', 'numeric', 'min:0', 'max:100'];
+            $regras["cotas.{$modalidade->value}.quantidade"] = ['nullable', 'numeric', 'min:0', 'max:10000000000'];
         }
 
         return $regras;
     }
 
     /**
-     * Repetição dentro de cada lista. A regra `distinct` com curinga compara entre todos os itens
-     * (duas categorias com a mesma natureza seriam recusadas).
+     * Posições válidas de uma lista enviada (para as referências entre listas).
+     *
+     * @return list<int>
      */
-    private function semRepetidos(): Closure
+    private function posicoes(string $lista): array
     {
-        return function (string $atributo, mixed $valor, Closure $falhar): void {
-            if (is_array($valor) && count($valor) !== count(array_unique($valor))) {
-                $falhar('O campo :attribute tem um valor repetido.');
-            }
-        };
+        $itens = $this->input($lista);
+
+        return is_array($itens) ? array_keys(array_values($itens)) : [];
     }
 
     /**
+     * O app tem poucas traduções do Laravel; as mensagens aparecem embaixo de cada campo, sem o nome dele.
+     *
+     * @return array<string, mixed>
+     */
+    public function messages(): array
+    {
+        return [
+            'required' => 'Este campo é obrigatório.',
+            'required_if_accepted' => 'Este campo é obrigatório.',
+            'string' => 'Digite um texto.',
+            'max' => [
+                'string' => 'Use no máximo :max caracteres.',
+                'numeric' => 'Informe um valor de no máximo :max.',
+                'array' => 'Cadastre no máximo :max itens.',
+                'file' => 'O arquivo deve ter no máximo :max KB.',
+            ],
+            'min' => [
+                'numeric' => 'Informe um valor de no mínimo :min.',
+            ],
+            'integer' => 'Informe um número inteiro.',
+            'numeric' => 'Informe um número.',
+            'in' => 'Selecione uma opção da lista.',
+            Enum::class => 'Selecione uma opção da lista.',
+            'distinct' => 'Esta opção foi escolhida mais de uma vez.',
+            'boolean' => 'Valor inválido.',
+            'array' => 'Valor inválido.',
+            'list' => 'Valor inválido.',
+            'date' => 'Digite uma data válida.',
+            'pdf.file' => 'O arquivo precisa ser um PDF.',
+            'pdf.mimes' => 'O arquivo precisa ser um PDF.',
+            'pdf.mimetypes' => 'O arquivo precisa ser um PDF.',
+            'pdf.max' => 'O PDF deve ter no máximo 20 MB.',
+            'imagem.image' => 'Envie uma imagem JPG, PNG ou WEBP.',
+            'imagem.mimes' => 'Envie uma imagem JPG, PNG ou WEBP.',
+            'imagem.max' => 'A imagem deve ter no máximo 5 MB.',
+            'chamadas.*.fim.after_or_equal' => 'O fim deve ser igual ou posterior ao início.',
+            'categorias.*.valor.min' => 'Informe um valor maior que zero.',
+            'categorias.*.itens.*.valor.min' => 'Informe um valor maior que zero.',
+            'documentos.*.categorias.required_if_declined' => 'Escolha ao menos uma categoria.',
+            'criterios.*.categorias.required_if_declined' => 'Escolha ao menos uma categoria.',
+            'documentos.*.modelo.file' => 'Envie um arquivo PDF, DOC, DOCX, XLS, XLSX, ODT ou ODS.',
+            'documentos.*.modelo.mimes' => 'Envie um arquivo PDF, DOC, DOCX, XLS, XLSX, ODT ou ODS.',
+            'documentos.*.modelo.max' => 'O arquivo-modelo deve ter no máximo 10 MB.',
+            'informacoes.array' => 'Valor inválido.',
+        ];
+    }
+
+    /**
+     * Nomes legíveis para as mensagens padrão do Laravel que ainda usem :attribute.
+     *
      * @return array<string, string>
      */
     public function attributes(): array
     {
         return [
-            'tipo_fomento' => 'tipo de fomento',
-            'vigencia_inicio' => 'início da vigência',
-            'vigencia_fim' => 'fim da vigência',
-            'divulgacao' => 'divulgação',
+            'chamadas' => 'chamadas',
+            'chamadas.*.nome' => 'nome da chamada',
+            'chamadas.*.inicio' => 'início da chamada',
+            'chamadas.*.fim' => 'fim da chamada',
+            'categorias' => 'categorias',
             'categorias.*.nome' => 'nome da categoria',
-            'categorias.*.valor' => 'valor por proposta',
-            'categorias.*.vagas' => 'vagas',
-            'categorias.*.naturezas' => 'naturezas',
-            'categorias.*.cotas.*.valor' => 'reserva de cotas',
-            'categorias.*.cotas.*.unidade' => 'unidade da cota',
+            'categorias.*.valor' => 'valor da categoria',
+            'categorias.*.vagas' => 'vagas da categoria',
+            'categorias.*.chamada' => 'chamada da categoria',
+            'categorias.*.itens.*.nome' => 'nome do item',
+            'documentos' => 'documentos',
             'documentos.*.nome' => 'nome do documento',
-            'documentos.*.orientacao' => 'orientação',
-            'documentos.*.naturezas' => 'naturezas',
-            'documentos.*.categorias' => 'categorias',
-            'documentos.*.tamanho_max_mb' => 'tamanho máximo',
+            'documentos.*.etapa' => 'etapa do documento',
+            'documentos.*.modelo' => 'arquivo-modelo',
+            'requisitos' => 'requisitos',
+            'requisitos.*.descricao' => 'descrição do requisito',
+            'criterios' => 'critérios',
+            'criterios.*.nome' => 'nome do critério',
+            'naturezas.*' => 'natureza',
+            'dom_data' => 'data de publicação no DOM',
+            'dom_numero' => 'número da edição do DOM',
+            'nota_maxima' => 'nota máxima',
+            'nota_corte' => 'nota de corte',
+            'inscricoes_por_proponente' => 'inscrições por proponente',
+            'forma_inscricao_original' => 'forma de inscrição no edital original',
         ];
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    public function messages(): array
-    {
-        return [
-            'divulgacao.required' => 'Este campo é obrigatório.',
-            'tipo_fomento.enum' => 'Selecione uma opção da lista.',
-            'vigencia_fim.after_or_equal' => 'O fim da vigência não pode ser antes do início.',
-            'pdf.file' => 'O arquivo precisa ser um PDF.',
-            'pdf.mimes' => 'O arquivo precisa ser um PDF.',
-            'pdf.mimetypes' => 'O arquivo precisa ser um PDF.',
-            'categorias.*.naturezas.required' => 'Marque ao menos uma natureza.',
-            'categorias.*.naturezas.min' => 'Marque ao menos uma natureza.',
-            'documentos.*.naturezas.required' => 'Marque ao menos uma natureza.',
-            'documentos.*.naturezas.min' => 'Marque ao menos uma natureza.',
-            'documentos.*.categorias.*.integer' => 'Categoria inválida.',
-            'documentos.*.categorias.*.min' => 'Categoria inválida.',
-        ];
-    }
-
-    /** HTML sem imagem, vídeo, linha ou tabela e só com espaços (inclusive &nbsp;) no texto. */
-    private function soTemEspacos(string $html): bool
-    {
-        if (preg_match('/<(img|iframe|hr|table)\b/i', $html) === 1) {
-            return false;
-        }
-
-        return preg_replace('/[\s\x{00A0}]+/u', '', html_entity_decode(strip_tags($html))) === '';
     }
 
     /**
@@ -178,20 +266,6 @@ class SalvarEditalRequest extends FormRequest
     {
         return [
             function (Validator $validator): void {
-                $divulgacao = $this->input('divulgacao');
-
-                if (! is_string($divulgacao) || $validator->errors()->has('divulgacao')) {
-                    return;
-                }
-
-                // Parágrafos vazios e espaços não são conteúdo; imagem e vídeo são.
-                $limpo = HtmlSeguro::limpar($divulgacao);
-
-                if ($limpo === null || $this->soTemEspacos($limpo)) {
-                    $validator->errors()->add('divulgacao', 'Este campo é obrigatório.');
-                }
-            },
-            function (Validator $validator): void {
                 $edital = $this->route('edital');
                 $temPdf = $this->hasFile('pdf') || ($edital instanceof Edital && filled($edital->pdf));
 
@@ -199,157 +273,140 @@ class SalvarEditalRequest extends FormRequest
                     $validator->errors()->add('pdf', 'Envie o PDF do edital para publicar.');
                 }
             },
-            function (Validator $validator): void {
-                foreach (array_keys((array) $this->input('categorias', [])) as $indice) {
-                    // Só confere a soma quando vagas e cotas daquela categoria passaram nas regras.
-                    $comErro = array_filter(
-                        $validator->errors()->keys(),
-                        fn (string $chave): bool => str_starts_with($chave, "categorias.{$indice}."),
-                    );
-
-                    if ($comErro !== []) {
-                        continue;
-                    }
-
-                    $categoria = new EditalCategoria($this->atributosDaCategoria((array) $this->input("categorias.{$indice}")));
-
-                    if ($categoria->totalReservado() > $categoria->vagas) {
-                        $validator->errors()->add("categorias.{$indice}.cotas", 'As cotas somam mais vagas do que a categoria tem.');
-                    }
-                }
-            },
-            function (Validator $validator): void {
-                $totalDeCategorias = count((array) $this->input('categorias', []));
-
-                foreach ((array) $this->input('documentos', []) as $indice => $documento) {
-                    if (! is_array($documento) || $this->documentoValeParaTodas($documento)) {
-                        continue;
-                    }
-
-                    $posicoes = (array) ($documento['categorias'] ?? []);
-
-                    if ($posicoes === []) {
-                        $validator->errors()->add("documentos.{$indice}.categorias", 'Escolha ao menos uma categoria ou marque todas.');
-                    }
-
-                    foreach ($posicoes as $chave => $posicao) {
-                        // Posição malformada já tem erro das regras; aqui só a que não existe na lista.
-                        if (! $validator->errors()->has("documentos.{$indice}.categorias.{$chave}")
-                            && (int) $posicao >= $totalDeCategorias) {
-                            $validator->errors()->add("documentos.{$indice}.categorias.{$chave}", 'Categoria inválida.');
-                        }
-                    }
-                }
-            },
         ];
     }
 
-    /**
-     * Ausente vale como "todas" (o padrão do documento).
-     *
-     * @param  array<string, mixed>  $documento
-     */
-    private function documentoValeParaTodas(array $documento): bool
+    /** As listas vieram no envio (o formulário completo manda o marcador). */
+    public function comListas(): bool
     {
-        return filter_var($documento['todas_categorias'] ?? true, FILTER_VALIDATE_BOOLEAN);
+        return $this->boolean('com_listas');
     }
 
     /**
-     * Campos do edital, sem os arquivos.
+     * Campos do edital, sem os arquivos e sem as listas. Campo ausente fica como está; com o marcador,
+     * naturezas, cotas, pontuação extra e informações ausentes ficam vazias (o formulário não envia lista vazia).
      *
-     * A divulgação é limpa pelo modelo (Edital::divulgacao).
-     *
-     * @return array{titulo: string, categoria: string, tipo_fomento: string, divulgacao: string, inscricoes_inicio: string, inscricoes_fim: string, vigencia_inicio: string, vigencia_fim: ?string, publicado: bool}
+     * @return array<string, mixed>
      */
     public function dadosDoEdital(): array
     {
-        return [
-            ...$this->safe()->only(['titulo', 'categoria', 'tipo_fomento', 'divulgacao', 'inscricoes_inicio', 'inscricoes_fim', 'vigencia_inicio']),
-            'vigencia_fim' => $this->safe()->input('vigencia_fim'),
+        $dados = [
+            ...$this->safe()->only([
+                'titulo', 'resumo', 'categoria', 'numero', 'tipo', 'objeto', 'dom_data', 'dom_numero',
+                'aceita_coletivos', 'inscricoes_por_proponente', 'limite_por_chamada', 'forma_inscricao_original',
+                'nota_maxima', 'nota_corte',
+            ]),
             'publicado' => $this->boolean('publicado'),
         ];
-    }
 
-    /**
-     * Categorias na ordem enviada, prontas para gravar; `id` é o da categoria já salva (se veio).
-     *
-     * @return list<array{id: ?int, atributos: array<string, mixed>}>
-     */
-    public function categoriasParaSalvar(): array
-    {
-        $categorias = [];
-
-        // A validação monta os itens na ordem das regras (os com id primeiro): a posição enviada manda.
-        $validadas = (array) $this->validated('categorias', []);
-        ksort($validadas, SORT_NUMERIC);
-
-        foreach (array_values($validadas) as $posicao => $categoria) {
-            $categorias[] = [
-                'id' => filled($categoria['id'] ?? null) ? (int) $categoria['id'] : null,
-                'atributos' => [...$this->atributosDaCategoria($categoria), 'ordem' => $posicao + 1],
-            ];
-        }
-
-        return $categorias;
-    }
-
-    /**
-     * Documentos na ordem enviada, prontos para gravar. `categorias` são posições no array `categorias` enviado.
-     *
-     * @return list<array{id: ?int, atributos: array<string, mixed>, categorias: list<int>}>
-     */
-    public function documentosParaSalvar(): array
-    {
-        $documentos = [];
-
-        $validados = (array) $this->validated('documentos', []);
-        ksort($validados, SORT_NUMERIC);
-
-        foreach (array_values($validados) as $posicao => $documento) {
-            $todas = $this->documentoValeParaTodas($documento);
-
-            $documentos[] = [
-                'id' => filled($documento['id'] ?? null) ? (int) $documento['id'] : null,
-                'atributos' => [
-                    'ordem' => $posicao + 1,
-                    'nome' => $documento['nome'],
-                    'orientacao' => $documento['orientacao'] ?? null,
-                    'obrigatorio' => filter_var($documento['obrigatorio'] ?? true, FILTER_VALIDATE_BOOLEAN),
-                    'naturezas' => array_map(NaturezaProponente::from(...), array_values((array) $documento['naturezas'])),
-                    'todas_categorias' => $todas,
-                    'tamanho_max_mb' => (int) $documento['tamanho_max_mb'],
-                ],
-                'categorias' => $todas ? [] : array_values(array_map(intval(...), (array) ($documento['categorias'] ?? []))),
-            ];
-        }
-
-        return $documentos;
-    }
-
-    /**
-     * Atributos do modelo a partir do item enviado (valor em reais vira centavos).
-     *
-     * @param  array<string, mixed>  $categoria
-     * @return array<string, mixed>
-     */
-    private function atributosDaCategoria(array $categoria): array
-    {
-        $atributos = [
-            'nome' => $categoria['nome'] ?? null,
-            'valor_centavos' => (int) round((float) ($categoria['valor'] ?? 0) * 100),
-            'vagas' => (int) ($categoria['vagas'] ?? 0),
-            'naturezas' => array_map(NaturezaProponente::from(...), array_values((array) ($categoria['naturezas'] ?? []))),
+        $estruturados = [
+            'naturezas' => fn (): ?array => SincronizadorDoEdital::naturezas($this->validated('naturezas')),
+            'cotas' => fn (): ?array => $this->cotas(),
+            'pontuacao_extra' => fn (): ?array => $this->pontuacaoExtra(),
+            'informacoes' => fn (): ?array => $this->informacoes(),
         ];
 
-        foreach (EditalCategoria::COTAS as $cota) {
-            $valor = $categoria['cotas'][$cota]['valor'] ?? null;
-            $unidade = $categoria['cotas'][$cota]['unidade'] ?? null;
-            $informada = filled($valor) && filled($unidade);
-
-            $atributos["cota_{$cota}_valor"] = $informada ? (int) $valor : null;
-            $atributos["cota_{$cota}_unidade"] = $informada ? UnidadeCota::from($unidade) : null;
+        foreach ($estruturados as $campo => $normalizar) {
+            if ($this->comListas() || $this->has($campo)) {
+                $dados[$campo] = $normalizar();
+            }
         }
 
-        return $atributos;
+        return $dados;
+    }
+
+    /**
+     * Listas no formato que SincronizadorDoEdital recebe.
+     *
+     * @return array{chamadas: list<array<string, mixed>>, categorias: list<array<string, mixed>>, documentos: list<array<string, mixed>>, requisitos: list<array<string, mixed>>, criterios: list<array<string, mixed>>}
+     */
+    public function listasDoEdital(): array
+    {
+        return [
+            'chamadas' => array_values($this->validated('chamadas') ?? []),
+            'categorias' => array_values($this->validated('categorias') ?? []),
+            'documentos' => array_values($this->validated('documentos') ?? []),
+            'requisitos' => array_values($this->validated('requisitos') ?? []),
+            'criterios' => array_values($this->validated('criterios') ?? []),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function cotas(): ?array
+    {
+        $cotas = $this->validated('cotas');
+        if (! is_array($cotas)) {
+            return null;
+        }
+
+        $resultado = [];
+        foreach (ModalidadeCota::cases() as $modalidade) {
+            $cota = $cotas[$modalidade->value] ?? [];
+            $resultado[$modalidade->value] = [
+                'ativa' => (bool) ($cota['ativa'] ?? false),
+                'percentual' => self::numero($cota['percentual'] ?? null),
+                'quantidade' => self::numero($cota['quantidade'] ?? null),
+            ];
+        }
+
+        return [
+            ...$resultado,
+            'base' => $cotas['base'] ?? null,
+            'alcance' => $cotas['alcance'] ?? null,
+            'veda_negro_indigena' => self::booleanoOuNulo($cotas['veda_negro_indigena'] ?? null),
+            'heteroidentificacao' => self::booleanoOuNulo($cotas['heteroidentificacao'] ?? null),
+        ];
+    }
+
+    /**
+     * @return array{grupos: list<array{grupo: string, pontos_por_pessoa: int|float|null, maximo: int|float|null}>, teto: int|float|null, conta_para_corte: ?bool}|null
+     */
+    private function pontuacaoExtra(): ?array
+    {
+        $pontuacao = $this->validated('pontuacao_extra');
+        if (! is_array($pontuacao)) {
+            return null;
+        }
+
+        $resultado = [
+            'grupos' => array_map(fn (array $grupo): array => [
+                'grupo' => $grupo['grupo'],
+                'pontos_por_pessoa' => self::numero($grupo['pontos_por_pessoa'] ?? null),
+                'maximo' => self::numero($grupo['maximo'] ?? null),
+            ], array_values($pontuacao['grupos'] ?? [])),
+            'teto' => self::numero($pontuacao['teto'] ?? null),
+            'conta_para_corte' => self::booleanoOuNulo($pontuacao['conta_para_corte'] ?? null),
+        ];
+
+        return $resultado['grupos'] === [] && $resultado['teto'] === null && $resultado['conta_para_corte'] === null
+            ? null
+            : $resultado;
+    }
+
+    /**
+     * Só as seções preenchidas; nenhuma = nulo.
+     *
+     * @return array<string, string>|null
+     */
+    private function informacoes(): ?array
+    {
+        $preenchidas = array_filter(
+            (array) ($this->validated('informacoes') ?? []),
+            fn (mixed $texto): bool => filled($texto),
+        );
+
+        return $preenchidas === [] ? null : $preenchidas;
+    }
+
+    private static function numero(mixed $valor): int|float|null
+    {
+        return is_numeric($valor) ? $valor + 0 : null;
+    }
+
+    private static function booleanoOuNulo(mixed $valor): ?bool
+    {
+        return $valor === null ? null : (bool) $valor;
     }
 }

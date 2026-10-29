@@ -17,7 +17,7 @@ class PortalController extends Controller
     public function editais(): Response
     {
         $editais = Edital::visiveis()
-            ->paraCartao()
+            ->paraListagem()
             ->naSituacao(SituacaoEdital::Aberto)
             ->orderByDesc('inscricoes_inicio')
             ->orderByDesc('id')
