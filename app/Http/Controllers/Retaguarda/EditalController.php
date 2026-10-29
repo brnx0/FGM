@@ -2,27 +2,48 @@
 
 namespace App\Http\Controllers\Retaguarda;
 
+use App\Enums\AlcanceCota;
+use App\Enums\BaseCota;
+use App\Enums\EtapaDocumento;
+use App\Enums\ModalidadeCota;
 use App\Enums\NaturezaProponente;
 use App\Enums\SituacaoEdital;
-use App\Enums\TipoFomento;
+use App\Enums\SituacaoImportacao;
+use App\Enums\TipoEdital;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Retaguarda\SalvarEditalRequest;
+use App\Models\ConfiguracaoIa;
 use App\Models\Edital;
 use App\Models\EditalCategoria;
+use App\Models\EditalCategoriaItem;
+use App\Models\EditalChamada;
+use App\Models\EditalCriterio;
 use App\Models\EditalDocumento;
+use App\Models\EditalRequisito;
+use App\Models\ImportacaoEdital;
 use App\Support\ArquivoArmazenado;
+use App\Support\Edital\SincronizadorDoEdital;
+use App\Support\EditalIa\EsquemaDaResposta;
 use App\Support\SlugUnico;
+use BackedEnum;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
-/** Gestão de editais na retaguarda. PDF no disco local (privado), imagem no public, ambos em editais/. */
+/**
+ * Gestão de editais na retaguarda. PDF no disco local (privado), imagem no public, ambos em editais/;
+ * listas e arquivos-modelo dos documentos gravados por SincronizadorDoEdital.
+ */
 class EditalController extends Controller
 {
     private const string PASTA = 'editais';
@@ -34,8 +55,7 @@ class EditalController extends Controller
         $publicado = in_array($request->query('publicado'), ['sim', 'nao'], true) ? $request->query('publicado') : null;
 
         $editais = Edital::query()
-            // Sem a divulgação (CLOB): a lista não precisa do texto.
-            ->select(['id', 'slug', 'titulo', 'categoria', 'inscricoes_inicio', 'inscricoes_fim', 'publicado', 'pdf'])
+            ->paraListagem()
             // No Oracle a comparação de texto diferencia maiúsculas; % e _ digitados valem literalmente.
             ->when($busca !== '', fn (Builder $q) => $q->whereRaw(
                 "LOWER(titulo) LIKE ? ESCAPE '\\'",
@@ -54,16 +74,25 @@ class EditalController extends Controller
                     'slug' => $edital->slug,
                     'titulo' => $edital->titulo,
                     'categoria' => $edital->categoria,
-                    'periodo' => $edital->inscricoes_inicio->format('d/m/Y').' a '.$edital->inscricoes_fim->format('d/m/Y'),
-                    'situacao' => $situacao->value,
-                    'situacaoRotulo' => $situacao->rotulo(),
+                    // Rascunho sem datas: sem período nem situação.
+                    'periodo' => $edital->temPeriodo()
+                        ? $edital->inscricoes_inicio->format('d/m/Y').' a '.$edital->inscricoes_fim->format('d/m/Y')
+                        : null,
+                    'situacao' => $situacao?->value,
+                    'situacaoRotulo' => $situacao?->rotulo(),
                     'publicado' => $edital->publicado,
                     'temPdf' => filled($edital->pdf),
                 ];
             });
 
+        $configuracaoIa = ConfiguracaoIa::atual();
+
         return Inertia::render('Retaguarda/Editais/Index', [
             'editais' => $editais,
+            // "Importar com IA" aparece sempre; sem provedor, a janela já diz onde configurar.
+            'importacaoConfigurada' => $configuracaoIa->provedoresDaImportacao() !== [],
+            'tamanhoMaximoPdfMb' => $configuracaoIa->tamanhoMaximoPdfMb(),
+            'importacoes' => $this->importacoesRecentes(),
             'filtros' => [
                 'busca' => $busca,
                 'situacao' => $situacao?->value ?? '',
@@ -80,63 +109,116 @@ class EditalController extends Controller
     {
         return Inertia::render('Retaguarda/Editais/Form', [
             'edital' => null,
-            'tiposFomento' => $this->tiposFomento(),
-            'naturezas' => $this->naturezas(),
+            'pendencias' => [],
+            'importacao' => null,
+            ...$this->opcoesDoFormulario(),
         ]);
     }
 
+    /** Sem título (rascunho), o endereço vem de "edital"; depois de criado, não muda mais. */
     public function store(SalvarEditalRequest $request): RedirectResponse
     {
         $edital = new Edital($request->dadosDoEdital());
-        $edital->slug = SlugUnico::para(Edital::class, $edital->titulo);
+        $edital->slug = SlugUnico::para(Edital::class, $edital->titulo ?? 'edital');
 
-        $novos = [];
-        if ($request->hasFile('pdf')) {
-            $edital->pdf = ArquivoArmazenado::guardar($request->file('pdf'), 'local', self::PASTA);
-            $novos[] = ['local', $edital->pdf];
-        }
-        if ($request->hasFile('imagem')) {
-            $edital->imagem = ArquivoArmazenado::guardar($request->file('imagem'), 'public', self::PASTA);
-            $novos[] = ['public', $edital->imagem];
-        }
-
-        $this->salvarComCategorias($edital, $request, $novos, []);
+        $this->salvar($request, $edital);
 
         return redirect()->route('retaguarda.editais.index')->with('sucesso', 'Edital salvo.');
     }
 
     public function edit(Edital $edital): Response
     {
+        $edital->load(['chamadas', 'categorias.itens', 'documentos.categorias', 'requisitos.documentos', 'criterios.categorias']);
+
+        // Referências entre listas vão por posição, como o formulário as envia de volta.
+        $posicaoDaChamada = $this->posicoesPorId($edital->chamadas);
+        $posicaoDaCategoria = $this->posicoesPorId($edital->categorias);
+        $posicaoDoDocumento = $this->posicoesPorId($edital->documentos);
+
         return Inertia::render('Retaguarda/Editais/Form', [
             'edital' => [
                 'slug' => $edital->slug,
                 'titulo' => $edital->titulo,
+                'resumo' => $edital->resumo,
                 'categoria' => $edital->categoria,
-                'tipo_fomento' => $edital->tipo_fomento?->value,
-                'divulgacao' => $edital->divulgacao,
-                'inscricoes_inicio' => $edital->inscricoes_inicio->toDateString(),
-                'inscricoes_fim' => $edital->inscricoes_fim->toDateString(),
-                'vigencia_inicio' => $edital->vigencia_inicio?->toDateString(),
-                'vigencia_fim' => $edital->vigencia_fim?->toDateString(),
+                'inscricoes_inicio' => $edital->inscricoes_inicio?->toDateString(),
+                'inscricoes_fim' => $edital->inscricoes_fim?->toDateString(),
                 'publicado' => $edital->publicado,
                 'pdfUrl' => $edital->pdf ? route('retaguarda.editais.pdf', $edital) : null,
                 'pdfNome' => $edital->pdf ? $this->nomeDoPdf($edital) : null,
                 'imagemUrl' => $edital->imagemUrl(),
+                'numero' => $edital->numero,
+                'tipo' => $edital->tipo?->value,
+                'objeto' => $edital->objeto,
+                'dom_data' => $edital->dom_data?->toDateString(),
+                'dom_numero' => $edital->dom_numero,
+                'naturezas' => $this->valoresDasNaturezas($edital->naturezas),
+                'aceita_coletivos' => $edital->aceita_coletivos,
+                'inscricoes_por_proponente' => $edital->inscricoes_por_proponente,
+                'limite_por_chamada' => $edital->limite_por_chamada,
+                'forma_inscricao_original' => $edital->forma_inscricao_original,
+                'nota_maxima' => $edital->nota_maxima,
+                'nota_corte' => $edital->nota_corte !== null ? (float) $edital->nota_corte : null,
+                'cotas' => $edital->cotas,
+                'pontuacao_extra' => $edital->pontuacao_extra,
+                'informacoes' => array_map(
+                    fn (string $chave): ?string => $edital->informacoes[$chave] ?? null,
+                    array_combine(array_keys(Edital::SECOES_INFORMATIVAS), array_keys(Edital::SECOES_INFORMATIVAS)),
+                ),
+                'chamadas' => $edital->chamadas->map(fn (EditalChamada $chamada): array => [
+                    'id' => (int) $chamada->id,
+                    'nome' => $chamada->nome,
+                    'inicio' => $chamada->inicio?->toDateString(),
+                    'fim' => $chamada->fim?->toDateString(),
+                ])->all(),
                 'categorias' => $edital->categorias->map(fn (EditalCategoria $categoria): array => [
                     'id' => (int) $categoria->id,
                     'nome' => $categoria->nome,
-                    'valor' => $categoria->valor_centavos / 100,
+                    'descricao' => $categoria->descricao,
+                    'valor' => $this->reais($categoria->valor_centavos),
                     'vagas' => $categoria->vagas,
-                    'naturezas' => $categoria->naturezas->map(fn (NaturezaProponente $natureza): string => $natureza->value)->values()->all(),
-                    'cotas' => collect(EditalCategoria::COTAS)->mapWithKeys(fn (string $cota): array => [$cota => [
-                        'valor' => $categoria->{"cota_{$cota}_valor"} === null ? null : (int) $categoria->{"cota_{$cota}_valor"},
-                        'unidade' => $categoria->{"cota_{$cota}_unidade"}?->value,
-                    ]])->all(),
+                    'naturezas' => $this->valoresDasNaturezas($categoria->naturezas),
+                    'chamada' => $categoria->edital_chamada_id !== null ? ($posicaoDaChamada[(int) $categoria->edital_chamada_id] ?? null) : null,
+                    'itens' => $categoria->itens->map(fn (EditalCategoriaItem $item): array => [
+                        'id' => (int) $item->id,
+                        'nome' => $item->nome,
+                        'valor' => $this->reais($item->valor_centavos),
+                        'vagas' => $item->vagas,
+                        'suplentes' => $item->suplentes,
+                    ])->all(),
                 ])->all(),
-                'documentos' => $this->documentosParaEdicao($edital),
+                'documentos' => $edital->documentos->map(fn (EditalDocumento $documento): array => [
+                    'id' => (int) $documento->id,
+                    'nome' => $documento->nome,
+                    'orientacao' => $documento->orientacao,
+                    'etapa' => $documento->etapa->value,
+                    'obrigatorio' => $documento->obrigatorio,
+                    'naturezas' => $this->valoresDasNaturezas($documento->naturezas),
+                    'todas_categorias' => $documento->todas_categorias,
+                    'categorias' => $this->posicoesDe($documento->categorias, $posicaoDaCategoria),
+                    'modalidade_cota' => $documento->modalidade_cota?->value,
+                    'anexo_referencia' => $documento->anexo_referencia,
+                    'modeloUrl' => $documento->modelo ? route('retaguarda.editais.documentos.modelo', [$edital, $documento]) : null,
+                    'modeloNome' => $documento->modelo ? $documento->modelo_nome : null,
+                ])->all(),
+                'requisitos' => $edital->requisitos->map(fn (EditalRequisito $requisito): array => [
+                    'id' => (int) $requisito->id,
+                    'descricao' => $requisito->descricao,
+                    'documentos' => $this->posicoesDe($requisito->documentos, $posicaoDoDocumento),
+                ])->all(),
+                'criterios' => $edital->criterios->map(fn (EditalCriterio $criterio): array => [
+                    'id' => (int) $criterio->id,
+                    'nome' => $criterio->nome,
+                    'descricao' => $criterio->descricao,
+                    'peso' => $criterio->peso !== null ? (float) $criterio->peso : null,
+                    'pontos_maximos' => $criterio->pontos_maximos !== null ? (float) $criterio->pontos_maximos : null,
+                    'todas_categorias' => $criterio->todas_categorias,
+                    'categorias' => $this->posicoesDe($criterio->categorias, $posicaoDaCategoria),
+                ])->all(),
             ],
-            'tiposFomento' => $this->tiposFomento(),
-            'naturezas' => $this->naturezas(),
+            'pendencias' => $edital->pendenciasParaPublicar(),
+            'importacao' => $this->importacaoNaoConferida($edital),
+            ...$this->opcoesDoFormulario(),
         ]);
     }
 
@@ -145,24 +227,7 @@ class EditalController extends Controller
     {
         $edital->fill($request->dadosDoEdital());
 
-        $novos = [];
-        $antigos = [];
-        if ($request->hasFile('pdf')) {
-            $antigos[] = ['local', $edital->pdf];
-            $edital->pdf = ArquivoArmazenado::guardar($request->file('pdf'), 'local', self::PASTA);
-            $novos[] = ['local', $edital->pdf];
-        }
-
-        if ($request->hasFile('imagem')) {
-            $antigos[] = ['public', $edital->imagem];
-            $edital->imagem = ArquivoArmazenado::guardar($request->file('imagem'), 'public', self::PASTA);
-            $novos[] = ['public', $edital->imagem];
-        } elseif ($request->boolean('remover_imagem') && $edital->imagem) {
-            $antigos[] = ['public', $edital->imagem];
-            $edital->imagem = null;
-        }
-
-        $this->salvarComCategorias($edital, $request, $novos, $antigos);
+        $this->salvar($request, $edital, $request->boolean('remover_imagem'));
 
         return redirect()->route('retaguarda.editais.index')->with('sucesso', 'Edital salvo.');
     }
@@ -177,8 +242,12 @@ class EditalController extends Controller
 
     public function publicacao(Edital $edital): RedirectResponse
     {
-        if (! $edital->publicado && blank($edital->pdf)) {
-            return back()->with('erro', 'Envie o PDF do edital para publicar.');
+        if (! $edital->publicado) {
+            $pendencias = $edital->pendenciasParaPublicar();
+
+            if ($pendencias !== []) {
+                return back()->with('erro', implode(' ', $pendencias));
+            }
         }
 
         $edital->update(['publicado' => ! $edital->publicado]);
@@ -194,139 +263,209 @@ class EditalController extends Controller
         return Storage::disk('local')->download($edital->pdf, $this->nomeDoPdf($edital));
     }
 
-    /**
-     * Salva o edital e sincroniza categorias e documentos numa transação; só depois apaga os arquivos substituídos.
-     * Se algo falhar, os arquivos recém-gravados são descartados e os antigos ficam.
-     *
-     * @param  list<array{string, ?string}>  $novos
-     * @param  list<array{string, ?string}>  $antigos
-     */
-    private function salvarComCategorias(Edital $edital, SalvarEditalRequest $request, array $novos, array $antigos): void
+    /** Arquivo-modelo de um documento do edital, publicado ou não. */
+    public function modelo(Edital $edital, EditalDocumento $documento): StreamedResponse
     {
+        $disco = Storage::disk(SincronizadorDoEdital::DISCO_MODELOS);
+        abort_unless(filled($documento->modelo) && $disco->exists($documento->modelo), 404);
+
+        return $disco->download($documento->modelo, $documento->modelo_nome ?: basename($documento->modelo));
+    }
+
+    /**
+     * Grava o edital, os arquivos e (com o marcador) as listas numa transação. Arquivos novos são apagados
+     * se algo falhar; os substituídos, só depois do commit. Quem passa a publicar precisa do edital completo.
+     */
+    private function salvar(SalvarEditalRequest $request, Edital $edital, bool $removerImagem = false): void
+    {
+        $passaAPublicar = $edital->publicado && ! $edital->getOriginal('publicado');
+        $sincronizador = new SincronizadorDoEdital;
+        $novos = [];
+        $antigos = [];
+
         try {
-            DB::transaction(function () use ($edital, $request, $novos): void {
-                ArquivoArmazenado::salvarTrocando($edital, $novos, []);
-                $categoriasPorPosicao = $this->sincronizarCategorias($edital, $request->categoriasParaSalvar());
-                $this->sincronizarDocumentos($edital, $request->documentosParaSalvar(), $categoriasPorPosicao);
+            DB::transaction(function () use ($request, $edital, $removerImagem, $passaAPublicar, $sincronizador, &$novos, &$antigos): void {
+                if ($request->hasFile('pdf')) {
+                    $antigos[] = ['local', $edital->pdf];
+                    $edital->pdf = ArquivoArmazenado::guardar($request->file('pdf'), 'local', self::PASTA);
+                    $novos[] = ['local', $edital->pdf];
+                }
+
+                if ($request->hasFile('imagem')) {
+                    $antigos[] = ['public', $edital->imagem];
+                    $edital->imagem = ArquivoArmazenado::guardar($request->file('imagem'), 'public', self::PASTA);
+                    $novos[] = ['public', $edital->imagem];
+                } elseif ($removerImagem && $edital->imagem) {
+                    $antigos[] = ['public', $edital->imagem];
+                    $edital->imagem = null;
+                }
+
+                if (! $edital->save()) {
+                    throw new RuntimeException('Não foi possível salvar o edital.');
+                }
+
+                if ($request->comListas()) {
+                    $sincronizador->sincronizar($edital, $request->listasDoEdital());
+                }
+
+                $pendencias = $passaAPublicar ? $edital->pendenciasParaPublicar() : [];
+                if ($pendencias !== []) {
+                    throw ValidationException::withMessages(['publicado' => implode(' ', $pendencias)]);
+                }
             });
         } catch (Throwable $erro) {
-            foreach ($novos as [$disco, $caminho]) {
-                ArquivoArmazenado::apagar($disco, $caminho);
-            }
+            ArquivoArmazenado::apagarTodos([...$novos, ...$sincronizador->arquivosNovos()]);
 
             throw $erro;
         }
 
-        foreach ($antigos as [$disco, $caminho]) {
-            ArquivoArmazenado::apagar($disco, $caminho);
-        }
+        ArquivoArmazenado::apagarTodos([...$antigos, ...$sincronizador->arquivosSubstituidos()]);
     }
 
     /**
-     * Atualiza as categorias deste edital que vieram com id, cria as novas e apaga as que não vieram.
-     * Id de outro edital (ou inexistente) vale como categoria nova.
+     * Painel da lista: as importações analisando ou com erro e as concluídas nas últimas 24 h (sem as colunas CLOB).
      *
-     * @param  list<array{id: ?int, atributos: array<string, mixed>}>  $categorias
-     * @return list<int> id de cada categoria, na posição em que veio no envio
+     * @return list<array{id: int, pdfNome: string, situacao: string, erro: ?string, editalUrl: ?string, enviadaEm: string}>
      */
-    private function sincronizarCategorias(Edital $edital, array $categorias): array
+    private function importacoesRecentes(): array
     {
-        $existentes = $edital->categorias()->get()->keyBy(fn (EditalCategoria $categoria): int => (int) $categoria->id);
-        $mantidos = [];
-
-        foreach ($categorias as ['id' => $id, 'atributos' => $atributos]) {
-            $existente = $id !== null ? $existentes->get($id) : null;
-
-            if ($existente !== null && ! in_array($id, $mantidos, true)) {
-                $existente->update($atributos);
-                $mantidos[] = $id;
-            } else {
-                $mantidos[] = (int) $edital->categorias()->create($atributos)->id;
-            }
-        }
-
-        $existentes->except($mantidos)->each(fn (EditalCategoria $categoria): ?bool => $categoria->delete());
-
-        return $mantidos;
+        return ImportacaoEdital::query()
+            ->select(['id', 'edital_id', 'situacao', 'erro', 'pdf_nome', 'iniciada_em', 'created_at'])
+            ->with('edital:id,slug')
+            ->where(fn (Builder $q) => $q
+                ->where('situacao', '!=', SituacaoImportacao::Concluida->value)
+                ->orWhere('updated_at', '>=', now()->subDay()))
+            ->latest('id')
+            ->limit(30)
+            ->get()
+            ->map(fn (ImportacaoEdital $importacao): array => [
+                'id' => (int) $importacao->id,
+                'pdfNome' => $importacao->pdf_nome,
+                'situacao' => $importacao->situacaoExibida()->value,
+                'erro' => $importacao->erroExibido(),
+                'editalUrl' => $importacao->edital !== null ? route('retaguarda.editais.edit', $importacao->edital) : null,
+                'enviadaEm' => $importacao->created_at->setTimezone(config('app.timezone'))->format('d/m/Y H:i'),
+            ])
+            ->all();
     }
 
     /**
-     * Mesmas regras das categorias: atualiza os que vieram com id deste edital, cria os novos e apaga os ausentes.
-     * As categorias de cada documento chegam como posições e são traduzidas pelo mapa posição → id.
+     * Quadro "Importado pela IA" do formulário, enquanto ninguém marcou a importação como conferida.
      *
-     * @param  list<array{id: ?int, atributos: array<string, mixed>, categorias: list<int>}>  $documentos
-     * @param  list<int>  $categoriasPorPosicao
+     * @return array{
+     *     confiabilidade: array{geral: ?int, blocos: list<array{bloco: string, rotulo: string, nota: int, justificativa: string}>},
+     *     atencao: list<array{bloco: ?string, blocoRotulo: string, tipo: string, tipoRotulo: string, texto: string, itens: list<string>}>,
+     *     conferida: bool, modelo: string, tokensTotal: ?int, importadaEm: string
+     * }|null
      */
-    private function sincronizarDocumentos(Edital $edital, array $documentos, array $categoriasPorPosicao): void
+    private function importacaoNaoConferida(Edital $edital): ?array
     {
-        $existentes = $edital->documentos()->get()->keyBy(fn (EditalDocumento $documento): int => (int) $documento->id);
-        $mantidos = [];
+        $importacao = ImportacaoEdital::query()
+            ->select(['id', 'confiabilidade', 'atencao', 'conferida_em', 'modelo', 'tokens_total', 'updated_at'])
+            ->where('edital_id', $edital->getKey())
+            ->whereNull('conferida_em')
+            ->latest('id')
+            ->first();
 
-        foreach ($documentos as ['id' => $id, 'atributos' => $atributos, 'categorias' => $posicoes]) {
-            $existente = $id !== null ? $existentes->get($id) : null;
-
-            if ($existente !== null && ! in_array($id, $mantidos, true)) {
-                $existente->update($atributos);
-                $documento = $existente;
-            } else {
-                $documento = $edital->documentos()->create($atributos);
-            }
-
-            $mantidos[] = (int) $documento->id;
-            $documento->categorias()->sync(array_map(fn (int $posicao): int => $categoriasPorPosicao[$posicao], $posicoes));
+        if ($importacao === null) {
+            return null;
         }
 
-        $existentes->except($mantidos)->each(fn (EditalDocumento $documento): ?bool => $documento->delete());
+        $notas = $importacao->confiabilidade['blocos'] ?? [];
+
+        return [
+            'confiabilidade' => [
+                'geral' => $importacao->confiabilidade['geral'] ?? null,
+                // Na ordem dos blocos do formulário, só os que receberam nota.
+                'blocos' => collect(EsquemaDaResposta::BLOCOS)
+                    ->filter(fn (string $rotulo, string $bloco): bool => isset($notas[$bloco]))
+                    ->map(fn (string $rotulo, string $bloco): array => [
+                        'bloco' => $bloco,
+                        'rotulo' => $rotulo,
+                        'nota' => (int) $notas[$bloco]['nota'],
+                        'justificativa' => (string) ($notas[$bloco]['justificativa'] ?? ''),
+                    ])
+                    ->values()
+                    ->all(),
+            ],
+            'atencao' => array_map(fn (array $ponto): array => [
+                'bloco' => $ponto['bloco'] ?? null,
+                'blocoRotulo' => EsquemaDaResposta::BLOCOS[$ponto['bloco'] ?? ''] ?? 'Geral',
+                'tipo' => $ponto['tipo'],
+                'tipoRotulo' => EsquemaDaResposta::TIPOS_ATENCAO[$ponto['tipo']] ?? $ponto['tipo'],
+                'texto' => $ponto['texto'],
+                'itens' => $ponto['itens'] ?? [],
+            ], $importacao->atencao ?? []),
+            'conferida' => $importacao->conferida_em !== null,
+            'modelo' => $importacao->modelo,
+            'tokensTotal' => $importacao->tokens_total,
+            'importadaEm' => $importacao->updated_at->setTimezone(config('app.timezone'))->format('d/m/Y H:i'),
+        ];
     }
 
     /**
-     * Posições das categorias são as da lista `categorias` enviada no mesmo edit.
+     * Opções dos campos de escolha do formulário.
      *
-     * @return list<array{id: int, nome: string, orientacao: ?string, obrigatorio: bool, naturezas: list<string>, todas_categorias: bool, categorias: list<int>, tamanho_max_mb: int}>
+     * @return array<string, list<array{valor: string, rotulo: string}>>
      */
-    private function documentosParaEdicao(Edital $edital): array
+    private function opcoesDoFormulario(): array
     {
-        $posicaoPorCategoria = $edital->categorias->values()->mapWithKeys(
-            fn (EditalCategoria $categoria, int $posicao): array => [(int) $categoria->id => $posicao],
+        $opcoes = fn (string $enum): array => array_map(
+            fn (BackedEnum $caso): array => ['valor' => $caso->value, 'rotulo' => $caso->rotulo()],
+            $enum::cases(),
         );
 
-        return $edital->documentos()->with('categorias')->get()->map(fn (EditalDocumento $documento): array => [
-            'id' => (int) $documento->id,
-            'nome' => $documento->nome,
-            'orientacao' => $documento->orientacao,
-            'obrigatorio' => $documento->obrigatorio,
-            'naturezas' => $documento->naturezas->map(fn (NaturezaProponente $natureza): string => $natureza->value)->values()->all(),
-            'todas_categorias' => $documento->todas_categorias,
-            'categorias' => $documento->categorias
-                ->map(fn (EditalCategoria $categoria): ?int => $posicaoPorCategoria->get((int) $categoria->id))
-                ->filter(fn (?int $posicao): bool => $posicao !== null)
-                ->sort()
-                ->values()
-                ->all(),
-            'tamanho_max_mb' => $documento->tamanho_max_mb,
-        ])->all();
+        return [
+            'naturezas' => $opcoes(NaturezaProponente::class),
+            'etapas' => $opcoes(EtapaDocumento::class),
+            'modalidadesCota' => $opcoes(ModalidadeCota::class),
+            'basesCota' => $opcoes(BaseCota::class),
+            'alcancesCota' => $opcoes(AlcanceCota::class),
+            'tiposEdital' => $opcoes(TipoEdital::class),
+            'secoesInformativas' => array_map(
+                fn (string $chave, string $rotulo): array => ['valor' => $chave, 'rotulo' => $rotulo],
+                array_keys(Edital::SECOES_INFORMATIVAS),
+                Edital::SECOES_INFORMATIVAS,
+            ),
+        ];
     }
 
     /**
-     * @return list<array{valor: string, rotulo: string}>
+     * @param  Collection<int, Model>  $registros
+     * @return array<int, int> id => posição
      */
-    private function naturezas(): array
+    private function posicoesPorId(Collection $registros): array
     {
-        return array_map(
-            fn (NaturezaProponente $natureza): array => ['valor' => $natureza->value, 'rotulo' => $natureza->rotulo()],
-            NaturezaProponente::cases(),
-        );
+        return $registros->values()->mapWithKeys(fn (Model $registro, int $posicao): array => [(int) $registro->getKey() => $posicao])->all();
     }
 
     /**
-     * @return list<array{valor: string, rotulo: string}>
+     * @param  Collection<int, Model>  $registros
+     * @param  array<int, int>  $posicaoPorId
+     * @return list<int>
      */
-    private function tiposFomento(): array
+    private function posicoesDe(Collection $registros, array $posicaoPorId): array
     {
-        return array_map(
-            fn (TipoFomento $tipo): array => ['valor' => $tipo->value, 'rotulo' => $tipo->rotulo()],
-            TipoFomento::cases(),
-        );
+        return $registros
+            ->map(fn (Model $registro): ?int => $posicaoPorId[(int) $registro->getKey()] ?? null)
+            ->filter(fn (?int $posicao): bool => $posicao !== null)
+            ->sort()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  Collection<int, NaturezaProponente>|null  $naturezas
+     * @return list<string>
+     */
+    private function valoresDasNaturezas(?Collection $naturezas): array
+    {
+        return $naturezas?->map(fn (NaturezaProponente $natureza): string => $natureza->value)->values()->all() ?? [];
+    }
+
+    private function reais(?int $centavos): ?float
+    {
+        return $centavos !== null ? $centavos / 100 : null;
     }
 
     private function nomeDoPdf(Edital $edital): string

@@ -1,17 +1,44 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import CampoArquivo from '../../../Components/CampoArquivo.vue';
 import CampoCadastro from '../../../Components/CampoCadastro.vue';
-import AbasFormulario, { camposComErro } from '../../../Components/Retaguarda/AbasFormulario.vue';
-import CategoriasEdital from '../../../Components/Retaguarda/CategoriasEdital.vue';
-import DocumentosEdital from '../../../Components/Retaguarda/DocumentosEdital.vue';
+import AbasFormulario from '../../../Components/Retaguarda/AbasFormulario.vue';
+import CategoriasEdital from '../../../Components/Retaguarda/Edital/CategoriasEdital.vue';
+import ChamadasEdital from '../../../Components/Retaguarda/Edital/ChamadasEdital.vue';
+import CotasEdital from '../../../Components/Retaguarda/Edital/CotasEdital.vue';
+import CriteriosEdital from '../../../Components/Retaguarda/Edital/CriteriosEdital.vue';
+import DocumentosEdital from '../../../Components/Retaguarda/Edital/DocumentosEdital.vue';
+import InformacoesEdital from '../../../Components/Retaguarda/Edital/InformacoesEdital.vue';
+import QuadroImportacao from '../../../Components/Retaguarda/Edital/QuadroImportacao.vue';
+import RequisitosEdital from '../../../Components/Retaguarda/Edital/RequisitosEdital.vue';
+import {
+    OPCOES_SIM_NAO,
+    classeCaixa,
+    classeCampo,
+    classeDica,
+    classeMarcacao,
+    classeTexto,
+    decimal,
+    inteiro,
+    novaChave,
+    numeroDecimal,
+    textoDecimal,
+} from '../../../Components/Retaguarda/listaEditavel';
 import SecaoCadastro from '../../../Components/SecaoCadastro.vue';
 import RetaguardaLayout from '../../../Layouts/RetaguardaLayout.vue';
-import type { AbaFormulario, CategoriaEditavel, DocumentoEditavel, RetaguardaEditaisFormProps } from '../../../types';
-
-// O editor (Tiptap) é pesado: vai num pedaço separado, carregado só nesta tela.
-const EditorTextoRico = defineAsyncComponent(() => import('../../../Components/EditorTextoRico.vue'));
+import type {
+    AbaFormulario,
+    CategoriaEditavel,
+    ChamadaEditavel,
+    CotaModalidadeFormulario,
+    CotasEditavel,
+    CriterioEditavel,
+    DocumentoEditavel,
+    ItemEditavel,
+    RequisitoEditavel,
+    RetaguardaEditaisFormProps,
+} from '../../../types';
 
 defineOptions({ layout: RetaguardaLayout });
 
@@ -19,60 +46,141 @@ const props = defineProps<RetaguardaEditaisFormProps>();
 
 // Caminhos das rotas retaguarda.editais.* (o front não tem helper de rotas nomeadas).
 const BASE = '/retaguarda/editais';
-// Imagens do texto rico: mesmo envio dos eventos (retaguarda.conteudo.imagem).
-const URL_IMAGEM_CONTEUDO = '/retaguarda/conteudo/imagem';
 
 const salvo = props.edital;
 const editando = salvo !== null;
 
-// Categorias salvas viram cartões editáveis; a chave do cartão segue o id (não a posição).
+// Listas salvas viram cartões com chave própria; as referências por posição do servidor viram chaves dos cartões.
+const chaveNaPosicao = (lista: ItemEditavel[], posicao: number | null): string | null => (posicao === null ? null : (lista[posicao]?.chave ?? null));
+const chavesNasPosicoes = (lista: ItemEditavel[], posicoes: number[]): string[] => posicoes.flatMap((posicao) => lista[posicao]?.chave ?? []);
+
+const chamadasSalvas: ChamadaEditavel[] = (salvo?.chamadas ?? []).map((chamada) => ({
+    chave: novaChave(),
+    id: chamada.id,
+    nome: chamada.nome,
+    inicio: chamada.inicio ?? '',
+    fim: chamada.fim ?? '',
+}));
+
 const categoriasSalvas: CategoriaEditavel[] = (salvo?.categorias ?? []).map((categoria) => ({
-    chave: `salva-${categoria.id}`,
+    chave: novaChave(),
     id: categoria.id,
     nome: categoria.nome,
+    descricao: categoria.descricao ?? '',
     valor: categoria.valor,
     vagas: categoria.vagas,
     naturezas: [...categoria.naturezas],
-    cotas: {
-        negros: { valor: categoria.cotas.negros.valor, unidade: categoria.cotas.negros.unidade ?? 'vagas' },
-        indigenas: { valor: categoria.cotas.indigenas.valor, unidade: categoria.cotas.indigenas.unidade ?? 'vagas' },
-        pcd: { valor: categoria.cotas.pcd.valor, unidade: categoria.cotas.pcd.unidade ?? 'vagas' },
-    },
+    chamada: chaveNaPosicao(chamadasSalvas, categoria.chamada),
+    itens: categoria.itens.map((item) => ({ chave: novaChave(), ...item })),
 }));
 
-// Documentos salvos: o servidor manda as categorias pela posição; a tela guarda a chave do cartão da categoria.
 const documentosSalvos: DocumentoEditavel[] = (salvo?.documentos ?? []).map((documento) => ({
-    chave: `salvo-${documento.id}`,
+    chave: novaChave(),
     id: documento.id,
     nome: documento.nome,
     orientacao: documento.orientacao ?? '',
+    etapa: documento.etapa,
     obrigatorio: documento.obrigatorio,
     naturezas: [...documento.naturezas],
     todas_categorias: documento.todas_categorias,
-    categorias: documento.categorias.flatMap((posicao) => {
-        const categoria = categoriasSalvas[posicao];
-        return categoria ? [categoria.chave] : [];
-    }),
-    tamanho_max_mb: documento.tamanho_max_mb,
+    categorias: chavesNasPosicoes(categoriasSalvas, documento.categorias),
+    modalidade_cota: documento.modalidade_cota ?? '',
+    anexo_referencia: documento.anexo_referencia ?? '',
+    modelo: null,
+    remover_modelo: false,
+    modeloUrl: documento.modeloUrl,
+    modeloNome: documento.modeloNome,
 }));
+
+const requisitosSalvos: RequisitoEditavel[] = (salvo?.requisitos ?? []).map((requisito) => ({
+    chave: novaChave(),
+    id: requisito.id,
+    descricao: requisito.descricao,
+    documentos: chavesNasPosicoes(documentosSalvos, requisito.documentos),
+}));
+
+const criteriosSalvos: CriterioEditavel[] = (salvo?.criterios ?? []).map((criterio) => ({
+    chave: novaChave(),
+    id: criterio.id,
+    nome: criterio.nome,
+    descricao: criterio.descricao ?? '',
+    peso: textoDecimal(criterio.peso),
+    pontos_maximos: textoDecimal(criterio.pontos_maximos),
+    todas_categorias: criterio.todas_categorias,
+    categorias: chavesNasPosicoes(categoriasSalvas, criterio.categorias),
+}));
+
+const cotasSalvas = salvo?.cotas ?? null;
+const cotaSalva = (modalidade: string): CotaModalidadeFormulario | undefined =>
+    (cotasSalvas as unknown as Record<string, CotaModalidadeFormulario | undefined> | null)?.[modalidade];
+
+const cotas: CotasEditavel = {
+    modalidades: Object.fromEntries(
+        props.modalidadesCota.map((modalidade) => {
+            const cota = cotaSalva(modalidade.valor);
+
+            return [modalidade.valor, { ativa: cota?.ativa ?? false, percentual: textoDecimal(cota?.percentual), quantidade: textoDecimal(cota?.quantidade) }];
+        }),
+    ),
+    base: cotasSalvas?.base ?? '',
+    alcance: cotasSalvas?.alcance ?? '',
+    veda_negro_indigena: cotasSalvas?.veda_negro_indigena ?? null,
+    heteroidentificacao: cotasSalvas?.heteroidentificacao ?? null,
+};
 
 // Arquivos só vão quando escolhidos; sem novo upload o servidor mantém os atuais.
 const form = useForm({
+    numero: salvo?.numero ?? '',
+    tipo: salvo?.tipo ?? '',
     titulo: salvo?.titulo ?? '',
+    objeto: salvo?.objeto ?? '',
+    dom_data: salvo?.dom_data ?? '',
+    dom_numero: salvo?.dom_numero ?? '',
     categoria: salvo?.categoria ?? '',
-    tipo_fomento: salvo?.tipo_fomento ?? '',
-    vigencia_inicio: salvo?.vigencia_inicio ?? '',
-    vigencia_fim: salvo?.vigencia_fim ?? '',
-    divulgacao: salvo?.divulgacao ?? '',
-    inscricoes_inicio: salvo?.inscricoes_inicio ?? '',
-    inscricoes_fim: salvo?.inscricoes_fim ?? '',
+    resumo: salvo?.resumo ?? '',
+    chamadas: chamadasSalvas,
+    forma_inscricao_original: salvo?.forma_inscricao_original ?? '',
+    naturezas: [...(salvo?.naturezas ?? [])],
+    aceita_coletivos: salvo?.aceita_coletivos ?? null,
+    // Padrão do edital comum: uma inscrição por proponente.
+    inscricoes_por_proponente: editando ? salvo.inscricoes_por_proponente : 1,
+    limite_por_chamada: salvo?.limite_por_chamada ?? null,
+    categorias: categoriasSalvas,
+    cotas,
+    documentos: documentosSalvos,
+    requisitos: requisitosSalvos,
+    nota_maxima: salvo?.nota_maxima ?? null,
+    nota_corte: textoDecimal(salvo?.nota_corte),
+    criterios: criteriosSalvos,
+    pontuacao_extra: {
+        grupos: (salvo?.pontuacao_extra?.grupos ?? []).map((grupo) => ({
+            chave: novaChave(),
+            grupo: grupo.grupo,
+            pontos_por_pessoa: textoDecimal(grupo.pontos_por_pessoa),
+            maximo: textoDecimal(grupo.maximo),
+        })),
+        teto: textoDecimal(salvo?.pontuacao_extra?.teto),
+        conta_para_corte: salvo?.pontuacao_extra?.conta_para_corte ?? null,
+    },
+    informacoes: Object.fromEntries(props.secoesInformativas.map((secao) => [secao.valor, salvo?.informacoes[secao.valor] ?? ''])) as Record<string, string>,
     publicado: salvo?.publicado ?? false,
     pdf: null as File | null,
     imagem: null as File | null,
     remover_imagem: false,
-    categorias: categoriasSalvas,
-    documentos: documentosSalvos,
 });
+
+const erros = computed<Partial<Record<string, string>>>(() => form.errors as Partial<Record<string, string>>);
+
+// Os erros das listas chegam como "categorias.N.campo": chaves que o tipo do useForm não prevê.
+// Sem campos, clearErrors() limparia todos os erros do formulário.
+const limparErros = (campos: string[]): void => {
+    if (campos.length === 0) return;
+    form.clearErrors(...(campos as Parameters<typeof form.clearErrors>));
+};
+
+const definirErro = (campo: string, mensagem: string): void => {
+    form.setError(campo as Parameters<typeof form.clearErrors>[number], mensagem);
+};
 
 // Limites do servidor (max em KB na validação): o arquivo grande nem sai do navegador.
 const LIMITES = { pdf: 20 * 1024 * 1024, imagem: 5 * 1024 * 1024 } as const;
@@ -90,72 +198,196 @@ const escolherArquivo = (arquivo: File | null, campo: 'pdf' | 'imagem'): void =>
     if (campo === 'imagem' && arquivo) form.remover_imagem = false;
 };
 
-// O edital vai ganhar muitos campos: cada grupo numa aba, todas no mesmo formulário.
-const abas: AbaFormulario[] = [
-    { id: 'dados', rotulo: 'Dados gerais', campos: ['titulo', 'categoria', 'tipo_fomento', 'vigencia_inicio', 'vigencia_fim', 'divulgacao'] },
-    { id: 'inscricoes', rotulo: 'Inscrições', campos: ['inscricoes_inicio', 'inscricoes_fim'] },
+// Uma aba por bloco do edital. Campo terminado em ".*" vale para todo erro que começa com o prefixo ("chamadas.0.nome").
+const DEFINICAO_ABAS: AbaFormulario[] = [
+    { id: 'identificacao', rotulo: 'Identificação', campos: ['numero', 'tipo', 'titulo', 'objeto', 'dom_data', 'dom_numero', 'categoria', 'resumo'] },
+    { id: 'inscricao', rotulo: 'Inscrição', campos: ['chamadas', 'chamadas.*', 'forma_inscricao_original'] },
+    { id: 'participacao', rotulo: 'Participação', campos: ['naturezas', 'naturezas.*', 'aceita_coletivos', 'inscricoes_por_proponente', 'limite_por_chamada'] },
     { id: 'categorias', rotulo: 'Categorias', campos: ['categorias', 'categorias.*'] },
+    { id: 'cotas', rotulo: 'Cotas', campos: ['cotas', 'cotas.*'] },
     { id: 'documentos', rotulo: 'Documentos', campos: ['documentos', 'documentos.*'] },
-    { id: 'arquivos', rotulo: 'Arquivos', campos: ['pdf', 'imagem'] },
+    { id: 'homologacao', rotulo: 'Homologação', campos: ['requisitos', 'requisitos.*'] },
+    { id: 'avaliacao', rotulo: 'Avaliação', campos: ['nota_maxima', 'nota_corte', 'criterios', 'criterios.*', 'pontuacao_extra', 'pontuacao_extra.*'] },
+    { id: 'informacoes', rotulo: 'Informações', campos: ['informacoes', 'informacoes.*'] },
+    { id: 'arquivos', rotulo: 'Arquivos', campos: ['pdf', 'imagem', 'remover_imagem'] },
     { id: 'publicacao', rotulo: 'Publicação', campos: ['publicado'] },
 ];
-const abaAtiva = ref<string>('dados');
 
-// Com erro, abre a primeira aba que tem algum e leva o foco ao campo inválido dela.
+// AbasFormulario conta os erros pelos campos da aba: aqui eles são as chaves com erro que caem na aba.
+const abas = computed<AbaFormulario[]>(() => {
+    const comErro = Object.keys(erros.value).filter((chave) => Boolean(erros.value[chave]));
+
+    return DEFINICAO_ABAS.map((aba) => ({
+        ...aba,
+        campos: comErro.filter((chave) => aba.campos.some((campo) => (campo.endsWith('.*') ? chave.startsWith(campo.slice(0, -1)) : chave === campo))),
+    }));
+});
+const abaAtiva = ref<string>('identificacao');
+
+// Do quadro "Importado pela IA": abre a aba do bloco e leva o foco (e a rolagem) até ela.
+const irParaAba = async (aba: string): Promise<void> => {
+    abaAtiva.value = aba;
+    await nextTick();
+    const botao = document.getElementById(`edital-aba-${aba}`);
+    botao?.scrollIntoView({ block: 'nearest' });
+    botao?.focus();
+};
+
+// Com erro, abre a primeira aba que tem algum e leva o foco ao campo inválido dela (os cartões com erro já se abriram).
 const mostrarPrimeiroErro = async (): Promise<void> => {
-    const comErro = abas.find((aba) => camposComErro(aba, form.errors as Partial<Record<string, string>>).length > 0);
+    const comErro = abas.value.find((aba) => aba.campos.length > 0);
     if (comErro) abaAtiva.value = comErro.id;
     await nextTick();
     document.querySelector<HTMLElement>(`#edital-painel-${abaAtiva.value} [aria-invalid="true"]`)?.focus();
 };
 
-// Os erros das categorias chegam como "categorias.N.campo": chaves que o tipo do useForm não prevê.
-const limparErros = (campos: string[]): void => {
-    form.clearErrors(...(campos as Parameters<typeof form.clearErrors>));
+// Item removido deixa de valer nas listas que o referem; reordenar não mexe na ligação (é pela chave).
+// Os erros dessas referências apontam para posições, que mudaram: saem.
+const vigiarReferencias = (chaves: () => string[], aoRemover: (existentes: Set<string>) => void, errosDasReferencias: RegExp): void => {
+    watch(chaves, (atuais, anteriores) => {
+        const existentes = new Set(atuais);
+        if (anteriores.some((chave) => !existentes.has(chave))) aoRemover(existentes);
+
+        const vencidos = Object.keys(erros.value).filter((chave) => errosDasReferencias.test(chave));
+        if (vencidos.length > 0) limparErros(vencidos);
+    });
 };
 
-// Categoria removida deixa de valer para os documentos ligados a ela; reordenar não mexe na ligação (é pela chave).
-// Os erros "documentos.N.categorias.M" apontam para posições de categoria, que mudaram: saem. Com remoção, sai também o "documentos.N.categorias".
-watch(
-    () => form.categorias.map((categoria) => categoria.chave),
-    (chavesAtuais, chavesAnteriores) => {
-        const chaves = new Set(chavesAtuais);
-        for (const documento of form.documentos) {
-            if (documento.categorias.some((chave) => !chaves.has(chave))) {
-                documento.categorias = documento.categorias.filter((chave) => chaves.has(chave));
-            }
+vigiarReferencias(
+    () => form.chamadas.map((chamada) => chamada.chave),
+    (existentes) => {
+        for (const categoria of form.categorias) {
+            if (categoria.chamada !== null && !existentes.has(categoria.chamada)) categoria.chamada = null;
         }
-
-        const houveRemocao = chavesAnteriores.some((chave) => !chaves.has(chave));
-        const errosVencidos = Object.keys(form.errors).filter((chave) =>
-            houveRemocao ? /^documentos\.\d+\.categorias(\.\d+)?$/.test(chave) : /^documentos\.\d+\.categorias\.\d+$/.test(chave),
-        );
-        if (errosVencidos.length > 0) limparErros(errosVencidos);
     },
+    /^categorias\.\d+\.chamada$/,
 );
 
-// As listas de categorias e de documentos vão sempre inteiras: o servidor apaga as que não vierem (lista vazia = nenhuma).
-// Sem a chave do cartão, que é só da tela; as categorias de cada documento viram posições na lista enviada.
-const paraEnvio = (dados: ReturnType<typeof form.data>) => {
-    const posicaoDaCategoria = new Map(dados.categorias.map((categoria, posicao) => [categoria.chave, posicao]));
+vigiarReferencias(
+    () => form.categorias.map((categoria) => categoria.chave),
+    (existentes) => {
+        for (const item of [...form.documentos, ...form.criterios]) {
+            if (item.categorias.some((chave) => !existentes.has(chave))) item.categorias = item.categorias.filter((chave) => existentes.has(chave));
+        }
+    },
+    /^(documentos|criterios)\.\d+\.categorias(\.\d+)?$/,
+);
+
+vigiarReferencias(
+    () => form.documentos.map((documento) => documento.chave),
+    (existentes) => {
+        for (const requisito of form.requisitos) {
+            if (requisito.documentos.some((chave) => !existentes.has(chave))) requisito.documentos = requisito.documentos.filter((chave) => existentes.has(chave));
+        }
+    },
+    /^requisitos\.\d+\.documentos(\.\d+)?$/,
+);
+
+/** Período do edital como o servidor calcula: menor início e maior fim das chamadas com as duas datas. */
+const periodo = computed<string | null>(() => {
+    const completas = form.chamadas.filter((chamada) => chamada.inicio && chamada.fim);
+    if (completas.length === 0) return null;
+
+    const data = (texto: string): string => texto.split('-').reverse().join('/');
+    const inicio = completas.map((chamada) => chamada.inicio).sort()[0] ?? '';
+    const fim = completas.map((chamada) => chamada.fim).sort().at(-1) ?? '';
+
+    return `${data(inicio)} a ${data(fim)}`;
+});
+
+type DadosDoFormulario = ReturnType<typeof form.data>;
+
+const posicoes = (lista: ItemEditavel[]): Map<string, number> => new Map(lista.map((item, posicao) => [item.chave, posicao]));
+const emPosicoes = (chaves: string[], mapa: Map<string, number>): number[] =>
+    chaves
+        .map((chave) => mapa.get(chave))
+        .filter((posicao): posicao is number => posicao !== undefined)
+        .sort((a, b) => a - b);
+
+const cotasPreenchidas = (dados: CotasEditavel): boolean =>
+    Object.values(dados.modalidades).some((cota) => cota.ativa || cota.percentual !== '' || cota.quantidade !== '') ||
+    dados.base !== '' ||
+    dados.alcance !== '' ||
+    dados.veda_negro_indigena !== null ||
+    dados.heteroidentificacao !== null;
+
+// Envio no contrato do SalvarEditalRequest: com o marcador, as listas vão inteiras (ausente = nenhuma);
+// sem as chaves da tela; referências entre listas viram posições na lista enviada; decimais viram números.
+// Cotas que nunca foram preenchidas continuam vazias (editais antigos não ganham cotas "não oferecidas").
+const paraEnvio = (dados: DadosDoFormulario): Record<string, unknown> => {
+    const posicaoDaChamada = posicoes(dados.chamadas);
+    const posicaoDaCategoria = posicoes(dados.categorias);
+    const posicaoDoDocumento = posicoes(dados.documentos);
 
     return {
-        ...dados,
-        categorias: dados.categorias.map(({ chave: _chave, ...categoria }) => categoria),
-        documentos: dados.documentos.map(({ chave: _chave, categorias, ...documento }) => ({
-            ...documento,
-            categorias: documento.todas_categorias
-                ? []
-                : categorias
-                      .map((chave) => posicaoDaCategoria.get(chave))
-                      .filter((posicao): posicao is number => posicao !== undefined)
-                      .sort((a, b) => a - b),
+        com_listas: true,
+        numero: dados.numero,
+        tipo: dados.tipo,
+        titulo: dados.titulo,
+        objeto: dados.objeto,
+        dom_data: dados.dom_data,
+        dom_numero: dados.dom_numero,
+        categoria: dados.categoria,
+        resumo: dados.resumo,
+        forma_inscricao_original: dados.forma_inscricao_original,
+        naturezas: dados.naturezas,
+        aceita_coletivos: dados.aceita_coletivos,
+        inscricoes_por_proponente: dados.inscricoes_por_proponente,
+        limite_por_chamada: dados.limite_por_chamada,
+        nota_maxima: dados.nota_maxima,
+        nota_corte: numeroDecimal(dados.nota_corte),
+        publicado: dados.publicado,
+        pdf: dados.pdf,
+        imagem: dados.imagem,
+        remover_imagem: dados.remover_imagem,
+        chamadas: dados.chamadas.map(({ id, nome, inicio, fim }) => ({ id, nome, inicio, fim })),
+        categorias: dados.categorias.map(({ chave: _chave, chamada, itens, ...categoria }) => ({
+            ...categoria,
+            chamada: chamada === null ? null : (posicaoDaChamada.get(chamada) ?? null),
+            itens: itens.map(({ chave: _chaveDoItem, ...item }) => item),
         })),
+        documentos: dados.documentos.map(({ chave: _chave, categorias, modelo, modeloUrl: _url, modeloNome: _nome, ...documento }) => ({
+            ...documento,
+            categorias: documento.todas_categorias ? [] : emPosicoes(categorias, posicaoDaCategoria),
+            ...(modelo ? { modelo } : {}),
+        })),
+        requisitos: dados.requisitos.map(({ id, descricao, documentos }) => ({ id, descricao, documentos: emPosicoes(documentos, posicaoDoDocumento) })),
+        criterios: dados.criterios.map(({ chave: _chave, categorias, peso, pontos_maximos, ...criterio }) => ({
+            ...criterio,
+            peso: numeroDecimal(peso),
+            pontos_maximos: numeroDecimal(pontos_maximos),
+            categorias: criterio.todas_categorias ? [] : emPosicoes(categorias, posicaoDaCategoria),
+        })),
+        cotas:
+            cotasSalvas !== null || cotasPreenchidas(dados.cotas)
+                ? {
+                      ...Object.fromEntries(
+                          Object.entries(dados.cotas.modalidades).map(([modalidade, cota]) => [
+                              modalidade,
+                              { ativa: cota.ativa, percentual: numeroDecimal(cota.percentual), quantidade: numeroDecimal(cota.quantidade) },
+                          ]),
+                      ),
+                      base: dados.cotas.base,
+                      alcance: dados.cotas.alcance,
+                      veda_negro_indigena: dados.cotas.veda_negro_indigena,
+                      heteroidentificacao: dados.cotas.heteroidentificacao,
+                  }
+                : null,
+        pontuacao_extra: {
+            grupos: dados.pontuacao_extra.grupos.map((grupo) => ({
+                grupo: grupo.grupo,
+                pontos_por_pessoa: numeroDecimal(grupo.pontos_por_pessoa),
+                maximo: numeroDecimal(grupo.maximo),
+            })),
+            teto: numeroDecimal(dados.pontuacao_extra.teto),
+            conta_para_corte: dados.pontuacao_extra.conta_para_corte,
+        },
+        informacoes: dados.informacoes,
     };
 };
 
 // Edição vai como POST com _method=put: PUT com multipart não chega ao PHP.
-// "indices" monta categorias[0][nome]; o padrão ("brackets") viraria categorias[][nome] e quebraria os itens.
+// "indices" monta chamadas[0][nome]; o padrão ("brackets") viraria chamadas[][nome] e quebraria as listas.
 const salvar = (): void => {
     const opcoes = {
         forceFormData: true,
@@ -176,10 +408,24 @@ const textoBotao = computed(() => {
     return form.progress?.percentage !== undefined ? `Enviando ${form.progress.percentage}%` : 'Salvando…';
 });
 
-const classeCampo =
-    'h-12 w-full rounded-[12px] border border-tinta-suave/70 bg-superficie px-4 text-base text-home-tinta placeholder:text-tinta-suave aria-invalid:border-erro-texto aria-invalid:ring-1 aria-invalid:ring-erro-texto';
-const classeMarcacao = 'flex min-h-11 cursor-pointer items-start gap-3 py-2 text-[0.9375rem] leading-[1.5]';
-const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
+const limparNaturezas = (): void => limparErros(Object.keys(erros.value).filter((chave) => chave === 'naturezas' || chave.startsWith('naturezas.')));
+
+// Ícones das seções (traço 1.8, 24×24).
+const ICONES: Record<string, string> = {
+    identificacao: 'M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6',
+    inscricao: 'M4 5h16v16H4zM4 10h16M9 3v4M15 3v4',
+    participacao: 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a6 6 0 0 1 12 0v1M16 3.5a4 4 0 0 1 0 7M18 14a6 6 0 0 1 4 6v1',
+    categorias: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
+    cotas: 'M12 3v18M5 7h14M5 7l-3 7a4 4 0 0 0 6 0zM19 7l-3 7a4 4 0 0 0 6 0z',
+    documentos: 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13l2 2 4-4',
+    homologacao: 'M9 12l2 2 4-4M12 3l7 3v6c0 4.5-3 8-7 9-4-1-7-4.5-7-9V6z',
+    avaliacao: 'M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3 6.4 20.2l1.1-6.2L3 9.6l6.2-.9z',
+    informacoes: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v5M12 8h.01',
+    arquivos: 'M12 16V4M7 9l5-5 5 5M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3',
+    publicacao: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18',
+};
+
+const tituloDaPagina = editando ? salvo.titulo || 'Edital sem título' : 'Novo edital';
 </script>
 
 <template>
@@ -194,223 +440,337 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                 </svg>
                 Editais
             </Link>
-            <h1 class="mt-1 text-[1.75rem] leading-tight font-bold break-words">{{ salvo?.titulo ?? 'Novo edital' }}</h1>
+            <h1 class="mt-1 text-[1.75rem] leading-tight font-bold break-words">{{ tituloDaPagina }}</h1>
         </div>
 
+        <QuadroImportacao
+            v-if="salvo && importacao"
+            :importacao="importacao"
+            :url-conferida="`${BASE}/${salvo.slug}/importacao/conferida`"
+            :abas="DEFINICAO_ABAS.map((aba) => aba.id)"
+            @ir-para-aba="irParaAba"
+        />
+
         <form id="formulario-edital" novalidate class="flex flex-col gap-6" @submit.prevent="salvar">
-            <AbasFormulario id="edital" v-model="abaAtiva" variante="lateral" :abas="abas" :erros="form.errors">
-                <template #dados>
-                    <SecaoCadastro id="secao-edital-dados" :numero="1" titulo="Dados gerais">
+            <AbasFormulario id="edital" v-model="abaAtiva" variante="lateral" :abas="abas" :erros="erros">
+                <template v-for="(aba, indice) in DEFINICAO_ABAS" :key="aba.id" #[aba.id]>
+                    <SecaoCadastro :id="`secao-edital-${aba.id}`" :numero="indice + 1" :titulo="aba.rotulo">
                         <template #icone>
                             <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6" />
+                                <path :d="ICONES[aba.id]" />
                             </svg>
                         </template>
 
-                        <div class="grid gap-x-6 gap-y-5">
-                            <CampoCadastro id="titulo" rotulo="Título do edital" obrigatorio :erro="form.errors.titulo" v-slot="{ descricao, invalido }">
+                        <div v-if="aba.id === 'identificacao'" class="grid gap-x-6 gap-y-5 md:grid-cols-2">
+                            <CampoCadastro id="numero" rotulo="Número" :erro="erros.numero" v-slot="{ descricao, invalido }">
                                 <input
-                                    id="titulo"
-                                    v-model="form.titulo"
+                                    id="numero"
+                                    v-model="form.numero"
                                     type="text"
-                                    maxlength="255"
-                                    required
+                                    maxlength="30"
+                                    placeholder="Ex.: 007/2026"
                                     :class="classeCampo"
                                     :aria-invalid="invalido || undefined"
                                     :aria-describedby="descricao"
-                                    @input="form.clearErrors('titulo')"
+                                    @input="form.clearErrors('numero')"
                                 />
                             </CampoCadastro>
 
-                            <CampoCadastro id="categoria" rotulo="Categoria" obrigatorio :erro="form.errors.categoria" v-slot="{ descricao, invalido }">
-                                <input
-                                    id="categoria"
-                                    v-model="form.categoria"
-                                    type="text"
-                                    maxlength="255"
-                                    required
-                                    placeholder="Ex.: Fomento, Audiovisual"
-                                    :class="classeCampo"
-                                    :aria-invalid="invalido || undefined"
-                                    :aria-describedby="descricao"
-                                    @input="form.clearErrors('categoria')"
-                                />
-                            </CampoCadastro>
-
-                            <CampoCadastro id="tipo_fomento" rotulo="Tipo de fomento" obrigatorio :erro="form.errors.tipo_fomento" v-slot="{ descricao, invalido }">
+                            <CampoCadastro id="tipo" rotulo="Tipo" :erro="erros.tipo" v-slot="{ descricao, invalido }">
                                 <select
-                                    id="tipo_fomento"
-                                    v-model="form.tipo_fomento"
-                                    required
+                                    id="tipo"
+                                    v-model="form.tipo"
                                     :class="classeCampo"
                                     :aria-invalid="invalido || undefined"
                                     :aria-describedby="descricao"
-                                    @change="form.clearErrors('tipo_fomento')"
+                                    @change="form.clearErrors('tipo')"
                                 >
-                                    <option value="">Selecione…</option>
-                                    <option v-for="tipo in tiposFomento" :key="tipo.valor" :value="tipo.valor">{{ tipo.rotulo }}</option>
+                                    <option value="">Não informado</option>
+                                    <option v-for="tipo in tiposEdital" :key="tipo.valor" :value="tipo.valor">{{ tipo.rotulo }}</option>
                                 </select>
                             </CampoCadastro>
 
-                            <div class="grid gap-x-6 gap-y-5 md:grid-cols-2">
-                                <CampoCadastro
-                                    id="vigencia_inicio"
-                                    rotulo="Início da vigência"
-                                    obrigatorio
-                                    ajuda="Validade administrativa, não a janela de inscrição."
-                                    :erro="form.errors.vigencia_inicio"
-                                    v-slot="{ descricao, invalido }"
-                                >
+                            <div class="md:col-span-2">
+                                <CampoCadastro id="titulo" rotulo="Título" ajuda="Obrigatório para publicar." :erro="erros.titulo" v-slot="{ descricao, invalido }">
                                     <input
-                                        id="vigencia_inicio"
-                                        v-model="form.vigencia_inicio"
-                                        type="date"
-                                        required
+                                        id="titulo"
+                                        v-model="form.titulo"
+                                        type="text"
+                                        maxlength="255"
                                         :class="classeCampo"
                                         :aria-invalid="invalido || undefined"
                                         :aria-describedby="descricao"
-                                        @input="form.clearErrors('vigencia_inicio')"
-                                    />
-                                </CampoCadastro>
-
-                                <CampoCadastro
-                                    id="vigencia_fim"
-                                    rotulo="Fim da vigência"
-                                    ajuda="Opcional. Sem data, o edital fica vigente por prazo indeterminado."
-                                    :erro="form.errors.vigencia_fim"
-                                    v-slot="{ descricao, invalido }"
-                                >
-                                    <input
-                                        id="vigencia_fim"
-                                        v-model="form.vigencia_fim"
-                                        type="date"
-                                        :min="form.vigencia_inicio || undefined"
-                                        :class="classeCampo"
-                                        :aria-invalid="invalido || undefined"
-                                        :aria-describedby="descricao"
-                                        @input="form.clearErrors('vigencia_fim')"
+                                        @input="form.clearErrors('titulo')"
                                     />
                                 </CampoCadastro>
                             </div>
 
+                            <div class="md:col-span-2">
+                                <CampoCadastro id="objeto" rotulo="Objeto" ajuda="Em poucas linhas, o que o edital seleciona." :erro="erros.objeto" v-slot="{ descricao, invalido }">
+                                    <textarea
+                                        id="objeto"
+                                        v-model="form.objeto"
+                                        rows="3"
+                                        maxlength="1000"
+                                        :class="classeTexto"
+                                        :aria-invalid="invalido || undefined"
+                                        :aria-describedby="descricao"
+                                        @input="form.clearErrors('objeto')"
+                                    />
+                                </CampoCadastro>
+                            </div>
+
+                            <CampoCadastro id="dom_data" rotulo="Publicação no DOM" :erro="erros.dom_data" v-slot="{ descricao, invalido }">
+                                <input
+                                    id="dom_data"
+                                    v-model="form.dom_data"
+                                    type="date"
+                                    :class="classeCampo"
+                                    :aria-invalid="invalido || undefined"
+                                    :aria-describedby="descricao"
+                                    @input="form.clearErrors('dom_data')"
+                                />
+                            </CampoCadastro>
+
+                            <CampoCadastro id="dom_numero" rotulo="Edição do DOM" :erro="erros.dom_numero" v-slot="{ descricao, invalido }">
+                                <input
+                                    id="dom_numero"
+                                    v-model="form.dom_numero"
+                                    type="text"
+                                    maxlength="20"
+                                    placeholder="Ex.: 8.123"
+                                    :class="classeCampo"
+                                    :aria-invalid="invalido || undefined"
+                                    :aria-describedby="descricao"
+                                    @input="form.clearErrors('dom_numero')"
+                                />
+                            </CampoCadastro>
+
+                            <div class="md:col-span-2">
+                                <CampoCadastro id="categoria" rotulo="Categoria da vitrine" ajuda="Área mostrada no portal. Obrigatória para publicar." :erro="erros.categoria" v-slot="{ descricao, invalido }">
+                                    <input
+                                        id="categoria"
+                                        v-model="form.categoria"
+                                        type="text"
+                                        maxlength="255"
+                                        placeholder="Ex.: Fomento, Audiovisual"
+                                        :class="classeCampo"
+                                        :aria-invalid="invalido || undefined"
+                                        :aria-describedby="descricao"
+                                        @input="form.clearErrors('categoria')"
+                                    />
+                                </CampoCadastro>
+                            </div>
+
+                            <div class="md:col-span-2">
+                                <CampoCadastro id="resumo" rotulo="Resumo" ajuda="Apresentação curta na vitrine. Obrigatório para publicar." :erro="erros.resumo" v-slot="{ descricao, invalido }">
+                                    <textarea
+                                        id="resumo"
+                                        v-model="form.resumo"
+                                        rows="5"
+                                        :class="classeTexto"
+                                        :aria-invalid="invalido || undefined"
+                                        :aria-describedby="descricao"
+                                        @input="form.clearErrors('resumo')"
+                                    />
+                                </CampoCadastro>
+                            </div>
+                        </div>
+
+                        <div v-else-if="aba.id === 'inscricao'" class="flex flex-col gap-6">
+                            <p class="rounded-[16px] bg-nevoa px-4 py-3 text-[0.9375rem] leading-[1.6]">
+                                <span class="font-semibold">Período de inscrição do edital:</span>
+                                {{ periodo ?? 'definido pelas chamadas' }}.
+                                <span class="block text-[0.8125rem] text-tinta-suave">Calculado ao salvar: o menor início e o maior fim das chamadas.</span>
+                            </p>
+
+                            <ChamadasEdital v-model="form.chamadas" :erros="erros" @limpar-erros="limparErros" />
+
                             <CampoCadastro
-                                id="divulgacao"
-                                rotulo="Divulgação"
-                                obrigatorio
-                                ajuda="Texto informativo do edital, exibido na página dele no portal."
-                                :erro="form.errors.divulgacao"
+                                id="forma_inscricao_original"
+                                rotulo="Forma de inscrição no edital original"
+                                ajuda="Informativo (ex.: o link do formulário); a inscrição passa a ser pelo portal."
+                                :erro="erros.forma_inscricao_original"
                                 v-slot="{ descricao, invalido }"
                             >
-                                <EditorTextoRico
-                                    id="divulgacao"
-                                    v-model="form.divulgacao"
-                                    rotulo="Divulgação"
-                                    :descricao="descricao"
-                                    :invalido="invalido"
-                                    :url-imagem="URL_IMAGEM_CONTEUDO"
-                                    placeholder="Objetivo do edital, quem pode participar, valores, etapas e como se inscrever…"
-                                    @update:model-value="form.clearErrors('divulgacao')"
+                                <textarea
+                                    id="forma_inscricao_original"
+                                    v-model="form.forma_inscricao_original"
+                                    rows="2"
+                                    maxlength="1000"
+                                    :class="classeTexto"
+                                    :aria-invalid="invalido || undefined"
+                                    :aria-describedby="descricao"
+                                    @input="form.clearErrors('forma_inscricao_original')"
                                 />
                             </CampoCadastro>
                         </div>
-                    </SecaoCadastro>
-                </template>
 
-                <template #inscricoes>
-                    <SecaoCadastro id="secao-edital-inscricoes" :numero="2" titulo="Inscrições">
-                        <template #icone>
-                            <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="4" y="5" width="16" height="16" rx="2" />
-                                <path d="M4 10h16M9 3v4M15 3v4" />
-                            </svg>
-                        </template>
+                        <div v-else-if="aba.id === 'participacao'" class="@container grid gap-x-6 gap-y-5">
+                            <fieldset class="min-w-0" :aria-describedby="['naturezas-ajuda', erros.naturezas && 'naturezas-erro'].filter(Boolean).join(' ')">
+                                <legend class="text-[0.9375rem] font-semibold">Naturezas aceitas</legend>
+                                <p id="naturezas-ajuda" :class="[classeDica, 'mt-1']">Quem pode se inscrever. Ao menos uma para publicar.</p>
+                                <div class="mt-1.5 grid gap-x-6 @lg:grid-cols-2">
+                                    <label v-for="natureza in naturezas" :key="natureza.valor" :class="classeMarcacao">
+                                        <input
+                                            v-model="form.naturezas"
+                                            type="checkbox"
+                                            :value="natureza.valor"
+                                            :class="classeCaixa"
+                                            :aria-invalid="erros.naturezas ? true : undefined"
+                                            @change="limparNaturezas"
+                                        />
+                                        {{ natureza.rotulo }}
+                                    </label>
+                                </div>
+                                <p v-if="erros.naturezas" id="naturezas-erro" class="mt-1 text-[0.875rem] font-semibold text-erro-texto">{{ erros.naturezas }}</p>
+                            </fieldset>
 
-                        <div class="grid gap-x-6 gap-y-5 md:grid-cols-2">
-                            <CampoCadastro id="inscricoes_inicio" rotulo="Início das inscrições" obrigatorio :erro="form.errors.inscricoes_inicio" v-slot="{ descricao, invalido }">
-                                <input
-                                    id="inscricoes_inicio"
-                                    v-model="form.inscricoes_inicio"
-                                    type="date"
-                                    required
-                                    :class="classeCampo"
-                                    :aria-invalid="invalido || undefined"
-                                    :aria-describedby="descricao"
-                                    @input="form.clearErrors('inscricoes_inicio')"
-                                />
-                            </CampoCadastro>
+                            <div class="grid gap-x-6 gap-y-5 @2xl:grid-cols-3">
+                                <CampoCadastro
+                                    id="aceita_coletivos"
+                                    rotulo="Aceita coletivos sem CNPJ"
+                                    ajuda="Por meio de um proponente que os represente."
+                                    :erro="erros.aceita_coletivos"
+                                    v-slot="{ descricao, invalido }"
+                                >
+                                    <select
+                                        id="aceita_coletivos"
+                                        v-model="form.aceita_coletivos"
+                                        :class="classeCampo"
+                                        :aria-invalid="invalido || undefined"
+                                        :aria-describedby="descricao"
+                                        @change="form.clearErrors('aceita_coletivos')"
+                                    >
+                                        <option v-for="opcao in OPCOES_SIM_NAO" :key="String(opcao.valor)" :value="opcao.valor">{{ opcao.rotulo }}</option>
+                                    </select>
+                                </CampoCadastro>
 
-                            <CampoCadastro id="inscricoes_fim" rotulo="Fim das inscrições" obrigatorio :erro="form.errors.inscricoes_fim" v-slot="{ descricao, invalido }">
-                                <input
-                                    id="inscricoes_fim"
-                                    v-model="form.inscricoes_fim"
-                                    type="date"
-                                    required
-                                    :min="form.inscricoes_inicio || undefined"
-                                    :class="classeCampo"
-                                    :aria-invalid="invalido || undefined"
-                                    :aria-describedby="descricao"
-                                    @input="form.clearErrors('inscricoes_fim')"
-                                />
-                            </CampoCadastro>
+                                <CampoCadastro id="inscricoes_por_proponente" rotulo="Inscrições por proponente" :erro="erros.inscricoes_por_proponente" v-slot="{ descricao, invalido }">
+                                    <input
+                                        id="inscricoes_por_proponente"
+                                        :value="form.inscricoes_por_proponente ?? ''"
+                                        type="text"
+                                        inputmode="numeric"
+                                        autocomplete="off"
+                                        :class="[classeCampo, 'tabular-nums']"
+                                        :aria-invalid="invalido || undefined"
+                                        :aria-describedby="descricao"
+                                        @input="
+                                            form.inscricoes_por_proponente = inteiro($event, 1000);
+                                            form.clearErrors('inscricoes_por_proponente');
+                                        "
+                                    />
+                                </CampoCadastro>
+
+                                <CampoCadastro id="limite_por_chamada" rotulo="O limite vale por chamada" :erro="erros.limite_por_chamada" v-slot="{ descricao, invalido }">
+                                    <select
+                                        id="limite_por_chamada"
+                                        v-model="form.limite_por_chamada"
+                                        :class="classeCampo"
+                                        :aria-invalid="invalido || undefined"
+                                        :aria-describedby="descricao"
+                                        @change="form.clearErrors('limite_por_chamada')"
+                                    >
+                                        <option v-for="opcao in OPCOES_SIM_NAO" :key="String(opcao.valor)" :value="opcao.valor">{{ opcao.rotulo }}</option>
+                                    </select>
+                                </CampoCadastro>
+                            </div>
                         </div>
-                    </SecaoCadastro>
-                </template>
-
-                <template #categorias>
-                    <SecaoCadastro id="secao-edital-categorias" :numero="3" titulo="Categorias de inscrição">
-                        <template #icone>
-                            <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="4" y="4" width="16" height="6" rx="1.5" />
-                                <rect x="4" y="14" width="16" height="6" rx="1.5" />
-                            </svg>
-                        </template>
-
-                        <p class="mb-6 text-[0.9375rem] leading-[1.6] text-tinta-suave">
-                            As opções que o proponente escolhe ao se inscrever. Cada categoria tem valor, vagas, quem pode concorrer e reserva de cotas.
-                        </p>
 
                         <CategoriasEdital
+                            v-else-if="aba.id === 'categorias'"
                             v-model="form.categorias"
-                            :erros="form.errors as Partial<Record<string, string>>"
+                            :erros="erros"
                             :naturezas="naturezas"
+                            :chamadas="form.chamadas"
                             @limpar-erros="limparErros"
                         />
-                    </SecaoCadastro>
-                </template>
 
-                <template #documentos>
-                    <SecaoCadastro id="secao-edital-documentos" :numero="4" titulo="Documentos exigidos">
-                        <template #icone>
-                            <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M8 3h7l4 4v11H8zM15 3v4h4" />
-                                <path d="M5 7v14h11M11 12h5M11 15h5" />
-                            </svg>
-                        </template>
-
-                        <p class="mb-6 text-[0.9375rem] leading-[1.6] text-tinta-suave">O que o proponente envia na inscrição. Cada documento vale para as naturezas e categorias marcadas.</p>
+                        <CotasEdital
+                            v-else-if="aba.id === 'cotas'"
+                            v-model="form.cotas"
+                            :erros="erros"
+                            :modalidades-cota="modalidadesCota"
+                            :bases-cota="basesCota"
+                            :alcances-cota="alcancesCota"
+                            @limpar-erros="limparErros"
+                        />
 
                         <DocumentosEdital
+                            v-else-if="aba.id === 'documentos'"
                             v-model="form.documentos"
-                            :erros="form.errors as Partial<Record<string, string>>"
+                            :erros="erros"
                             :naturezas="naturezas"
+                            :etapas="etapas"
+                            :modalidades-cota="modalidadesCota"
                             :categorias="form.categorias"
                             @limpar-erros="limparErros"
+                            @definir-erro="definirErro"
                         />
-                    </SecaoCadastro>
-                </template>
 
-                <template #arquivos>
-                    <SecaoCadastro id="secao-edital-arquivos" :numero="5" titulo="Arquivos">
-                        <template #icone>
-                            <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M12 16V4M7 9l5-5 5 5" />
-                                <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
-                            </svg>
-                        </template>
+                        <div v-else-if="aba.id === 'homologacao'" class="flex flex-col gap-5">
+                            <p class="text-[0.9375rem] leading-[1.6] text-tinta-suave">Condições que a inscrição precisa cumprir para ser homologada e, quando houver, os documentos que as comprovam.</p>
+                            <RequisitosEdital v-model="form.requisitos" :erros="erros" :documentos="form.documentos" @limpar-erros="limparErros" />
+                        </div>
 
-                        <div class="grid gap-x-6 gap-y-6 md:grid-cols-2">
+                        <div v-else-if="aba.id === 'avaliacao'" class="flex flex-col gap-8">
+                            <div class="grid gap-x-6 gap-y-5 md:grid-cols-2">
+                                <CampoCadastro id="nota_maxima" rotulo="Nota máxima" :erro="erros.nota_maxima" v-slot="{ descricao, invalido }">
+                                    <input
+                                        id="nota_maxima"
+                                        :value="form.nota_maxima ?? ''"
+                                        type="text"
+                                        inputmode="numeric"
+                                        autocomplete="off"
+                                        :class="[classeCampo, 'tabular-nums']"
+                                        :aria-invalid="invalido || undefined"
+                                        :aria-describedby="descricao"
+                                        @input="
+                                            form.nota_maxima = inteiro($event, 1000000, true);
+                                            form.clearErrors('nota_maxima');
+                                        "
+                                    />
+                                </CampoCadastro>
+
+                                <CampoCadastro id="nota_corte" rotulo="Nota de corte" :erro="erros.nota_corte" v-slot="{ descricao, invalido }">
+                                    <input
+                                        id="nota_corte"
+                                        :value="form.nota_corte"
+                                        type="text"
+                                        inputmode="decimal"
+                                        autocomplete="off"
+                                        :class="[classeCampo, 'tabular-nums']"
+                                        :aria-invalid="invalido || undefined"
+                                        :aria-describedby="descricao"
+                                        @input="
+                                            form.nota_corte = decimal($event, 3);
+                                            form.clearErrors('nota_corte');
+                                        "
+                                    />
+                                </CampoCadastro>
+                            </div>
+
+                            <CriteriosEdital
+                                v-model="form.criterios"
+                                v-model:pontuacao="form.pontuacao_extra"
+                                :erros="erros"
+                                :categorias="form.categorias"
+                                @limpar-erros="limparErros"
+                            />
+                        </div>
+
+                        <InformacoesEdital
+                            v-else-if="aba.id === 'informacoes'"
+                            v-model="form.informacoes"
+                            :erros="erros"
+                            :secoes="secoesInformativas"
+                            @limpar-erros="limparErros"
+                        />
+
+                        <div v-else-if="aba.id === 'arquivos'" class="grid gap-x-6 gap-y-6 md:grid-cols-2">
                             <div class="flex min-w-0 flex-col gap-3">
-                                <CampoCadastro id="pdf" rotulo="PDF do edital" :erro="form.errors.pdf" v-slot="{ descricao, invalido }">
+                                <CampoCadastro id="pdf" rotulo="PDF do edital" :erro="erros.pdf" v-slot="{ descricao, invalido }">
                                     <CampoArquivo
                                         id="pdf"
                                         accept="application/pdf"
@@ -429,7 +789,7 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                             </div>
 
                             <div class="flex min-w-0 flex-col gap-3">
-                                <CampoCadastro id="imagem" rotulo="Imagem" :erro="form.errors.imagem" v-slot="{ descricao, invalido }">
+                                <CampoCadastro id="imagem" rotulo="Imagem da vitrine" :erro="erros.imagem" v-slot="{ descricao, invalido }">
                                     <CampoArquivo
                                         id="imagem"
                                         accept="image/jpeg,image/png,image/webp"
@@ -455,25 +815,37 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                                 </div>
                             </div>
                         </div>
-                    </SecaoCadastro>
-                </template>
 
-                <template #publicacao>
-                    <SecaoCadastro id="secao-edital-publicacao" :numero="6" titulo="Publicação">
-                        <template #icone>
-                            <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="12" cy="12" r="9" />
-                                <path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
-                            </svg>
-                        </template>
+                        <div v-else-if="aba.id === 'publicacao'" class="flex flex-col gap-5">
+                            <div v-if="pendencias.length > 0" class="rounded-[16px] border border-aviso-texto/30 bg-aviso-fundo p-4 text-aviso-texto">
+                                <h3 id="pendencias-titulo" class="text-[0.9375rem] font-bold">
+                                    {{ salvo?.publicado ? 'Já publicado, mas ainda falta:' : 'Para publicar, falta:' }}
+                                </h3>
+                                <ul aria-labelledby="pendencias-titulo" class="mt-2 flex list-disc flex-col gap-1 pl-5 text-[0.9375rem] leading-[1.5]">
+                                    <li v-for="pendencia in pendencias" :key="pendencia">{{ pendencia }}</li>
+                                </ul>
+                                <p class="mt-2 text-[0.8125rem]">Conforme a última versão salva.</p>
+                            </div>
+                            <p v-else-if="!editando" :class="classeDica">Ao salvar marcado para publicar, o sistema confere se o edital está completo.</p>
 
-                        <label :class="classeMarcacao">
-                            <input v-model="form.publicado" type="checkbox" :class="classeCaixa" aria-describedby="publicado-ajuda" />
-                            <span>
-                                <span class="font-semibold">Publicar no portal</span>
-                                <span id="publicado-ajuda" class="block text-[0.8125rem] text-tinta-suave">O edital só aparece no portal publicado e com PDF.</span>
-                            </span>
-                        </label>
+                            <div class="flex flex-col gap-1.5">
+                                <label :class="classeMarcacao">
+                                    <input
+                                        v-model="form.publicado"
+                                        type="checkbox"
+                                        :class="classeCaixa"
+                                        :aria-invalid="erros.publicado ? true : undefined"
+                                        :aria-describedby="['publicado-ajuda', erros.publicado && 'publicado-erro'].filter(Boolean).join(' ')"
+                                        @change="form.clearErrors('publicado')"
+                                    />
+                                    <span>
+                                        <span class="font-semibold">Publicar no portal</span>
+                                        <span id="publicado-ajuda" class="block text-[0.8125rem] text-tinta-suave">O edital só aparece no portal publicado e com PDF.</span>
+                                    </span>
+                                </label>
+                                <p v-if="erros.publicado" id="publicado-erro" class="flex items-start gap-1.5 text-[0.875rem] font-semibold text-erro-texto">{{ erros.publicado }}</p>
+                            </div>
+                        </div>
                     </SecaoCadastro>
                 </template>
             </AbasFormulario>

@@ -3,39 +3,33 @@
 namespace App\Models;
 
 use App\Enums\NaturezaProponente;
-use App\Enums\UnidadeCota;
 use Database\Factories\EditalCategoriaFactory;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Casts\AsEnumCollection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
-/** Categoria de inscrição de um edital. */
+/** Categoria do edital; naturezas nulas = as do edital, chamada nula = quando o edital tem uma só. */
+#[Fillable(['edital_chamada_id', 'nome', 'descricao', 'valor_centavos', 'vagas', 'naturezas', 'ordem'])]
 class EditalCategoria extends Model
 {
     /** @use HasFactory<EditalCategoriaFactory> */
     use HasFactory;
 
-    public const array COTAS = ['negros', 'indigenas', 'pcd'];
-
     protected $table = 'edital_categorias';
 
-    protected $fillable = [
-        'ordem', 'nome', 'valor_centavos', 'vagas', 'naturezas',
-        'cota_negros_valor', 'cota_negros_unidade',
-        'cota_indigenas_valor', 'cota_indigenas_unidade',
-        'cota_pcd_valor', 'cota_pcd_unidade',
-    ];
-
+    /**
+     * @return array<string, mixed>
+     */
     protected function casts(): array
     {
         return [
-            'naturezas' => AsEnumCollection::of(NaturezaProponente::class),
             'valor_centavos' => 'integer',
             'vagas' => 'integer',
-            'cota_negros_unidade' => UnidadeCota::class,
-            'cota_indigenas_unidade' => UnidadeCota::class,
-            'cota_pcd_unidade' => UnidadeCota::class,
+            'naturezas' => AsEnumCollection::of(NaturezaProponente::class),
+            'ordem' => 'integer',
         ];
     }
 
@@ -45,24 +39,15 @@ class EditalCategoria extends Model
         return $this->belongsTo(Edital::class);
     }
 
-    /** Vagas reservadas para a cota (negros, indigenas ou pcd); percentual arredonda para cima. */
-    public function vagasReservadas(string $cota): int
+    /** @return BelongsTo<EditalChamada, $this> */
+    public function chamada(): BelongsTo
     {
-        $valor = $this->{"cota_{$cota}_valor"};
-        $unidade = $this->{"cota_{$cota}_unidade"};
-
-        if ($valor === null || $unidade === null) {
-            return 0;
-        }
-
-        return match ($unidade) {
-            UnidadeCota::Vagas => (int) $valor,
-            UnidadeCota::Percentual => (int) ceil($this->vagas * $valor / 100),
-        };
+        return $this->belongsTo(EditalChamada::class, 'edital_chamada_id');
     }
 
-    public function totalReservado(): int
+    /** @return HasMany<EditalCategoriaItem, $this> */
+    public function itens(): HasMany
     {
-        return array_sum(array_map(fn (string $cota): int => $this->vagasReservadas($cota), self::COTAS));
+        return $this->hasMany(EditalCategoriaItem::class)->orderBy('ordem')->orderBy('id');
     }
 }

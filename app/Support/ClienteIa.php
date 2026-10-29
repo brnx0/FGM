@@ -132,7 +132,8 @@ final class ClienteIa
         };
     }
 
-    private static function motivo(ProvedorIa $provedor, Response $resposta, ?string $modelo): string
+    /** O motivo da falha, em português, a partir do status e do corpo da resposta do provedor. */
+    public static function motivo(ProvedorIa $provedor, Response $resposta, ?string $modelo): string
     {
         $nome = $provedor->rotulo();
         $status = $resposta->status();

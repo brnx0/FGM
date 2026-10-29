@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\GovBrRedirectController;
 use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\CadastroController;
 use App\Http\Controllers\ConsultaCadastroController;
+use App\Http\Controllers\DocumentoModeloController;
 use App\Http\Controllers\EditalController;
 use App\Http\Controllers\EventoController;
 use App\Http\Controllers\HomeController;
@@ -19,6 +20,10 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', HomeController::class)->middleware('encerra-sessao-proponente')->name('home');
 Route::get('/editais/{edital:slug}', [EditalController::class, 'show'])->name('editais.show');
 Route::get('/editais/{edital:slug}/pdf', [EditalController::class, 'pdf'])->name('editais.pdf');
+Route::get('/editais/{edital:slug}/documentos/{documento}/modelo', DocumentoModeloController::class)
+    ->whereNumber('documento')
+    ->scopeBindings()
+    ->name('editais.documentos.modelo');
 Route::get('/eventos/{evento:slug}', [EventoController::class, 'show'])->name('eventos.show');
 Route::get('/eventos/{evento:slug}/detalhes', [EventoController::class, 'detalhes'])->name('eventos.detalhes');
 

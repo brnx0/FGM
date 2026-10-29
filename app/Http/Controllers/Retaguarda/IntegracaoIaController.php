@@ -4,16 +4,21 @@ namespace App\Http\Controllers\Retaguarda;
 
 use App\Enums\ProvedorIa;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Retaguarda\SalvarImportacaoIaRequest;
 use App\Http\Requests\Retaguarda\SalvarIntegracaoIaRequest;
 use App\Http\Requests\Retaguarda\SalvarRedundanciaIaRequest;
 use App\Models\ConexaoIa;
 use App\Models\ConfiguracaoIa;
+use App\Support\EditalIa\PromptModelo;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
-/** Integração com IA: chaves e modelos dos provedores das validações automáticas, com o principal e a redundância. */
+/**
+ * Integração com IA: chaves e modelos dos provedores das validações automáticas, com o principal e a redundância, e os
+ * parâmetros da importação de edital, que usa os mesmos provedores.
+ */
 class IntegracaoIaController extends Controller
 {
     public function edit(): Response
@@ -35,6 +40,14 @@ class IntegracaoIaController extends Controller
                 'modelo' => $conexoes->get($provedor->value)?->modelo,
                 'chave' => $conexoes->get($provedor->value)?->chaveMascarada(),
             ], ProvedorIa::cases()),
+            // Da importação, só os parâmetros e se há provedor para ela; nada da conexão.
+            'importacao' => [
+                'prompt' => $configuracao->promptDaImportacao(),
+                'promptModelo' => PromptModelo::editavel(),
+                'temperatura' => $configuracao->temperaturaDaImportacao(),
+                'tamanhoMaximoMb' => $configuracao->tamanhoMaximoPdfMb(),
+                'configurada' => $configuracao->provedoresDaImportacao() !== [],
+            ],
         ]);
     }
 
@@ -78,5 +91,20 @@ class IntegracaoIaController extends Controller
 
         return redirect()->route('retaguarda.integracao-ia.edit')
             ->with('sucesso', $provedor === null ? 'Redundância retirada.' : 'Redundância salva.');
+    }
+
+    public function importacao(SalvarImportacaoIaRequest $request): RedirectResponse
+    {
+        ConfiguracaoIa::atual()->fill($request->parametros())->save();
+
+        return redirect()->route('retaguarda.integracao-ia.edit')->with('sucesso', 'Configuração da importação salva.');
+    }
+
+    /** Volta ao prompt modelo (nulo acompanha o modelo quando ele mudar); temperatura e tamanho ficam como estão. */
+    public function restaurarPrompt(): RedirectResponse
+    {
+        ConfiguracaoIa::atual()->fill(['importacao_prompt' => null])->save();
+
+        return redirect()->route('retaguarda.integracao-ia.edit')->with('sucesso', 'Prompt modelo restaurado.');
     }
 }

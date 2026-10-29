@@ -53,7 +53,7 @@ class ArquivoArmazenado
     /**
      * @param  list<array{string, ?string}>  $arquivos
      */
-    private static function apagarTodos(array $arquivos): void
+    public static function apagarTodos(array $arquivos): void
     {
         foreach ($arquivos as [$disco, $caminho]) {
             self::apagar($disco, $caminho);

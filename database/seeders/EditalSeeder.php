@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Enums\TipoFomento;
 use App\Models\Edital;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Storage;
@@ -19,7 +18,7 @@ class EditalSeeder extends Seeder
             [
                 'titulo' => 'PNAB Salvador — Ciclo II',
                 'slug' => 'pnab-salvador-ciclo-ii',
-                'divulgacao' => '<p>Fomento a projetos culturais de Salvador com recursos da Política Nacional Aldir Blanc.</p>',
+                'resumo' => 'Fomento a projetos culturais de Salvador com recursos da Política Nacional Aldir Blanc.',
                 'categoria' => 'Fomento',
                 'inscricoes_inicio' => $hoje->copy()->subDays(10)->toDateString(),
                 'inscricoes_fim' => $hoje->copy()->addDays(20)->toDateString(),
@@ -27,7 +26,7 @@ class EditalSeeder extends Seeder
             [
                 'titulo' => 'SalCine 2',
                 'slug' => 'salcine-2',
-                'divulgacao' => '<p>Apoio à produção audiovisual soteropolitana, de curtas a séries.</p>',
+                'resumo' => 'Apoio à produção audiovisual soteropolitana, de curtas a séries.',
                 'categoria' => 'Audiovisual',
                 'inscricoes_inicio' => $hoje->copy()->subDays(5)->toDateString(),
                 'inscricoes_fim' => $hoje->copy()->addDays(30)->toDateString(),
@@ -35,7 +34,7 @@ class EditalSeeder extends Seeder
             [
                 'titulo' => 'Edital Pontos de Cultura',
                 'slug' => 'edital-pontos-de-cultura',
-                'divulgacao' => '<p>Reconhecimento e apoio a iniciativas culturais da rede municipal.</p>',
+                'resumo' => 'Reconhecimento e apoio a iniciativas culturais da rede municipal.',
                 'categoria' => 'Rede municipal',
                 'inscricoes_inicio' => $hoje->copy()->addDays(15)->toDateString(),
                 'inscricoes_fim' => $hoje->copy()->addDays(60)->toDateString(),
@@ -43,7 +42,7 @@ class EditalSeeder extends Seeder
             [
                 'titulo' => 'Lei Paulo Gustavo',
                 'slug' => 'lei-paulo-gustavo',
-                'divulgacao' => '<p>Fomento ao setor cultural com recursos da Lei Complementar nº 195/2022.</p>',
+                'resumo' => 'Fomento ao setor cultural com recursos da Lei Complementar nº 195/2022.',
                 'categoria' => 'Fomento',
                 'inscricoes_inicio' => $hoje->copy()->subDays(90)->toDateString(),
                 'inscricoes_fim' => $hoje->copy()->subDays(30)->toDateString(),
@@ -54,12 +53,7 @@ class EditalSeeder extends Seeder
             $edital = Edital::withTrashed()->firstOrNew(['slug' => $dados['slug']]);
 
             if (! $edital->exists) {
-                $edital->fill($dados + [
-                    'tipo_fomento' => TipoFomento::Direto,
-                    'vigencia_inicio' => $dados['inscricoes_inicio'],
-                    'imagem' => null,
-                    'publicado' => true,
-                ]);
+                $edital->fill($dados + ['imagem' => null, 'publicado' => true]);
             }
 
             // Nunca sobrescreve um PDF enviado pela retaguarda.

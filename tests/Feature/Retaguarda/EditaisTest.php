@@ -2,13 +2,18 @@
 
 namespace Tests\Feature\Retaguarda;
 
-use App\Enums\TipoFomento;
+use App\Enums\NaturezaProponente;
+use App\Enums\ProvedorIa;
+use App\Models\ConexaoIa;
+use App\Models\ConfiguracaoIa;
 use App\Models\Edital;
+use App\Models\EditalCategoria;
+use App\Models\EditalChamada;
+use App\Models\ImportacaoEdital;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 use RuntimeException;
@@ -60,156 +65,25 @@ class EditaisTest extends TestCase
     {
         return [
             'titulo' => 'Prêmio Cultura Viva',
-            'tipo_fomento' => 'direto',
-            'divulgacao' => '<p>Apoio a pontos de cultura.</p>',
+            'resumo' => 'Apoio a pontos de cultura.',
             'categoria' => 'Fomento',
-            'vigencia_inicio' => '2026-11-01',
-            'vigencia_fim' => '2027-10-31',
-            'inscricoes_inicio' => '2026-11-01',
-            'inscricoes_fim' => '2026-11-30',
             'publicado' => '0',
             ...$alteracoes,
         ];
     }
 
-    public function test_grava_tipo_de_fomento_vigencia_e_divulgacao(): void
+    /**
+     * Edital com tudo o que a publicação exige além do PDF.
+     *
+     * @param  array<string, mixed>  $atributos
+     */
+    private function editalCompleto(array $atributos): Edital
     {
-        $this->post('/retaguarda/editais', $this->dados())->assertSessionHasNoErrors();
+        $edital = Edital::factory()->create(['naturezas' => [NaturezaProponente::PessoaFisica], ...$atributos]);
+        EditalChamada::factory()->for($edital)->create();
+        EditalCategoria::factory()->for($edital)->create();
 
-        $edital = Edital::sole();
-        $this->assertSame(TipoFomento::Direto, $edital->tipo_fomento);
-        $this->assertSame('2026-11-01', $edital->vigencia_inicio->toDateString());
-        $this->assertSame('2027-10-31', $edital->vigencia_fim->toDateString());
-        $this->assertSame('<p>Apoio a pontos de cultura.</p>', $edital->divulgacao);
-    }
-
-    public function test_tipo_de_fomento_e_obrigatorio_e_da_lista(): void
-    {
-        $this->post('/retaguarda/editais', $this->dados(['tipo_fomento' => '']))
-            ->assertSessionHasErrors('tipo_fomento');
-        $this->post('/retaguarda/editais', $this->dados(['tipo_fomento' => 'outro']))
-            ->assertSessionHasErrors(['tipo_fomento' => 'Selecione uma opção da lista.']);
-
-        $this->assertSame(0, Edital::count());
-    }
-
-    public function test_fim_da_vigencia_nao_pode_ser_antes_do_inicio(): void
-    {
-        $this->post('/retaguarda/editais', $this->dados(['vigencia_inicio' => '2026-11-01', 'vigencia_fim' => '2026-10-31']))
-            ->assertSessionHasErrors(['vigencia_fim' => 'O fim da vigência não pode ser antes do início.']);
-    }
-
-    public function test_fim_da_vigencia_pode_ficar_vazio(): void
-    {
-        $this->post('/retaguarda/editais', $this->dados(['vigencia_fim' => '']))->assertSessionHasNoErrors();
-
-        $this->assertNull(Edital::sole()->vigencia_fim);
-    }
-
-    public function test_inicio_da_vigencia_e_obrigatorio(): void
-    {
-        $this->post('/retaguarda/editais', $this->dados(['vigencia_inicio' => '']))
-            ->assertSessionHasErrors('vigencia_inicio');
-    }
-
-    public function test_divulgacao_e_limpa_ao_gravar(): void
-    {
-        $this->post('/retaguarda/editais', $this->dados([
-            'divulgacao' => '<script>alert(1)</script><p onclick="x">Oi</p>',
-        ]))->assertSessionHasNoErrors();
-
-        $this->assertSame('<p>Oi</p>', Edital::sole()->divulgacao);
-    }
-
-    public function test_divulgacao_vazia_e_recusada(): void
-    {
-        foreach (['', '<p></p>', '<p> </p>', '<p>&nbsp;</p>'] as $vazia) {
-            $this->post('/retaguarda/editais', $this->dados(['divulgacao' => $vazia]))
-                ->assertSessionHasErrors(['divulgacao' => 'Este campo é obrigatório.']);
-        }
-
-        $this->assertSame(0, Edital::count());
-    }
-
-    public function test_divulgacao_so_com_imagem_e_aceita(): void
-    {
-        $this->post('/retaguarda/editais', $this->dados([
-            'divulgacao' => '<img src="/storage/eventos/conteudo/a.png" alt="Cartaz">',
-        ]))->assertSessionHasNoErrors();
-
-        $this->assertSame('<img src="/storage/eventos/conteudo/a.png" alt="Cartaz">', Edital::sole()->divulgacao);
-    }
-
-    public function test_mensagens_usam_nomes_legiveis_dos_campos(): void
-    {
-        $this->post('/retaguarda/editais', $this->dados(['vigencia_inicio' => '']))
-            ->assertSessionHasErrors(['vigencia_inicio' => 'O campo início da vigência é obrigatório.']);
-
-        $this->post('/retaguarda/editais', $this->dados([
-            'categorias' => [['nome' => 'A', 'valor' => '10', 'vagas' => '0', 'naturezas' => ['sem_fins']]],
-        ]))->assertSessionHasErrors(['categorias.0.vagas' => 'O campo vagas deve ser ao menos 1.']);
-    }
-
-    public function test_edicao_envia_os_campos_novos_e_as_opcoes_de_fomento(): void
-    {
-        $edital = Edital::factory()->create([
-            'tipo_fomento' => TipoFomento::Indireto,
-            'vigencia_inicio' => '2026-11-01',
-            'vigencia_fim' => null,
-            'divulgacao' => '<p>Texto.</p>',
-        ]);
-
-        $opcoes = [['valor' => 'direto', 'rotulo' => 'Direto'], ['valor' => 'indireto', 'rotulo' => 'Indireto']];
-
-        $this->get("/retaguarda/editais/{$edital->slug}/edit")->assertInertia(fn (Assert $p) => $p
-            ->component('Retaguarda/Editais/Form')
-            ->where('edital.tipo_fomento', 'indireto')
-            ->where('edital.vigencia_inicio', '2026-11-01')
-            ->where('edital.vigencia_fim', null)
-            ->where('edital.divulgacao', '<p>Texto.</p>')
-            ->missing('edital.resumo')
-            ->where('tiposFomento', $opcoes));
-
-        $this->get('/retaguarda/editais/create')->assertInertia(fn (Assert $p) => $p
-            ->where('tiposFomento', $opcoes));
-    }
-
-    public function test_lista_nao_carrega_a_divulgacao(): void
-    {
-        Edital::factory()->create();
-        $consultas = [];
-        DB::listen(function ($consulta) use (&$consultas): void {
-            $consultas[] = strtolower($consulta->sql);
-        });
-
-        $this->get('/retaguarda/editais')->assertOk();
-
-        $selects = array_filter($consultas, fn (string $sql): bool => str_contains($sql, 'from "editais"') && str_starts_with($sql, 'select') && ! str_contains($sql, 'count('));
-        $this->assertNotEmpty($selects);
-        foreach ($selects as $sql) {
-            $this->assertStringNotContainsString('divulgacao', $sql);
-            $this->assertStringNotContainsString('select *', $sql);
-        }
-    }
-
-    public function test_home_e_portal_nao_carregam_a_divulgacao(): void
-    {
-        Edital::factory()->create();
-        $consultas = [];
-        DB::listen(function ($consulta) use (&$consultas): void {
-            $consultas[] = strtolower($consulta->sql);
-        });
-
-        $this->get('/')->assertOk();
-        auth()->logout();
-        $this->actingAs(User::factory()->proponente()->create())->get('/portal/editais')->assertOk();
-
-        $selects = array_filter($consultas, fn (string $sql): bool => str_contains($sql, 'from "editais"') && str_starts_with($sql, 'select') && ! str_contains($sql, 'count('));
-        $this->assertGreaterThanOrEqual(2, count($selects));
-        foreach ($selects as $sql) {
-            $this->assertStringNotContainsString('divulgacao', $sql);
-            $this->assertStringNotContainsString('select *', $sql);
-        }
+        return $edital;
     }
 
     public function test_lista_com_busca_e_filtros(): void
@@ -261,6 +135,10 @@ class EditaisTest extends TestCase
     public function test_cria_edital_com_pdf_e_imagem(): void
     {
         $this->post('/retaguarda/editais', $this->dados([
+            'com_listas' => '1',
+            'naturezas' => ['pessoa_fisica'],
+            'chamadas' => [['nome' => 'Inscrições', 'inicio' => '2026-11-01', 'fim' => '2026-11-30']],
+            'categorias' => [['nome' => 'Pontos de cultura']],
             'publicado' => '1',
             'pdf' => $this->pdf(),
             'imagem' => $this->imagem(),
@@ -402,7 +280,7 @@ class EditaisTest extends TestCase
 
     public function test_alterna_publicacao(): void
     {
-        $edital = Edital::factory()->create(['publicado' => false]);
+        $edital = $this->editalCompleto(['publicado' => false]);
 
         $this->patch("/retaguarda/editais/{$edital->slug}/publicacao")
             ->assertSessionHas('sucesso', 'Edital publicado.');
@@ -412,10 +290,10 @@ class EditaisTest extends TestCase
             ->assertSessionHas('sucesso', 'Edital despublicado.');
         $this->assertFalse($edital->refresh()->publicado);
 
-        $semPdf = Edital::factory()->semPdf()->create(['publicado' => false]);
+        $semPdf = $this->editalCompleto(['publicado' => false, 'pdf' => null]);
 
         $this->patch("/retaguarda/editais/{$semPdf->slug}/publicacao")
-            ->assertSessionHas('erro', 'Envie o PDF do edital para publicar.');
+            ->assertSessionHas('erro', 'Envie o PDF do edital.');
         $this->assertFalse($semPdf->refresh()->publicado);
     }
 
@@ -426,6 +304,104 @@ class EditaisTest extends TestCase
 
         $this->get("/retaguarda/editais/{$edital->slug}/pdf")->assertOk()->assertDownload("edital-{$edital->slug}.pdf");
         $this->get("/editais/{$edital->slug}/pdf")->assertNotFound();
+    }
+
+    public function test_lista_mostra_as_importacoes_em_andamento_com_erro_e_as_concluidas_do_ultimo_dia(): void
+    {
+        $this->travelTo(Carbon::parse('2026-10-28 15:00'));
+        // 20 MB foi aceito antes do teto de 14 MB: a tela recebe o teto.
+        $configuracao = ConfiguracaoIa::factory()->create([
+            'ativo' => false,
+            'provedor_principal' => ProvedorIa::Gemini,
+            'importacao_tamanho_maximo_mb' => 20,
+        ]);
+        ConexaoIa::factory()->gemini()->create();
+        $analisando = ImportacaoEdital::factory()->create(['iniciada_em' => now()->subMinutes(2)]);
+        $semTermino = ImportacaoEdital::factory()->create(['iniciada_em' => now()->subMinutes(16)]);
+        $comErro = ImportacaoEdital::factory()->comErro('Chave inválida.')->create();
+        $concluida = ImportacaoEdital::factory()->concluida()->create();
+        ImportacaoEdital::factory()->concluida()->create(['created_at' => now()->subHours(25), 'updated_at' => now()->subHours(25)]);
+
+        $linha = fn (ImportacaoEdital $importacao, string $situacao, ?string $erro = null, ?string $editalUrl = null): array => [
+            'id' => (int) $importacao->id,
+            'pdfNome' => $importacao->pdf_nome,
+            'situacao' => $situacao,
+            'erro' => $erro,
+            'editalUrl' => $editalUrl,
+            'enviadaEm' => '28/10/2026 15:00',
+        ];
+
+        // Mais recentes primeiro; a concluída há mais de 24 h fica de fora.
+        $this->get('/retaguarda/editais')->assertInertia(fn (Assert $p) => $p
+            ->where('importacaoConfigurada', true)
+            ->missing('importacaoAtiva')
+            ->where('tamanhoMaximoPdfMb', 14)
+            ->where('importacoes', [
+                $linha($concluida, 'concluida', editalUrl: route('retaguarda.editais.edit', $concluida->edital)),
+                $linha($comErro, 'erro', 'Chave inválida.'),
+                $linha($semTermino, 'erro', 'A análise não terminou. Tente de novo.'),
+                $linha($analisando, 'analisando'),
+            ]));
+
+        // Sem o principal, a importação continua na tela (o envio é que é recusado, com o que fazer).
+        $configuracao->update(['provedor_principal' => null]);
+        $this->get('/retaguarda/editais')->assertInertia(fn (Assert $p) => $p
+            ->where('importacaoConfigurada', false)
+            ->where('tamanhoMaximoPdfMb', 14)
+            ->has('importacoes', 4));
+    }
+
+    public function test_edital_importado_e_nao_conferido_traz_o_quadro_da_importacao(): void
+    {
+        $this->travelTo(Carbon::parse('2026-10-28 15:00'));
+        $importacao = ImportacaoEdital::factory()->concluida()->create([
+            'modelo' => 'gemini-2.5-pro',
+            'tokens_total' => 12345,
+            'confiabilidade' => [
+                'geral' => 70,
+                'blocos' => [
+                    'inscricao' => ['nota' => 60, 'justificativa' => 'Prazos divergentes.'],
+                    'identificacao' => ['nota' => 90, 'justificativa' => 'Cabeçalho claro.'],
+                ],
+            ],
+            'atencao' => [
+                ['bloco' => 'inscricao', 'tipo' => 'divergencia', 'texto' => 'O item 5.1 diz 01 a 31/07 e o 11.1 dá outro prazo.', 'itens' => ['5.1', '11.1']],
+                ['bloco' => null, 'tipo' => 'incerta', 'texto' => 'Página ilegível.', 'itens' => []],
+            ],
+        ]);
+        $edital = $importacao->edital;
+
+        $this->get("/retaguarda/editais/{$edital->slug}/edit")->assertInertia(fn (Assert $p) => $p
+            ->where('importacao', [
+                'confiabilidade' => [
+                    'geral' => 70,
+                    'blocos' => [
+                        ['bloco' => 'identificacao', 'rotulo' => 'Identificação', 'nota' => 90, 'justificativa' => 'Cabeçalho claro.'],
+                        ['bloco' => 'inscricao', 'rotulo' => 'Inscrição', 'nota' => 60, 'justificativa' => 'Prazos divergentes.'],
+                    ],
+                ],
+                'atencao' => [
+                    [
+                        'bloco' => 'inscricao',
+                        'blocoRotulo' => 'Inscrição',
+                        'tipo' => 'divergencia',
+                        'tipoRotulo' => 'Divergência no edital',
+                        'texto' => 'O item 5.1 diz 01 a 31/07 e o 11.1 dá outro prazo.',
+                        'itens' => ['5.1', '11.1'],
+                    ],
+                    ['bloco' => null, 'blocoRotulo' => 'Geral', 'tipo' => 'incerta', 'tipoRotulo' => 'Leitura incerta', 'texto' => 'Página ilegível.', 'itens' => []],
+                ],
+                'conferida' => false,
+                'modelo' => 'gemini-2.5-pro',
+                'tokensTotal' => 12345,
+                'importadaEm' => '28/10/2026 15:00',
+            ]));
+
+        $importacao->update(['conferida_em' => now()]);
+        $this->get("/retaguarda/editais/{$edital->slug}/edit")->assertInertia(fn (Assert $p) => $p->where('importacao', null));
+
+        $manual = Edital::factory()->create();
+        $this->get("/retaguarda/editais/{$manual->slug}/edit")->assertInertia(fn (Assert $p) => $p->where('importacao', null));
     }
 
     public function test_proponente_nao_acessa(): void

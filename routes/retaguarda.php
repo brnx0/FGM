@@ -1,9 +1,9 @@
 <?php
 
 use App\Http\Controllers\Retaguarda\ConexaoIaController;
-use App\Http\Controllers\Retaguarda\ConteudoImagemController;
 use App\Http\Controllers\Retaguarda\EditalController;
 use App\Http\Controllers\Retaguarda\EventoController;
+use App\Http\Controllers\Retaguarda\ImportacaoEditalController;
 use App\Http\Controllers\Retaguarda\IntegracaoIaController;
 use App\Http\Controllers\Retaguarda\LocalizacaoEventoController;
 use App\Http\Controllers\Retaguarda\LoginController;
@@ -38,16 +38,29 @@ Route::prefix('retaguarda')->name('retaguarda.')->group(function () {
             return to_route('retaguarda.editais.index');
         })->name('inicio');
 
+        // Importação do edital do PDF com IA (análise em segundo plano). Antes do resource, para não cair em editais/{edital}.
+        Route::controller(ImportacaoEditalController::class)->prefix('/editais/importacoes')->name('editais.importacoes.')->group(function () {
+            Route::post('/', 'store')->middleware('throttle:10,1')->name('store');
+            Route::get('/{importacao}', 'show')->whereNumber('importacao')->name('show');
+            Route::post('/{importacao}/nova-tentativa', 'tentar')->whereNumber('importacao')->middleware('throttle:10,1')->name('tentar');
+            Route::delete('/{importacao}', 'destroy')->whereNumber('importacao')->name('destroy');
+        });
+        Route::post('/editais/{edital}/importacao/conferida', [ImportacaoEditalController::class, 'conferida'])->name('editais.importacao.conferida');
+
         Route::resource('editais', EditalController::class)
             ->except('show')
             ->parameters(['editais' => 'edital']);
         Route::patch('/editais/{edital}/publicacao', [EditalController::class, 'publicacao'])->name('editais.publicacao');
         Route::get('/editais/{edital}/pdf', [EditalController::class, 'pdf'])->name('editais.pdf');
+        Route::get('/editais/{edital}/documentos/{documento}/modelo', [EditalController::class, 'modelo'])
+            ->whereNumber('documento')
+            ->scopeBindings()
+            ->name('editais.documentos.modelo');
 
-        // Imagens do editor de texto rico (eventos e editais): responde JSON com a URL.
-        Route::post('/conteudo/imagem', ConteudoImagemController::class)
+        // Imagens da descrição (editor de texto rico): responde JSON com a URL.
+        Route::post('/eventos/conteudo/imagem', [EventoController::class, 'imagemConteudo'])
             ->middleware('throttle:30,1')
-            ->name('conteudo.imagem');
+            ->name('eventos.conteudo.imagem');
         // Coordenadas do endereço para o pin do mapa (Nominatim): limite próprio para não abusar do serviço.
         Route::get('/eventos/localizar', LocalizacaoEventoController::class)
             ->middleware('throttle:20,1')
@@ -93,11 +106,13 @@ Route::prefix('retaguarda')->name('retaguarda.')->group(function () {
             ->whereNumber('prefeitura')
             ->name('prefeituras-bairro.ativo');
 
-        // Parametrização. Integração com IA: chave e modelo de cada provedor, o principal e a redundância.
+        // Parametrização. Integração com IA: chave e modelo de cada provedor, o principal, a redundância e a importação de edital.
         Route::controller(IntegracaoIaController::class)->group(function () {
             Route::get('/integracao-ia', 'edit')->name('integracao-ia.edit');
             Route::put('/integracao-ia', 'update')->name('integracao-ia.update');
             Route::put('/integracao-ia/redundancia', 'redundancia')->name('integracao-ia.redundancia');
+            Route::put('/integracao-ia/importacao', 'importacao')->name('integracao-ia.importacao');
+            Route::put('/integracao-ia/importacao/prompt-modelo', 'restaurarPrompt')->name('integracao-ia.importacao.prompt-modelo');
         });
         // Vão ao provedor com a chave digitada ou a guardada, e cada chamada pode custar: limite próprio
         // (o prefixo separa esta contagem da dos outros limites por usuário).

@@ -38,9 +38,65 @@ export interface EditalResumo {
 
 /** Edital em EditalController@show. */
 export interface EditalDetalhe extends Omit<EditalResumo, 'pdf' | 'imagem'> {
-    /** HTML já limpo ao salvar (App\Support\HtmlSeguro). */
-    divulgacao: string | null;
+    resumo: string;
     pdf: string | null;
+    numero: string | null;
+    tipoRotulo: string | null;
+    objeto: string | null;
+    chamadas: EditalChamadaPortal[];
+    /** Rótulos das naturezas que podem se inscrever. */
+    naturezas: string[];
+    aceitaColetivos: boolean;
+    inscricoesPorProponente: number | null;
+    categorias: EditalCategoriaPortal[];
+    cotas: EditalCotaPortal[];
+    documentosInscricao: EditalDocumentoPortal[];
+    /** Só as seções preenchidas, em texto puro com quebras de linha. */
+    informacoes: EditalInformacaoPortal[];
+}
+
+export interface EditalChamadaPortal {
+    nome: string;
+    inicio: string | null;
+    fim: string | null;
+    situacao: SituacaoEdital | null;
+    situacaoRotulo: string | null;
+}
+
+export interface EditalCategoriaPortal {
+    nome: string;
+    descricao: string | null;
+    /** Já formatado ("R$ 1.500,00"). */
+    valor: string | null;
+    vagas: number | null;
+    itens: { nome: string; valor: string | null; vagas: number | null; suplentes: number | null }[];
+}
+
+export interface EditalCotaPortal {
+    modalidade: string;
+    percentual: number | null;
+    /** Em vagas ou, com a base "recursos", em reais. */
+    quantidade: number | null;
+    /** Valor de BaseCota; null quando o edital não diz (vale como vagas). */
+    base: 'vagas' | 'recursos' | null;
+}
+
+export interface EditalDocumentoPortal {
+    nome: string;
+    orientacao: string | null;
+    obrigatorio: boolean;
+    /** Vazio = todas as naturezas do edital. */
+    naturezas: string[];
+    /** Vazio = todas as categorias. */
+    categorias: string[];
+    modeloUrl: string | null;
+    modeloNome: string | null;
+}
+
+export interface EditalInformacaoPortal {
+    chave: string;
+    titulo: string;
+    texto: string;
 }
 
 export interface Evento {
@@ -336,12 +392,13 @@ export interface Paginado<T> {
 /** Linha da lista de editais na retaguarda (Retaguarda\EditalController@index). */
 export interface EditalRetaguarda {
     slug: string;
-    titulo: string;
-    categoria: string;
-    /** "01/11/2026 a 30/11/2026". */
-    periodo: string;
-    situacao: SituacaoEdital;
-    situacaoRotulo: string;
+    /** Nulo no rascunho (ex.: importação ainda incompleta). */
+    titulo: string | null;
+    categoria: string | null;
+    /** "01/11/2026 a 30/11/2026"; nulo no rascunho sem datas. */
+    periodo: string | null;
+    situacao: SituacaoEdital | null;
+    situacaoRotulo: string | null;
     publicado: boolean;
     temPdf: boolean;
 }
@@ -379,96 +436,297 @@ export interface RetaguardaEditaisIndexProps {
     editais: Paginado<EditalRetaguarda>;
     filtros: { busca: string; situacao: SituacaoEdital | ''; publicado: 'sim' | 'nao' | '' };
     situacoes: { valor: SituacaoEdital; rotulo: string }[];
+    /** Provedor principal com modelo e chave na Integração com IA. "Importar com IA" aparece sempre; sem isso, o envio é recusado. */
+    importacaoConfigurada: boolean;
+    /** Tamanho máximo do PDF da importação (Integração com IA). */
+    tamanhoMaximoPdfMb: number;
+    importacoes: ImportacaoResumo[];
 }
 
-/** Edital em edição (Retaguarda\EditalController@edit). Datas em Y-m-d. */
+/** Situação de uma importação para a tela (análise sem término há mais de 10 min já vem como "erro"). */
+export type SituacaoImportacao = 'analisando' | 'concluida' | 'erro';
+
+/** Importação no painel da lista de editais (EditalController@index); a consulta JSON devolve situacao, erro e editalUrl. */
+export interface ImportacaoResumo {
+    id: number;
+    pdfNome: string;
+    situacao: SituacaoImportacao;
+    erro: string | null;
+    editalUrl: string | null;
+    /** dd/mm/aaaa hh:mm */
+    enviadaEm: string;
+}
+
+/** Ponto de atenção da importação; bloco nulo = sem bloco (rótulo "Geral"). */
+export interface PontoDeAtencao {
+    bloco: string | null;
+    blocoRotulo: string;
+    tipo: 'nao_encontrado' | 'divergencia' | 'incerta';
+    tipoRotulo: string;
+    texto: string;
+    itens: string[];
+}
+
+/** Quadro "Importado pela IA" do formulário do edital, enquanto a importação não foi conferida. */
+export interface ImportacaoDoEdital {
+    confiabilidade: {
+        geral: number | null;
+        /** Na ordem das abas, só os blocos que receberam nota (0 a 100). */
+        blocos: { bloco: string; rotulo: string; nota: number; justificativa: string }[];
+    };
+    atencao: PontoDeAtencao[];
+    conferida: boolean;
+    modelo: string;
+    tokensTotal: number | null;
+    /** dd/mm/aaaa hh:mm */
+    importadaEm: string;
+}
+
+/** Opção de um campo de escolha (valor do enum e rótulo). */
+export interface OpcaoFormulario {
+    valor: string;
+    rotulo: string;
+}
+
+export interface CotaModalidadeFormulario {
+    ativa: boolean;
+    percentual: number | null;
+    quantidade: number | null;
+}
+
+/** Cotas do edital; chaves das modalidades = valores de ModalidadeCota. */
+export interface CotasFormulario {
+    negros: CotaModalidadeFormulario;
+    indigenas: CotaModalidadeFormulario;
+    pcd: CotaModalidadeFormulario;
+    base: string | null;
+    alcance: string | null;
+    veda_negro_indigena: boolean | null;
+    heteroidentificacao: boolean | null;
+}
+
+export interface PontuacaoExtraFormulario {
+    grupos: { grupo: string; pontos_por_pessoa: number | null; maximo: number | null }[];
+    teto: number | null;
+    conta_para_corte: boolean | null;
+}
+
+/** Listas do edital: `id` do registro salvo; referências entre listas são posições (índice a partir de 0). */
+export interface ChamadaFormulario {
+    id: number;
+    nome: string;
+    inicio: string | null;
+    fim: string | null;
+}
+
+export interface CategoriaItemFormulario {
+    id: number;
+    nome: string;
+    /** Em reais. */
+    valor: number | null;
+    vagas: number | null;
+    suplentes: number | null;
+}
+
+export interface CategoriaFormulario {
+    id: number;
+    nome: string;
+    descricao: string | null;
+    /** Em reais. */
+    valor: number | null;
+    vagas: number | null;
+    /** Vazia = as naturezas do edital. */
+    naturezas: string[];
+    /** Posição da chamada. */
+    chamada: number | null;
+    itens: CategoriaItemFormulario[];
+}
+
+export interface DocumentoFormulario {
+    id: number;
+    nome: string;
+    orientacao: string | null;
+    etapa: string;
+    obrigatorio: boolean;
+    /** Vazia = todas as naturezas. */
+    naturezas: string[];
+    todas_categorias: boolean;
+    /** Posições das categorias. */
+    categorias: number[];
+    modalidade_cota: string | null;
+    anexo_referencia: string | null;
+    modeloUrl: string | null;
+    modeloNome: string | null;
+}
+
+export interface RequisitoFormulario {
+    id: number;
+    descricao: string;
+    /** Posições dos documentos. */
+    documentos: number[];
+}
+
+export interface CriterioFormulario {
+    id: number;
+    nome: string;
+    descricao: string | null;
+    peso: number | null;
+    pontos_maximos: number | null;
+    todas_categorias: boolean;
+    /** Posições das categorias. */
+    categorias: number[];
+}
+
+/**
+ * Listas no formulário do edital (Retaguarda/Editais/Form): cada item tem uma `chave` estável, só da tela, e as
+ * referências entre listas guardam a chave do item referido; as posições são calculadas no envio. Decimais ficam
+ * como texto digitado ("12,5") até o envio.
+ */
+export interface ItemEditavel {
+    chave: string;
+}
+
+export interface ChamadaEditavel extends ItemEditavel {
+    id: number | null;
+    nome: string;
+    inicio: string;
+    fim: string;
+}
+
+export interface CategoriaItemEditavel extends ItemEditavel {
+    id: number | null;
+    nome: string;
+    valor: number | null;
+    vagas: number | null;
+    suplentes: number | null;
+}
+
+export interface CategoriaEditavel extends ItemEditavel {
+    id: number | null;
+    nome: string;
+    descricao: string;
+    valor: number | null;
+    vagas: number | null;
+    naturezas: string[];
+    /** Chave da chamada. */
+    chamada: string | null;
+    itens: CategoriaItemEditavel[];
+}
+
+export interface DocumentoEditavel extends ItemEditavel {
+    id: number | null;
+    nome: string;
+    orientacao: string;
+    etapa: string;
+    obrigatorio: boolean;
+    naturezas: string[];
+    todas_categorias: boolean;
+    /** Chaves das categorias. */
+    categorias: string[];
+    modalidade_cota: string;
+    anexo_referencia: string;
+    /** Arquivo-modelo novo (só vai quando escolhido). */
+    modelo: File | null;
+    remover_modelo: boolean;
+    modeloUrl: string | null;
+    modeloNome: string | null;
+}
+
+export interface RequisitoEditavel extends ItemEditavel {
+    id: number | null;
+    descricao: string;
+    /** Chaves dos documentos. */
+    documentos: string[];
+}
+
+export interface CriterioEditavel extends ItemEditavel {
+    id: number | null;
+    nome: string;
+    descricao: string;
+    peso: string;
+    pontos_maximos: string;
+    todas_categorias: boolean;
+    /** Chaves das categorias. */
+    categorias: string[];
+}
+
+export interface GrupoPontuacaoEditavel extends ItemEditavel {
+    grupo: string;
+    pontos_por_pessoa: string;
+    maximo: string;
+}
+
+export interface PontuacaoExtraEditavel {
+    grupos: GrupoPontuacaoEditavel[];
+    teto: string;
+    conta_para_corte: boolean | null;
+}
+
+export interface CotaModalidadeEditavel {
+    ativa: boolean;
+    percentual: string;
+    quantidade: string;
+}
+
+export interface CotasEditavel {
+    /** Pela modalidade (valor de ModalidadeCota). */
+    modalidades: Record<string, CotaModalidadeEditavel>;
+    base: string;
+    alcance: string;
+    veda_negro_indigena: boolean | null;
+    heteroidentificacao: boolean | null;
+}
+
+/** Edital em edição (Retaguarda\EditalController@edit). Datas em Y-m-d; rascunho pode vir sem título, textos e datas. */
 export interface EditalFormulario {
     slug: string;
-    titulo: string;
-    categoria: string;
-    /** Valor do enum TipoFomento; null em edital antigo. */
-    tipo_fomento: string | null;
-    divulgacao: string | null;
-    inscricoes_inicio: string;
-    inscricoes_fim: string;
-    vigencia_inicio: string | null;
-    vigencia_fim: string | null;
+    titulo: string | null;
+    resumo: string | null;
+    categoria: string | null;
+    /** Calculadas das chamadas ao salvar. */
+    inscricoes_inicio: string | null;
+    inscricoes_fim: string | null;
     publicado: boolean;
     /** Download do PDF atual pela retaguarda (vale também para rascunho). */
     pdfUrl: string | null;
     pdfNome: string | null;
     imagemUrl: string | null;
-    /** Na ordem de exibição. */
-    categorias: CategoriaEdital[];
-    /** Na ordem de exibição. */
-    documentos: DocumentoEdital[];
-}
-
-/** App\Models\EditalCategoria::COTAS. */
-export type CotaEdital = 'negros' | 'indigenas' | 'pcd';
-
-/** App\Enums\UnidadeCota. */
-export type UnidadeCota = 'vagas' | 'percentual';
-
-/** Categoria de inscrição do edital (Retaguarda\EditalController@edit). */
-export interface CategoriaEdital {
-    id: number;
-    nome: string;
-    /** Em reais (150000.5 = R$ 150.000,50). */
-    valor: number;
-    vagas: number;
-    /** Valores do enum NaturezaProponente. */
+    numero: string | null;
+    tipo: string | null;
+    objeto: string | null;
+    dom_data: string | null;
+    dom_numero: string | null;
     naturezas: string[];
-    /** Sem cota: valor e unidade null. */
-    cotas: Record<CotaEdital, { valor: number | null; unidade: UnidadeCota | null }>;
-}
-
-/** Categoria no formulário do edital: `chave` identifica o cartão (não vai ao servidor); `id` só nas já salvas. */
-export interface CategoriaEditavel {
-    chave: string;
-    id: number | null;
-    nome: string;
-    valor: number | null;
-    vagas: number | null;
-    naturezas: string[];
-    cotas: Record<CotaEdital, { valor: number | null; unidade: UnidadeCota }>;
-}
-
-/** Documento exigido na inscrição (Retaguarda\EditalController@edit). */
-export interface DocumentoEdital {
-    id: number;
-    nome: string;
-    orientacao: string | null;
-    obrigatorio: boolean;
-    /** Valores do enum NaturezaProponente. */
-    naturezas: string[];
-    todas_categorias: boolean;
-    /** Posições (a partir de 0) na lista `categorias` do mesmo edital. */
-    categorias: number[];
-    tamanho_max_mb: number;
-}
-
-/**
- * Documento no formulário do edital: `chave` identifica o cartão (não vai ao servidor); `id` só nos já salvos.
- * `categorias` guarda as chaves dos cartões das categorias: viram posições só no envio, então reordenar não desfaz a ligação.
- */
-export interface DocumentoEditavel {
-    chave: string;
-    id: number | null;
-    nome: string;
-    orientacao: string;
-    obrigatorio: boolean;
-    naturezas: string[];
-    todas_categorias: boolean;
-    categorias: string[];
-    tamanho_max_mb: number | null;
+    aceita_coletivos: boolean | null;
+    inscricoes_por_proponente: number | null;
+    limite_por_chamada: boolean | null;
+    forma_inscricao_original: string | null;
+    nota_maxima: number | null;
+    nota_corte: number | null;
+    cotas: CotasFormulario | null;
+    pontuacao_extra: PontuacaoExtraFormulario | null;
+    /** Todas as seções informativas (chaves de `secoesInformativas`), nulas quando vazias. */
+    informacoes: Record<string, string | null>;
+    chamadas: ChamadaFormulario[];
+    categorias: CategoriaFormulario[];
+    documentos: DocumentoFormulario[];
+    requisitos: RequisitoFormulario[];
+    criterios: CriterioFormulario[];
 }
 
 export interface RetaguardaEditaisFormProps {
     edital: EditalFormulario | null;
-    tiposFomento: { valor: string; rotulo: string }[];
-    /** NaturezaProponente: quem pode concorrer a cada categoria. */
-    naturezas: { valor: string; rotulo: string }[];
+    /** O que falta para publicar (vazia na criação). */
+    pendencias: string[];
+    /** Importação por IA que gerou o edital, enquanto não foi conferida. */
+    importacao: ImportacaoDoEdital | null;
+    naturezas: OpcaoFormulario[];
+    etapas: OpcaoFormulario[];
+    modalidadesCota: OpcaoFormulario[];
+    basesCota: OpcaoFormulario[];
+    alcancesCota: OpcaoFormulario[];
+    tiposEdital: OpcaoFormulario[];
+    secoesInformativas: OpcaoFormulario[];
 }
 
 /** Linha da lista de eventos na retaguarda (Retaguarda\EventoController@index). */
@@ -647,7 +905,7 @@ export interface RetaguardaPrefeiturasBairroFormProps {
 export interface AbaFormulario {
     id: string;
     rotulo: string;
-    /** Campos do formulário desta aba: os erros deles contam no marcador da aba. Terminado em ".*", vale para todo campo com esse prefixo. */
+    /** Campos do formulário desta aba: os erros deles contam no marcador da aba. */
     campos: string[];
 }
 
@@ -699,4 +957,18 @@ export interface ProvedorIaRetaguarda {
 export interface RetaguardaIntegracaoIaProps {
     configuracao: { ativo: boolean; principal: ProvedorIa | null; redundancia: ProvedorIa | null };
     provedores: ProvedorIaRetaguarda[];
+    importacao: ImportacaoIaRetaguarda;
+}
+
+/** Parâmetros da importação de edital (cartão 3 da Integração com IA); nada da conexão. */
+export interface ImportacaoIaRetaguarda {
+    /** O prompt da equipe ou, sem ele, o prompt modelo. */
+    prompt: string;
+    promptModelo: string;
+    /** De 0 a 1. */
+    temperatura: number;
+    /** De 1 a 14. */
+    tamanhoMaximoMb: number;
+    /** Há provedor principal com modelo e chave: a importação pode ser usada. */
+    configurada: boolean;
 }

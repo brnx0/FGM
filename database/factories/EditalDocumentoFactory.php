@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Enums\NaturezaProponente;
+use App\Enums\EtapaDocumento;
 use App\Models\Edital;
 use App\Models\EditalDocumento;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -12,17 +12,20 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class EditalDocumentoFactory extends Factory
 {
+    /**
+     * @return array<string, mixed>
+     */
     public function definition(): array
     {
         return [
             'edital_id' => Edital::factory(),
-            'ordem' => 1,
-            'nome' => 'Documento '.fake()->unique()->numberBetween(1, 9999),
-            'orientacao' => null,
+            'nome' => fake()->words(3, true),
+            'orientacao' => fake()->sentence(8),
+            'etapa' => EtapaDocumento::Inscricao,
             'obrigatorio' => true,
-            'naturezas' => [NaturezaProponente::PessoaFisica],
+            'naturezas' => null,
             'todas_categorias' => true,
-            'tamanho_max_mb' => 2,
+            'ordem' => 1,
         ];
     }
 }

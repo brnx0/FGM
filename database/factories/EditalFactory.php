@@ -2,7 +2,6 @@
 
 namespace Database\Factories;
 
-use App\Enums\TipoFomento;
 use App\Models\Edital;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
@@ -19,12 +18,9 @@ class EditalFactory extends Factory
         return [
             'titulo' => $titulo,
             'slug' => Str::slug($titulo).'-'.fake()->unique()->numberBetween(1, 999999),
+            'resumo' => fake()->sentence(12),
             'categoria' => fake()->randomElement(['Fomento', 'Audiovisual', 'Rede municipal']),
-            'tipo_fomento' => fake()->randomElement(TipoFomento::cases()),
-            'divulgacao' => '<p>'.fake()->sentence(12).'</p>',
             'inscricoes_inicio' => now()->subDays(5)->toDateString(),
-            'vigencia_inicio' => now()->subDays(5)->toDateString(),
-            'vigencia_fim' => null,
             'inscricoes_fim' => now()->addDays(20)->toDateString(),
             'imagem' => null,
             'pdf' => 'editais/teste.pdf',
@@ -35,5 +31,20 @@ class EditalFactory extends Factory
     public function semPdf(): static
     {
         return $this->state(['pdf' => null]);
+    }
+
+    /** Rascunho incompleto (ex.: importação recém-criada): sem título, categoria, resumo, datas e PDF, não publicado. */
+    public function rascunho(): static
+    {
+        return $this->state([
+            'titulo' => null,
+            'slug' => 'rascunho-'.fake()->unique()->numberBetween(1, 999999),
+            'resumo' => null,
+            'categoria' => null,
+            'inscricoes_inicio' => null,
+            'inscricoes_fim' => null,
+            'pdf' => null,
+            'publicado' => false,
+        ]);
     }
 }
