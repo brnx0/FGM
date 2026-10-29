@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\ChecagemDocumento;
 use App\Enums\ProvedorIa;
 use App\Enums\SituacaoConferencia;
 use App\Http\Controllers\InscricaoDocumentoController;
@@ -77,6 +78,11 @@ class ConferirDocumentoCommand extends Command
             $this->error(self::SUPERADA);
 
             return self::FAILURE;
+        }
+
+        // A equipe pode ter posto o documento em "Não validar" depois do lançamento: o arquivo não sai do servidor.
+        if ($documento->documento?->checagem === ChecagemDocumento::Nenhuma) {
+            return $this->dispensar();
         }
 
         $provedores = [];
@@ -182,6 +188,31 @@ class ConferirDocumentoCommand extends Command
         $this->error($mensagem);
 
         return self::FAILURE;
+    }
+
+    /** Documento em "Não validar": volta a ser só enviado, sem passar pela IA (se ainda estiver nesta execução). */
+    private function dispensar(): int
+    {
+        $guardou = $this->naExecucao(fn (InscricaoDocumento $atual) => $atual->update([
+            'situacao' => SituacaoConferencia::Enviado,
+            'motivo' => null,
+            'erro' => null,
+            'provedor' => null,
+            'modelo' => null,
+            'execucao' => null,
+            'iniciada_em' => null,
+            'conferido_em' => null,
+        ]));
+
+        if (! $guardou) {
+            $this->error(self::SUPERADA);
+
+            return self::FAILURE;
+        }
+
+        $this->info('Documento em "Não validar": a IA não foi chamada.');
+
+        return self::SUCCESS;
     }
 
     private function cortar(string $texto): string

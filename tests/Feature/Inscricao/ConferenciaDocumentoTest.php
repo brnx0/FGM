@@ -363,6 +363,67 @@ class ConferenciaDocumentoTest extends TestCase
         $this->assertCount(1, $this->lancador->chamadas);
     }
 
+    public function test_conferir_de_novo_respeita_nao_validar(): void
+    {
+        Http::fake();
+        $url = route('portal.inscricoes.documentos.conferir', [$this->inscricao, $this->exigido]);
+        $this->exigido->update(['checagem' => ChecagemDocumento::Nenhuma]);
+        $this->actingAs($this->user);
+
+        $paradoHaMuito = ['situacao' => SituacaoConferencia::Conferindo, 'iniciada_em' => now()->subMinutes(6)];
+
+        foreach ([['situacao' => SituacaoConferencia::Reprovado], ['situacao' => SituacaoConferencia::NaoConferido], $paradoHaMuito] as $atributos) {
+            $documento = $this->documentoConferindo([...$atributos, 'motivo' => 'Antigo.', 'erro' => 'Detalhe antigo.', 'conferido_em' => now()->subHour()]);
+
+            $this->post($url)
+                ->assertRedirect(route('portal.inscricoes.show', $this->inscricao))
+                ->assertSessionHas('aviso', InscricaoDocumentoController::AVISO_SEM_CONFERENCIA);
+
+            $documento->refresh();
+            $this->assertSame(SituacaoConferencia::Enviado, $documento->situacao);
+            $this->assertNull($documento->motivo);
+            $this->assertNull($documento->erro);
+            $this->assertNull($documento->execucao);
+            $this->assertNull($documento->iniciada_em);
+            $this->assertNull($documento->conferido_em);
+            $documento->delete();
+        }
+
+        Http::assertNothingSent();
+        $this->assertSame([], $this->lancador->chamadas);
+
+        // Já aprovado, não há o que refazer: a recusa de sempre.
+        $aprovado = $this->documentoConferindo(['situacao' => SituacaoConferencia::Aprovado]);
+        $this->post($url)->assertSessionHas('aviso', InscricaoDocumentoController::AVISO_CONFERIR_DE_NOVO);
+        $this->assertSame(SituacaoConferencia::Aprovado, $aprovado->fresh()->situacao);
+        Http::assertNothingSent();
+    }
+
+    public function test_comando_nao_chama_a_ia_quando_o_documento_passou_para_nao_validar(): void
+    {
+        Http::fake();
+        $documento = $this->documentoConferindo();
+        $this->exigido->update(['checagem' => ChecagemDocumento::Nenhuma]);
+
+        $this->assertSame(0, $this->conferir($documento));
+
+        $documento->refresh();
+        $this->assertSame(SituacaoConferencia::Enviado, $documento->situacao);
+        $this->assertNull($documento->motivo);
+        $this->assertNull($documento->erro);
+        $this->assertNull($documento->provedor);
+        $this->assertNull($documento->execucao);
+        $this->assertNull($documento->conferido_em);
+        Http::assertNothingSent();
+
+        // Execução que já não é a do documento: nada gravado, também sem IA.
+        $outro = EditalDocumento::factory()->for($this->edital)->create(['checagem' => ChecagemDocumento::Nenhuma, 'obrigatorio' => false]);
+        $trocado = $this->documentoConferindo(['edital_documento_id' => $outro->id], 'execucao-nova');
+        $this->assertSame(1, $this->conferir($trocado, 'execucao-antiga'));
+        $this->assertSame(SituacaoConferencia::Conferindo, $trocado->refresh()->situacao);
+        Http::assertNothingSent();
+    }
+
     public function test_situacao_em_json_so_para_o_dono(): void
     {
         $opcional = EditalDocumento::factory()->for($this->edital)->create(['checagem' => ChecagemDocumento::Rigorosa, 'obrigatorio' => false]);

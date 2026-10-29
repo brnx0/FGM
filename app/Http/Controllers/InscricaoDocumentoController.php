@@ -39,6 +39,8 @@ class InscricaoDocumentoController extends Controller
 
     public const string AVISO_CONFERIR_DE_NOVO = 'Só é possível conferir de novo um documento reprovado ou não conferido.';
 
+    public const string AVISO_SEM_CONFERENCIA = 'Este documento não é conferido pela IA: ele segue como enviado.';
+
     private const string ERRO_DO_PROCESSO = 'Não foi possível iniciar o processo da conferência.';
 
     public function store(Request $request, Inscricao $inscricao, EditalDocumento $documento, LancadorDeConferencia $lancador): RedirectResponse
@@ -116,7 +118,10 @@ class InscricaoDocumentoController extends Controller
         return redirect()->route('portal.inscricoes.show', $inscricao)->with('sucesso', 'Documento removido.');
     }
 
-    /** "Conferir de novo": só o documento reprovado ou não conferido (inclusive o conferindo parado) ganha uma execução nova. */
+    /**
+     * "Conferir de novo": só o documento reprovado ou não conferido (inclusive o conferindo parado) ganha uma execução
+     * nova; em "Não validar" ele só volta a ser enviado, sem chamar a IA.
+     */
     public function conferir(Inscricao $inscricao, EditalDocumento $documento, LancadorDeConferencia $lancador): RedirectResponse
     {
         Gate::authorize('gerenciar', $inscricao);
@@ -136,13 +141,18 @@ class InscricaoDocumentoController extends Controller
                 return null;
             }
 
-            $enviado->fill($this->atributosDaConferencia())->save();
+            // A equipe pode ter posto o documento em "Não validar" depois do envio: nada vai para a IA.
+            $enviado->fill($this->atributosDaConferencia($documento->checagem !== ChecagemDocumento::Nenhuma))->save();
 
             return $enviado;
         });
 
         if ($reiniciado === null) {
             return redirect()->route('portal.inscricoes.show', $inscricao)->with('aviso', self::AVISO_CONFERIR_DE_NOVO);
+        }
+
+        if ($reiniciado->situacao !== SituacaoConferencia::Conferindo) {
+            return redirect()->route('portal.inscricoes.show', $inscricao)->with('aviso', self::AVISO_SEM_CONFERENCIA);
         }
 
         if (! $this->lancar($reiniciado, $lancador)) {
