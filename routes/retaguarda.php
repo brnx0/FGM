@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Retaguarda\AreaAtuacaoController;
 use App\Http\Controllers\Retaguarda\ConexaoIaController;
 use App\Http\Controllers\Retaguarda\EditalController;
 use App\Http\Controllers\Retaguarda\EventoController;
@@ -105,6 +106,15 @@ Route::prefix('retaguarda')->name('retaguarda.')->group(function () {
         Route::patch('/prefeituras-bairro/{prefeitura}/ativo', [PrefeituraBairroController::class, 'ativo'])
             ->whereNumber('prefeitura')
             ->name('prefeituras-bairro.ativo');
+
+        // Parametrização. Área de atuação não se exclui, só se desativa (vai ser escolhida nos editais e nas inscrições).
+        Route::resource('areas-atuacao', AreaAtuacaoController::class)
+            ->only(['index', 'create', 'store', 'edit', 'update'])
+            ->parameters(['areas-atuacao' => 'area'])
+            ->where(['area' => '[0-9]+']);
+        Route::patch('/areas-atuacao/{area}/ativo', [AreaAtuacaoController::class, 'ativo'])
+            ->whereNumber('area')
+            ->name('areas-atuacao.ativo');
 
         // Parametrização. Integração com IA: chave e modelo de cada provedor, o principal, a redundância e a importação de edital.
         Route::controller(IntegracaoIaController::class)->group(function () {
