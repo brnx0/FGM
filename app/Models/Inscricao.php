@@ -4,9 +4,14 @@ namespace App\Models;
 
 use App\Enums\ModalidadeCota;
 use App\Enums\NaturezaProponente;
+use App\Enums\SituacaoEdital;
 use App\Enums\SituacaoInscricao;
+use App\Support\Inscricao\RegrasDaInscricao;
+use Carbon\CarbonInterface;
 use Database\Factories\InscricaoFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\AsEnumCollection;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -80,5 +85,35 @@ class Inscricao extends Model
     public function documentos(): HasMany
     {
         return $this->hasMany(InscricaoDocumento::class);
+    }
+
+    /**
+     * Documentos do edital que esta inscrição precisa enviar (de todas as etapas), na ordem do edital:
+     * os da natureza do cadastro, da categoria escolhida e das cotas marcadas.
+     *
+     * @return Collection<int, EditalDocumento>
+     */
+    public function documentosExigidos(): Collection
+    {
+        $categoriaId = $this->edital_categoria_id;
+        $cotas = $this->cotas?->map(fn (ModalidadeCota $cota): string => $cota->value)->all() ?? [];
+
+        return $this->edital->documentos()
+            ->where(function (Builder $query) use ($categoriaId): void {
+                $query->where('todas_categorias', true);
+                if ($categoriaId !== null) {
+                    $query->orWhereHas('categorias', fn (Builder $categorias) => $categorias->whereKey($categoriaId));
+                }
+            })
+            ->where(fn (Builder $query) => $query->whereNull('modalidade_cota')->orWhereIn('modalidade_cota', $cotas))
+            ->get()
+            ->filter(fn (EditalDocumento $documento): bool => RegrasDaInscricao::aceitaNatureza($documento->naturezas, $this->natureza))
+            ->values();
+    }
+
+    /** Edital no portal e chamada da inscrição aberta (dias da chamada, ver UsaDiaCivil). */
+    public function noPeriodo(?CarbonInterface $agora = null): bool
+    {
+        return $this->edital->estaVisivel() && $this->chamada?->situacao($agora) === SituacaoEdital::Aberto;
     }
 }
