@@ -27,9 +27,11 @@ Decidido:
 - Saem: as rotas `retaguarda.integracao-ia.importacao` e `retaguarda.integracao-ia.importacao.prompt-modelo`, os
   métodos `importacao` e `restaurarPrompt` do `IntegracaoIaController`, o `SalvarImportacaoIaRequest`, a prop
   `importacao` da página e os testes dessa seção.
-- Uma migration nova apaga as três colunas de `configuracoes_ia`, descartando o que estiver gravado (decidido: não
-  preservar; o prompt nunca foi alterado). Nenhum seeder ou factory usa essas colunas. Ela precisa rodar em Oracle e em PostgreSQL (há
-  colegas em PostgreSQL). O `down` recria as colunas nulas.
+- Sem migration nova: apaga-se a migration que cria as colunas,
+  `2026_10_28_204911_add_importacao_to_configuracoes_ia_table.php` (a única que mexe nelas), e o modelo deixa de
+  usá-las (fillable, `$attributes`, casts). Nos bancos onde ela já rodou, as colunas ficam sobrando, sem efeito: o
+  prompt aceita nulo e a temperatura e o tamanho têm valor padrão, então inserir e atualizar `configuracoes_ia`
+  continua funcionando. Nenhum seeder ou factory usa essas colunas.
 - Os pontos que leem esses valores (`AnalisarEditalCommand`, `ImportarEditalRequest`,
   `Retaguarda\EditalController` para o `tamanhoMaximoPdfMb`) passam a ler as constantes. Os nomes dos métodos de
   `ConfiguracaoIa` (`promptDaImportacao`, `temperaturaDaImportacao`, `tamanhoMaximoPdfMb`) podem continuar existindo,
@@ -122,4 +124,4 @@ vazias. Se o construtor optar pela tabela de fases, a migration copia `inicio`/`
 - O formulário do edital tem a aba Períodos com as fases de cada chamada, salvando e reabrindo as datas.
 - Publicar continua exigindo só a Inscrição.
 - A importação por IA preenche as fases quando o PDF traz as datas.
-- As migrations rodam e voltam em Oracle e PostgreSQL; build e suíte completa passam.
+- As migrations novas (das fases) rodam e voltam em Oracle e PostgreSQL; build e suíte completa passam.
