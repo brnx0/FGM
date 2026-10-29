@@ -28,9 +28,9 @@ class AnalisadorGeminiTest extends TestCase
     /**
      * @return array{dados: array<mixed>, tokens: array{entrada: int, saida: int, total: int}}
      */
-    private function analisar(): array
+    private function analisar(?string $pdfBinario = '%PDF-1.4 conteúdo'): array
     {
-        return app(AnalisadorGemini::class)->analisar('gemini-2.5-pro', self::CHAVE, '%PDF-1.4 conteúdo', 'Leia o edital.', 0.1, self::ESQUEMA);
+        return app(AnalisadorGemini::class)->analisar('gemini-2.5-pro', self::CHAVE, $pdfBinario, 'Leia o edital.', 0.1, self::ESQUEMA);
     }
 
     private function falhaAoAnalisar(): FalhaNaIa
@@ -70,6 +70,16 @@ class AnalisadorGeminiTest extends TestCase
                 ['text' => 'Leia o edital.'],
             ]
             && $pedido['generationConfig'] === ['temperature' => 0.1, 'responseMimeType' => 'application/json', 'responseSchema' => self::ESQUEMA]);
+    }
+
+    public function test_sem_pdf_o_pedido_do_gemini_so_leva_o_texto(): void
+    {
+        Http::fake([self::URL_ANALISE => Http::response(self::corpo('{"titulo": "Edital 007/2026"}'))]);
+
+        $resultado = $this->analisar(null);
+
+        $this->assertSame(['titulo' => 'Edital 007/2026'], $resultado['dados']);
+        Http::assertSent(fn (Request $pedido): bool => $pedido['contents'] === [['parts' => [['text' => 'Leia o edital.']]]]);
     }
 
     public function test_temperatura_recusada_repete_uma_vez_sem_ela(): void
@@ -128,7 +138,7 @@ class AnalisadorGeminiTest extends TestCase
     {
         Http::fake([self::URL_ANALISE => Http::failedConnection('cURL error 28: Operation timed out after 300000 milliseconds')]);
 
-        $this->assertSame('Google Gemini demorou demais para analisar o edital e a chamada foi interrompida. Tente de novo.', $this->falhaAoAnalisar()->getMessage());
+        $this->assertSame('Google Gemini demorou demais para responder e a chamada foi interrompida. Tente de novo.', $this->falhaAoAnalisar()->getMessage());
     }
 
     public function test_sem_conexao_vira_mensagem_de_conexao(): void

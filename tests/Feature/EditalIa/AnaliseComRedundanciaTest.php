@@ -5,6 +5,7 @@ namespace Tests\Feature\EditalIa;
 use App\Enums\ProvedorIa;
 use App\Models\ConexaoIa;
 use App\Support\EditalIa\AnaliseComRedundancia;
+use App\Support\EditalIa\RespostaInvalida;
 use App\Support\FalhaNaIa;
 use GuzzleHttp\Promise\PromiseInterface;
 use Illuminate\Support\Facades\Http;
@@ -41,11 +42,12 @@ class AnaliseComRedundanciaTest extends TestCase
 
     /**
      * @param  list<array{provedor: ProvedorIa, conexao: ConexaoIa}>  $provedores
+     * @param  (callable(array<mixed>): void)|null  $conferirResposta
      * @return array<string, mixed>
      */
-    private function analisar(array $provedores): array
+    private function analisar(array $provedores, ?callable $conferirResposta = null): array
     {
-        return app(AnaliseComRedundancia::class)->analisar($provedores, '%PDF-1.4 conteúdo', 'Leia o edital.', 0.1, self::ESQUEMA);
+        return app(AnaliseComRedundancia::class)->analisar($provedores, '%PDF-1.4 conteúdo', 'Leia o edital.', 0.1, self::ESQUEMA, $conferirResposta);
     }
 
     /**
@@ -115,18 +117,38 @@ class AnaliseComRedundanciaTest extends TestCase
         Http::assertSentCount(2);
     }
 
-    public function test_principal_com_json_sem_os_blocos_da_raiz_passa_para_a_redundancia(): void
+    public function test_conferencia_da_resposta_que_recusa_passa_para_a_redundancia(): void
     {
         Http::fake([
-            self::URL_OPENAI => self::respostaDaOpenAi(['titulo' => 'Salvador Circula']),
-            self::URL_GEMINI => self::respostaDoGemini($this->respostaCompleta()),
+            self::URL_OPENAI => self::respostaDaOpenAi(['titulo' => null]),
+            self::URL_GEMINI => self::respostaDoGemini(['titulo' => 'Salvador Circula']),
         ]);
+        $conferidas = [];
+        $conferirResposta = function (array $dados) use (&$conferidas): void {
+            $conferidas[] = $dados;
+            if (! is_string($dados['titulo'] ?? null)) {
+                throw new RespostaInvalida;
+            }
+        };
+
+        $resultado = $this->analisar(self::openAiEGemini(), $conferirResposta);
+
+        $this->assertSame(ProvedorIa::Gemini, $resultado['provedor']);
+        $this->assertSame(['titulo' => 'Salvador Circula'], $resultado['dados']);
+        $this->assertSame([['provedor' => ProvedorIa::OpenAi, 'motivo' => 'OpenAI respondeu fora do formato esperado.']], $resultado['falhas']);
+        $this->assertSame([['titulo' => null], ['titulo' => 'Salvador Circula']], $conferidas);
+    }
+
+    public function test_sem_conferencia_aceita_qualquer_json(): void
+    {
+        Http::fake([self::URL_OPENAI => self::respostaDaOpenAi(['titulo' => 'Salvador Circula'])]);
 
         $resultado = $this->analisar(self::openAiEGemini());
 
-        $this->assertSame(ProvedorIa::Gemini, $resultado['provedor']);
-        $this->assertSame($this->respostaCompleta(), $resultado['dados']);
-        $this->assertSame([['provedor' => ProvedorIa::OpenAi, 'motivo' => 'OpenAI respondeu fora do formato esperado.']], $resultado['falhas']);
+        $this->assertSame(ProvedorIa::OpenAi, $resultado['provedor']);
+        $this->assertSame(['titulo' => 'Salvador Circula'], $resultado['dados']);
+        $this->assertSame([], $resultado['falhas']);
+        Http::assertSentCount(1);
     }
 
     public function test_os_dois_falhando_a_mensagem_traz_o_motivo_de_cada_um(): void

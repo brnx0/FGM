@@ -368,7 +368,7 @@ class ImportacaoEditalTest extends TestCase
             'outro 400 que repete a chave' => [fn () => Http::response(['error' => ['message' => 'Invalid request for '.self::CHAVE]], 400), 'Google Gemini recusou o pedido (erro 400): Invalid request for [chave]'],
             'limite de uso (429)' => [fn () => Http::response(['error' => ['code' => 429]], 429), 'Google Gemini: limite de uso ou cota da conta esgotados. Confira o plano e o saldo da conta.'],
             'serviço fora do ar (500)' => [fn () => Http::response('erro', 500), 'Google Gemini está com instabilidade. Tente de novo em alguns minutos.'],
-            'tempo esgotado' => [fn () => throw new ConnectionException('cURL error 28: Operation timed out after 300000 milliseconds'), 'Google Gemini demorou demais para analisar o edital e a chamada foi interrompida. Tente de novo.'],
+            'tempo esgotado' => [fn () => throw new ConnectionException('cURL error 28: Operation timed out after 300000 milliseconds'), 'Google Gemini demorou demais para responder e a chamada foi interrompida. Tente de novo.'],
         ];
     }
 

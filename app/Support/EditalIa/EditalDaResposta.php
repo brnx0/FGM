@@ -98,8 +98,8 @@ class EditalDaResposta
     }
 
     /**
-     * Confere os blocos da raiz (presentes e com o tipo certo). Usada também por AnaliseComRedundancia, para a resposta
-     * fora do formato passar ao provedor seguinte.
+     * Confere os blocos da raiz (presentes e com o tipo certo). Usada também como conferência da AnaliseComRedundancia
+     * (AnalisarEditalCommand), para a resposta fora do formato passar ao provedor seguinte.
      *
      * @param  array<mixed>  $dados
      *

@@ -7,10 +7,11 @@ use App\Models\ConexaoIa;
 use App\Support\FalhaNaIa;
 
 /**
- * Análise do edital pelos provedores da importação (ConfiguracaoIa::provedoresDaImportacao), na ordem: o principal e,
- * se ele falhar (chave recusada, limite, serviço fora, tempo esgotado, resposta fora do formato, inclusive JSON sem os
- * blocos da raiz), a redundância. Campos faltando dentro dos blocos não trocam de provedor: viram pontos de atenção.
- * Resolvida pelo container, para os testes poderem trocar os analisadores.
+ * Análise por IA pelos provedores dados (os da importação, ConfiguracaoIa::provedoresDaImportacao), na ordem: o
+ * principal e, se ele falhar (chave recusada, limite, serviço fora, tempo esgotado, resposta fora do formato, inclusive
+ * a que a conferência de quem chama recusar), a redundância. Na importação do edital, a conferência é a dos blocos da
+ * raiz (EditalDaResposta::conferirRaiz); campos faltando dentro dos blocos não trocam de provedor: viram pontos de
+ * atenção. Resolvida pelo container, para os testes poderem trocar os analisadores.
  */
 class AnaliseComRedundancia
 {
@@ -23,12 +24,15 @@ class AnaliseComRedundancia
 
     /**
      * @param  list<array{provedor: ProvedorIa, conexao: ConexaoIa}>  $provedores
+     * @param  string|null  $pdfBinario  Sem PDF (null), o pedido leva só o texto do prompt.
      * @param  array<string, mixed>  $esquema  No formato de EsquemaDaResposta.
+     * @param  (callable(array<mixed>): void)|null  $conferirResposta  Lança RespostaInvalida para a resposta passar ao
+     *                                                                 provedor seguinte; null aceita qualquer JSON.
      * @return array{dados: array<mixed>, tokens: array{entrada: int, saida: int, total: int}, provedor: ProvedorIa, modelo: string, falhas: list<array{provedor: ProvedorIa, motivo: string}>}
      *
      * @throws FalhaNaIa sem provedores, ou com o motivo de cada um quando nenhum responde
      */
-    public function analisar(array $provedores, string $pdfBinario, string $prompt, float $temperatura, array $esquema): array
+    public function analisar(array $provedores, ?string $pdfBinario, string $prompt, float $temperatura, array $esquema, ?callable $conferirResposta = null): array
     {
         if ($provedores === []) {
             throw new FalhaNaIa(self::SEM_CONFIGURACAO);
@@ -42,7 +46,9 @@ class AnaliseComRedundancia
             try {
                 $resultado = $this->analisador($provedor)
                     ->analisar($modelo, (string) $conexao->chaveGuardada(), $pdfBinario, $prompt, $temperatura, $esquema);
-                EditalDaResposta::conferirRaiz($resultado['dados']);
+                if ($conferirResposta !== null) {
+                    $conferirResposta($resultado['dados']);
+                }
             } catch (FalhaNaIa $falha) {
                 $falhas[] = ['provedor' => $provedor, 'motivo' => $falha->getMessage()];
 
