@@ -69,7 +69,6 @@ class ImportacaoEditalTest extends TestCase
         $this->configuracao = ConfiguracaoIa::factory()->create([
             'ativo' => false,
             'provedor_principal' => ProvedorIa::Gemini,
-            'importacao_tamanho_maximo_mb' => 1,
         ]);
         $this->conexao = ConexaoIa::factory()->gemini()->create(['modelo' => 'gemini-2.5-pro', 'chave_api' => self::CHAVE]);
 
@@ -198,10 +197,9 @@ class ImportacaoEditalTest extends TestCase
             && $pedido['generationConfig']['responseSchema'] === EsquemaDaResposta::esquema());
     }
 
-    public function test_usa_modelo_e_chave_da_integracao_e_prompt_e_temperatura_da_importacao(): void
+    public function test_usa_modelo_e_chave_da_integracao_e_prompt_e_temperatura_fixos_da_importacao(): void
     {
         $this->conexao->update(['modelo' => 'gemini-3.0-pro', 'chave_api' => 'gemini-outra-chave-de-teste']);
-        $this->configuracao->update(['importacao_prompt' => 'Leia só o edital principal.', 'importacao_temperatura' => 0.35]);
         Http::fake([
             'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.0-pro:generateContent' => self::respostaDoGemini($this->respostaCompleta()),
         ]);
@@ -211,8 +209,8 @@ class ImportacaoEditalTest extends TestCase
         $this->assertSame(SituacaoImportacao::Concluida, $importacao->situacao);
         $this->assertSame('gemini-3.0-pro', $importacao->modelo);
         Http::assertSent(fn (Request $pedido): bool => $pedido->header('x-goog-api-key') === ['gemini-outra-chave-de-teste']
-            && $pedido['contents'][0]['parts'][1]['text'] === PromptModelo::fixo()."\n\nLeia só o edital principal."
-            && $pedido['generationConfig']['temperature'] === 0.35);
+            && $pedido['contents'][0]['parts'][1]['text'] === PromptModelo::fixo()."\n\n".PromptModelo::editavel()
+            && $pedido['generationConfig']['temperature'] === 0.1);
     }
 
     /** A mesma resposta, vinda da OpenAI ou do Gemini, cria o mesmo edital. */
@@ -422,21 +420,9 @@ class ImportacaoEditalTest extends TestCase
             && $contexto['excecao'] === RuntimeException::class);
     }
 
-    public function test_pdf_acima_do_limite_e_recusado_antes_de_chamar_a_ia(): void
+    public function test_pdf_acima_de_14_mb_e_recusado_antes_de_chamar_a_ia(): void
     {
         Http::fake();
-
-        $resposta = $this->post(self::URL, ['pdf' => $this->pdf(self::CONTEUDO_PDF.str_repeat('0', 1024 * 1024))]);
-
-        $resposta->assertSessionHasErrors(['pdf' => 'O PDF deve ter no máximo 1 MB.']);
-        $this->assertSame(0, ImportacaoEdital::count());
-        Http::assertNothingSent();
-    }
-
-    public function test_limite_salvo_acima_do_teto_vale_o_teto_de_14_mb(): void
-    {
-        Http::fake();
-        $this->configuracao->update(['importacao_tamanho_maximo_mb' => 20]);
 
         $resposta = $this->post(self::URL, ['pdf' => UploadedFile::fake()->create('edital.pdf', 15 * 1024, 'application/pdf')]);
 

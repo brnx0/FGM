@@ -309,11 +309,9 @@ class EditaisTest extends TestCase
     public function test_lista_mostra_as_importacoes_em_andamento_com_erro_e_as_concluidas_do_ultimo_dia(): void
     {
         $this->travelTo(Carbon::parse('2026-10-28 15:00'));
-        // 20 MB foi aceito antes do teto de 14 MB: a tela recebe o teto.
         $configuracao = ConfiguracaoIa::factory()->create([
             'ativo' => false,
             'provedor_principal' => ProvedorIa::Gemini,
-            'importacao_tamanho_maximo_mb' => 20,
         ]);
         ConexaoIa::factory()->gemini()->create();
         $analisando = ImportacaoEdital::factory()->create(['iniciada_em' => now()->subMinutes(2)]);

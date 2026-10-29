@@ -6,7 +6,6 @@ use App\Enums\ProvedorIa;
 use App\Models\ConexaoIa;
 use App\Models\ConfiguracaoIa;
 use App\Models\User;
-use App\Support\EditalIa\PromptModelo;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
@@ -21,8 +20,6 @@ class IntegracaoIaTest extends TestCase
     private const string URL = '/retaguarda/integracao-ia';
 
     private const string URL_REDUNDANCIA = '/retaguarda/integracao-ia/redundancia';
-
-    private const string URL_IMPORTACAO = '/retaguarda/integracao-ia/importacao';
 
     // Fora do formato real das chaves, que os scanners de segredo do GitHub barram.
     private const string CHAVE_OPENAI = 'sk-teste-0123456789abcdefghijH2UA';
@@ -347,144 +344,18 @@ class IntegracaoIaTest extends TestCase
         $this->assertStringContainsString("'Integração com IA'", $menu);
     }
 
-    /**
-     * @param  array<string, mixed>  $alteracoes
-     * @return array<string, mixed>
-     */
-    private function importacao(array $alteracoes = []): array
-    {
-        return ['prompt' => 'Leia o edital e preencha o cadastro.', 'temperatura' => 0.35, 'tamanho_maximo_mb' => 8, ...$alteracoes];
-    }
-
-    public function test_tela_traz_a_importacao_com_o_prompt_modelo_e_os_padroes_antes_da_primeira_gravacao(): void
+    public function test_tela_nao_traz_mais_a_importacao(): void
     {
         $this->actingAs(User::factory()->gestor()->create());
 
-        $this->get(self::URL)->assertOk()->assertInertia(fn (Assert $p) => $p
-            ->where('importacao', [
-                'prompt' => PromptModelo::editavel(),
-                'promptModelo' => PromptModelo::editavel(),
-                'temperatura' => 0.1,
-                'tamanhoMaximoMb' => 14,
-                'configurada' => false,
-            ]));
+        $this->get(self::URL)->assertInertia(fn (Assert $page) => $page->missing('importacao'));
     }
 
-    public function test_importacao_configurada_com_o_principal_e_sem_a_chave_na_resposta(): void
-    {
-        ConexaoIa::factory()->create(['chave_api' => self::CHAVE_OPENAI]);
-        ConfiguracaoIa::factory()->create(['ativo' => false, 'importacao_prompt' => 'Prompt da equipe.', 'importacao_temperatura' => 0.4]);
-        $this->actingAs(User::factory()->gestor()->create());
-
-        $resposta = $this->get(self::URL);
-
-        $resposta->assertOk()->assertInertia(fn (Assert $p) => $p
-            ->where('importacao.prompt', 'Prompt da equipe.')
-            ->where('importacao.temperatura', 0.4)
-            ->where('importacao.configurada', true));
-        $resposta->assertDontSee(self::CHAVE_OPENAI, false);
-        $resposta->assertDontSee(DB::table('conexoes_ia')->value('chave_api'), false);
-    }
-
-    public function test_salva_a_importacao_sem_mexer_na_conexao(): void
-    {
-        ConexaoIa::factory()->create(['chave_api' => self::CHAVE_OPENAI]);
-        ConfiguracaoIa::factory()->create();
-        $this->actingAs(User::factory()->gestor()->create());
-
-        $resposta = $this->put(self::URL_IMPORTACAO, $this->importacao());
-
-        $resposta->assertSessionHasNoErrors()
-            ->assertRedirect(self::URL)
-            ->assertSessionHas('sucesso', 'Configuração da importação salva.');
-
-        $configuracao = ConfiguracaoIa::sole();
-        $this->assertSame('Leia o edital e preencha o cadastro.', $configuracao->importacao_prompt);
-        $this->assertSame(0.35, $configuracao->importacao_temperatura);
-        $this->assertSame(8, $configuracao->importacao_tamanho_maximo_mb);
-        $this->assertTrue($configuracao->ativo);
-        $this->assertSame(ProvedorIa::OpenAi, $configuracao->provedor_principal);
-        $this->assertSame(self::CHAVE_OPENAI, ConexaoIa::sole()->chaveGuardada());
-    }
-
-    public function test_salva_a_importacao_antes_de_qualquer_provedor(): void
+    public function test_rotas_da_importacao_nao_existem_mais(): void
     {
         $this->actingAs(User::factory()->gestor()->create());
 
-        $this->put(self::URL_IMPORTACAO, $this->importacao())->assertSessionHasNoErrors();
-
-        $configuracao = ConfiguracaoIa::sole();
-        $this->assertFalse($configuracao->ativo);
-        $this->assertNull($configuracao->provedor_principal);
-        $this->assertSame(8, $configuracao->importacao_tamanho_maximo_mb);
-    }
-
-    public function test_prompt_igual_ao_modelo_grava_nulo_para_acompanhar_o_modelo(): void
-    {
-        ConfiguracaoIa::factory()->create(['importacao_prompt' => 'Prompt da equipe.']);
-        $this->actingAs(User::factory()->gestor()->create());
-
-        // Como vem do textarea: quebras de linha do Windows e espaço sobrando no fim.
-        $prompt = str_replace("\n", "\r\n", PromptModelo::editavel())."\r\n  ";
-        $this->put(self::URL_IMPORTACAO, $this->importacao(['prompt' => $prompt]))->assertSessionHasNoErrors();
-
-        $this->assertNull(ConfiguracaoIa::sole()->importacao_prompt);
-    }
-
-    /**
-     * @return array<string, array{array<string, mixed>, string, string}>
-     */
-    public static function importacaoInvalida(): array
-    {
-        return [
-            'sem prompt' => [['prompt' => ''], 'prompt', 'Este campo é obrigatório.'],
-            'prompt longo demais' => [['prompt' => str_repeat('a', 20001)], 'prompt', 'Use no máximo 20000 caracteres.'],
-            'sem temperatura' => [['temperatura' => ''], 'temperatura', 'Este campo é obrigatório.'],
-            'temperatura em texto' => [['temperatura' => 'baixa'], 'temperatura', 'Informe um número.'],
-            'temperatura acima de 1' => [['temperatura' => 1.5], 'temperatura', 'Informe um valor entre 0 e 1.'],
-            'temperatura negativa' => [['temperatura' => -0.1], 'temperatura', 'Informe um valor entre 0 e 1.'],
-            'tamanho com casas decimais' => [['tamanho_maximo_mb' => 2.5], 'tamanho_maximo_mb', 'Informe um número inteiro.'],
-            'tamanho zero' => [['tamanho_maximo_mb' => 0], 'tamanho_maximo_mb', 'Informe um valor entre 1 e 14.'],
-            'tamanho acima do teto' => [['tamanho_maximo_mb' => 15], 'tamanho_maximo_mb', 'Informe um valor entre 1 e 14.'],
-        ];
-    }
-
-    /**
-     * @param  array<string, mixed>  $alteracoes
-     */
-    #[DataProvider('importacaoInvalida')]
-    public function test_recusa_importacao_invalida_com_a_mensagem_do_campo(array $alteracoes, string $campo, string $mensagem): void
-    {
-        $this->actingAs(User::factory()->gestor()->create());
-
-        $resposta = $this->put(self::URL_IMPORTACAO, $this->importacao($alteracoes));
-
-        $resposta->assertSessionHasErrors([$campo => $mensagem]);
-        $this->assertSame(0, ConfiguracaoIa::count());
-    }
-
-    public function test_restaura_o_prompt_modelo(): void
-    {
-        ConfiguracaoIa::factory()->create(['importacao_prompt' => 'Prompt da equipe.', 'importacao_tamanho_maximo_mb' => 5]);
-        $this->actingAs(User::factory()->gestor()->create());
-
-        $this->put(self::URL_IMPORTACAO.'/prompt-modelo')
-            ->assertRedirect(self::URL)
-            ->assertSessionHas('sucesso', 'Prompt modelo restaurado.');
-
-        $configuracao = ConfiguracaoIa::sole();
-        $this->assertNull($configuracao->importacao_prompt);
-        $this->assertSame(PromptModelo::editavel(), $configuracao->promptDaImportacao());
-        $this->assertSame(5, $configuracao->importacao_tamanho_maximo_mb);
-    }
-
-    public function test_proponente_nao_altera_a_importacao(): void
-    {
-        $this->actingAs(User::factory()->proponente()->create());
-
-        $this->put(self::URL_IMPORTACAO, $this->importacao())->assertRedirect('/retaguarda/login');
-        $this->put(self::URL_IMPORTACAO.'/prompt-modelo')->assertRedirect('/retaguarda/login');
-
-        $this->assertSame(0, ConfiguracaoIa::count());
+        $this->put(self::URL.'/importacao', [])->assertNotFound();
+        $this->put(self::URL.'/importacao/prompt-modelo')->assertNotFound();
     }
 }

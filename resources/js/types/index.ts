@@ -957,18 +957,4 @@ export interface ProvedorIaRetaguarda {
 export interface RetaguardaIntegracaoIaProps {
     configuracao: { ativo: boolean; principal: ProvedorIa | null; redundancia: ProvedorIa | null };
     provedores: ProvedorIaRetaguarda[];
-    importacao: ImportacaoIaRetaguarda;
-}
-
-/** Parâmetros da importação de edital (cartão 3 da Integração com IA); nada da conexão. */
-export interface ImportacaoIaRetaguarda {
-    /** O prompt da equipe ou, sem ele, o prompt modelo. */
-    prompt: string;
-    promptModelo: string;
-    /** De 0 a 1. */
-    temperatura: number;
-    /** De 1 a 14. */
-    tamanhoMaximoMb: number;
-    /** Há provedor principal com modelo e chave: a importação pode ser usada. */
-    configurada: boolean;
 }

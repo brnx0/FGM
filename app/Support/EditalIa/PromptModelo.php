@@ -5,7 +5,7 @@ namespace App\Support\EditalIa;
 /**
  * Textos das instruções enviadas à IA na importação do edital.
  *
- * O prompt tem duas partes: a editável (este prompt modelo, que a equipe pode mudar na Integração com IA)
+ * O prompt tem duas partes: a editável (este prompt modelo, fixo no código)
  * e a fixa, sempre enviada junto e nunca mostrada na tela, com as regras que não podem sumir.
  */
 final class PromptModelo

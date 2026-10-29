@@ -106,13 +106,11 @@ Route::prefix('retaguarda')->name('retaguarda.')->group(function () {
             ->whereNumber('prefeitura')
             ->name('prefeituras-bairro.ativo');
 
-        // Parametrização. Integração com IA: chave e modelo de cada provedor, o principal, a redundância e a importação de edital.
+        // Parametrização. Integração com IA: chave e modelo de cada provedor, o principal e a redundância.
         Route::controller(IntegracaoIaController::class)->group(function () {
             Route::get('/integracao-ia', 'edit')->name('integracao-ia.edit');
             Route::put('/integracao-ia', 'update')->name('integracao-ia.update');
             Route::put('/integracao-ia/redundancia', 'redundancia')->name('integracao-ia.redundancia');
-            Route::put('/integracao-ia/importacao', 'importacao')->name('integracao-ia.importacao');
-            Route::put('/integracao-ia/importacao/prompt-modelo', 'restaurarPrompt')->name('integracao-ia.importacao.prompt-modelo');
         });
         // Vão ao provedor com a chave digitada ou a guardada, e cada chamada pode custar: limite próprio
         // (o prefixo separa esta contagem da dos outros limites por usuário).

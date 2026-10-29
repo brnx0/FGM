@@ -13,18 +13,21 @@ use Illuminate\Database\Eloquent\Model;
  * Uso da IA nas validações automáticas (Retaguarda > Parametrização > Integração com IA): se está ligada, o provedor
  * principal e o de redundância, que só recebe a chamada que o principal não atender. Uma linha só, criada na primeira gravação.
  *
- * Guarda também os parâmetros da importação de edital por IA (prompt, temperatura e tamanho máximo do PDF), que usa os
- * mesmos provedores, mas não depende de "ativo": a importação fica sempre disponível.
+ * A importação de edital por IA usa os mesmos provedores, mas não depende de "ativo": fica sempre disponível. Seus
+ * parâmetros (prompt, temperatura e tamanho máximo do PDF) são fixos no código, não se configuram na tela.
  */
-#[Fillable(['ativo', 'provedor_principal', 'provedor_redundancia', 'importacao_prompt', 'importacao_temperatura', 'importacao_tamanho_maximo_mb'])]
+#[Fillable(['ativo', 'provedor_principal', 'provedor_redundancia'])]
 class ConfiguracaoIa extends Model
 {
     /** @use HasFactory<ConfiguracaoIaFactory> */
     use HasFactory;
 
+    /** Temperatura da IA na importação: baixa, para a leitura do edital ser a mais fiel possível. */
+    public const float TEMPERATURA_DA_IMPORTACAO = 0.1;
+
     /**
-     * Teto do PDF da importação: no Gemini, o pedido vai inteiro no corpo (base64, cerca de 4/3 do arquivo) e o limite
-     * dele é de uns 20 MB. Um valor salvo maior vale este teto.
+     * Tamanho máximo do PDF da importação: no Gemini, o pedido vai inteiro no corpo (base64, cerca de 4/3 do arquivo) e o limite
+     * dele é de uns 20 MB.
      */
     public const int TAMANHO_MAXIMO_PDF_MB = 14;
 
@@ -37,8 +40,6 @@ class ConfiguracaoIa extends Model
      */
     protected $attributes = [
         'ativo' => false,
-        'importacao_temperatura' => 0.10,
-        'importacao_tamanho_maximo_mb' => self::TAMANHO_MAXIMO_PDF_MB,
     ];
 
     /**
@@ -50,8 +51,6 @@ class ConfiguracaoIa extends Model
             'ativo' => 'boolean',
             'provedor_principal' => ProvedorIa::class,
             'provedor_redundancia' => ProvedorIa::class,
-            'importacao_temperatura' => 'float',
-            'importacao_tamanho_maximo_mb' => 'integer',
         ];
     }
 
@@ -91,20 +90,19 @@ class ConfiguracaoIa extends Model
         return $provedores;
     }
 
-    /** O prompt editável da importação: o da equipe ou, se não houver, o prompt modelo. */
+    /** O prompt editável da importação: sempre o prompt modelo. */
     public function promptDaImportacao(): string
     {
-        return blank($this->importacao_prompt) ? PromptModelo::editavel() : $this->importacao_prompt;
+        return PromptModelo::editavel();
     }
 
     public function temperaturaDaImportacao(): float
     {
-        return (float) $this->importacao_temperatura;
+        return self::TEMPERATURA_DA_IMPORTACAO;
     }
 
-    /** O tamanho máximo do PDF da importação: o configurado, sem passar do teto. */
     public function tamanhoMaximoPdfMb(): int
     {
-        return min((int) $this->importacao_tamanho_maximo_mb, self::TAMANHO_MAXIMO_PDF_MB);
+        return self::TAMANHO_MAXIMO_PDF_MB;
     }
 }
