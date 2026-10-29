@@ -36,7 +36,7 @@ class InscricaoDocumentosTest extends TestCase
 
     private const string ERRO_ARQUIVO = 'Envie um PDF de até 10 MB.';
 
-    /** Lançador que só registra as conferências pedidas (o comando nasce na Task 8). */
+    /** Lançador que só registra as conferências pedidas (a conferência em si é testada em ConferenciaDocumentoTest). */
     private LancadorDeConferencia $lancador;
 
     protected function setUp(): void

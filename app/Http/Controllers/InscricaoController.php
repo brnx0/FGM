@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\ModalidadeCota;
+use App\Enums\SituacaoConferencia;
 use App\Enums\SituacaoInscricao;
 use App\Http\Requests\SalvarInscricaoRequest;
 use App\Models\Edital;
@@ -13,6 +14,7 @@ use App\Support\ArquivoArmazenado;
 use App\Support\Inscricao\PropsDaInscricao;
 use App\Support\Inscricao\RegrasDaInscricao;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -87,6 +89,29 @@ class InscricaoController extends Controller
                 ])
                 ->all(),
             ...PropsDaInscricao::opcoes($user, $edital),
+        ]);
+    }
+
+    /**
+     * Situação da conferência de cada documento enviado, para a tela consultar enquanto algum está conferindo. Sem o
+     * detalhe técnico da falha, que fica só no banco; conferindo parado aparece como não conferido.
+     */
+    public function situacao(Inscricao $inscricao): JsonResponse
+    {
+        Gate::authorize('gerenciar', $inscricao);
+
+        return response()->json([
+            'documentos' => $inscricao->documentos()->orderBy('id')->get()
+                ->map(function (InscricaoDocumento $documento): array {
+                    $situacao = $documento->situacaoExibida();
+
+                    return [
+                        'id' => (int) $documento->edital_documento_id,
+                        'situacao' => $situacao->value,
+                        'motivo' => $documento->motivo ?? ($situacao === SituacaoConferencia::NaoConferido ? InscricaoDocumentoController::NAO_CONFERIDO : null),
+                    ];
+                })
+                ->all(),
         ]);
     }
 

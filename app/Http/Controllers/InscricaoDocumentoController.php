@@ -22,8 +22,9 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
 /**
- * Documentos da inscrição: anexar (ou trocar), remover e baixar o arquivo. Tudo só do dono (InscricaoPolicy);
- * anexar e remover só com a inscrição em rascunho e no período. A conferência por IA roda em segundo plano.
+ * Documentos da inscrição: anexar (ou trocar), remover, baixar o arquivo e pedir a conferência de novo. Tudo só do
+ * dono (InscricaoPolicy); anexar, remover e conferir de novo só com a inscrição em rascunho e no período. A
+ * conferência por IA roda em segundo plano (ConferirDocumentoCommand).
  */
 class InscricaoDocumentoController extends Controller
 {
@@ -35,6 +36,8 @@ class InscricaoDocumentoController extends Controller
 
     /** Motivo mostrado ao proponente quando a IA não consegue conferir; o detalhe fica só em `erro`. */
     public const string NAO_CONFERIDO = 'Não foi possível conferir o documento agora.';
+
+    public const string AVISO_CONFERIR_DE_NOVO = 'Só é possível conferir de novo um documento reprovado ou não conferido.';
 
     private const string ERRO_DO_PROCESSO = 'Não foi possível iniciar o processo da conferência.';
 
@@ -113,6 +116,42 @@ class InscricaoDocumentoController extends Controller
         return redirect()->route('portal.inscricoes.show', $inscricao)->with('sucesso', 'Documento removido.');
     }
 
+    /** "Conferir de novo": só o documento reprovado ou não conferido (inclusive o conferindo parado) ganha uma execução nova. */
+    public function conferir(Inscricao $inscricao, EditalDocumento $documento, LancadorDeConferencia $lancador): RedirectResponse
+    {
+        Gate::authorize('gerenciar', $inscricao);
+        $this->exigirDocumento($inscricao, $documento);
+
+        if (($recusa = $this->recusar($inscricao)) !== null) {
+            return $recusa;
+        }
+
+        $reiniciado = DB::transaction(function () use ($inscricao, $documento): ?InscricaoDocumento {
+            $travada = $this->travarInscricao($inscricao);
+            $this->exigirEditavel($travada);
+
+            $enviado = $travada->documentos()->where('edital_documento_id', $documento->id)->lockForUpdate()->first();
+
+            if (! in_array($enviado?->situacaoExibida(), [SituacaoConferencia::Reprovado, SituacaoConferencia::NaoConferido], true)) {
+                return null;
+            }
+
+            $enviado->fill($this->atributosDaConferencia())->save();
+
+            return $enviado;
+        });
+
+        if ($reiniciado === null) {
+            return redirect()->route('portal.inscricoes.show', $inscricao)->with('aviso', self::AVISO_CONFERIR_DE_NOVO);
+        }
+
+        if (! $this->lancar($reiniciado, $lancador)) {
+            return redirect()->route('portal.inscricoes.show', $inscricao)->with('erro', self::ERRO_AO_INICIAR);
+        }
+
+        return redirect()->route('portal.inscricoes.show', $inscricao)->with('sucesso', 'Conferência iniciada.');
+    }
+
     public function arquivo(Inscricao $inscricao, EditalDocumento $documento): StreamedResponse
     {
         Gate::authorize('gerenciar', $inscricao);
@@ -126,18 +165,28 @@ class InscricaoDocumentoController extends Controller
     }
 
     /**
-     * O arquivo novo e o recomeço da conferência: sem checagem o documento fica só enviado, senão conferindo, com
-     * uma execução nova (a anterior, se ainda rodar, não grava mais) e sem nada do resultado do arquivo anterior.
+     * O arquivo novo e o recomeço da conferência.
      *
      * @return array<string, mixed>
      */
     private function atributosDoEnvio(EditalDocumento $documento, string $caminho, string $nome): array
     {
-        $confere = $documento->checagem !== ChecagemDocumento::Nenhuma;
-
         return [
             'arquivo' => $caminho,
             'arquivo_nome' => $nome,
+            ...$this->atributosDaConferencia($documento->checagem !== ChecagemDocumento::Nenhuma),
+        ];
+    }
+
+    /**
+     * O recomeço da conferência: sem checagem o documento fica só enviado, senão conferindo, com uma execução nova (a
+     * anterior, se ainda rodar, não grava mais) e sem nada do resultado anterior.
+     *
+     * @return array<string, mixed>
+     */
+    private function atributosDaConferencia(bool $confere = true): array
+    {
+        return [
             'situacao' => $confere ? SituacaoConferencia::Conferindo : SituacaoConferencia::Enviado,
             'motivo' => null,
             'erro' => null,
