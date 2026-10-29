@@ -181,6 +181,11 @@ export interface OrganizacoesIndexProps {
     organizacoes: OrganizacaoResumo[];
 }
 
+/** Etapa Pessoa Jurídica do cadastro (CadastroController@organizacao). */
+export interface CadastroOrganizacaoProps {
+    organizacoes: OrganizacaoResumo[];
+}
+
 /** Pessoa vinculada a uma organização (CPF mascarado). */
 export interface VinculoPessoa {
     id: number;
