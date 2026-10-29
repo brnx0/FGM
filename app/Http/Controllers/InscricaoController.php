@@ -12,6 +12,7 @@ use App\Models\InscricaoDocumento;
 use App\Support\ArquivoArmazenado;
 use App\Support\Inscricao\PropsDaInscricao;
 use App\Support\Inscricao\RegrasDaInscricao;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -95,27 +96,32 @@ class InscricaoController extends Controller
             return $this->inscricoesFechadas();
         }
 
+        // Saída antes de travar; a situação que vale é a relida com a linha travada, dentro da transação.
         if ($inscricao->situacao !== SituacaoInscricao::Rascunho) {
-            return redirect()->route('portal.inscricoes.show', $inscricao)->with('erro', self::ERRO_REABRIR);
+            return $this->pedirParaReabrir($inscricao);
         }
 
-        $this->preencher($inscricao, $request);
-
-        // A nova categoria pode levar a inscrição para uma chamada que já fechou.
-        if (! $inscricao->noPeriodo()) {
-            return $this->inscricoesFechadas();
-        }
-
-        $mudouQuemContaNoLimite = $inscricao->isDirty(['documento_cadastro', 'edital_chamada_id']);
-
-        $arquivosDescartados = DB::transaction(function () use ($inscricao, $mudouQuemContaNoLimite): array {
+        $arquivosDescartados = DB::transaction(function () use ($inscricao, $request): array {
             $this->travarEdital($inscricao->edital);
-            if ($mudouQuemContaNoLimite) {
-                $this->recusarSeLimiteAtingido($inscricao);
-            }
-            $inscricao->save();
+            $travada = $this->travarInscricao($inscricao);
 
-            return $this->descartarDocumentosForaDaLista($inscricao);
+            if ($travada->situacao !== SituacaoInscricao::Rascunho) {
+                throw new HttpResponseException($this->pedirParaReabrir($inscricao));
+            }
+
+            $this->preencher($travada, $request);
+
+            // A nova categoria pode levar a inscrição para uma chamada que já fechou.
+            if (! $travada->noPeriodo()) {
+                throw new HttpResponseException($this->inscricoesFechadas());
+            }
+
+            if ($travada->isDirty(['documento_cadastro', 'edital_chamada_id'])) {
+                $this->recusarSeLimiteAtingido($travada);
+            }
+            $travada->save();
+
+            return $this->descartarDocumentosForaDaLista($travada);
         });
 
         ArquivoArmazenado::apagarTodos($arquivosDescartados);
@@ -146,10 +152,30 @@ class InscricaoController extends Controller
         return redirect()->route('portal.editais')->with('aviso', PortalController::AVISO_INSCRICOES_FECHADAS);
     }
 
-    /** Duas gravações ao mesmo tempo no edital esperam uma pela outra, para a segunda ver a primeira no limite. */
+    private function pedirParaReabrir(Inscricao $inscricao): RedirectResponse
+    {
+        return redirect()->route('portal.inscricoes.show', $inscricao)->with('erro', self::ERRO_REABRIR);
+    }
+
+    /**
+     * Duas gravações ao mesmo tempo no edital esperam uma pela outra, para a segunda ver a primeira no limite.
+     * Ordem das travas, sempre: o edital e depois a inscrição (quem finaliza ou anexa documento segue a mesma).
+     */
     private function travarEdital(Edital $edital): void
     {
         Edital::query()->whereKey($edital->id)->lockForUpdate()->value('id');
+    }
+
+    /**
+     * Relê a inscrição travando a linha: quem finaliza, reabre ou anexa documento ao mesmo tempo espera aqui, e
+     * a situação e as escolhas que valem são as da linha travada, não as da cópia lida antes da transação.
+     */
+    private function travarInscricao(Inscricao $inscricao): Inscricao
+    {
+        $travada = Inscricao::query()->whereKey($inscricao->id)->lockForUpdate()->firstOrFail();
+        $travada->setRelation('edital', $inscricao->edital);
+
+        return $travada;
     }
 
     private function recusarSeLimiteAtingido(Inscricao $inscricao): void

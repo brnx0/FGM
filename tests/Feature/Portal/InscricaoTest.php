@@ -6,6 +6,7 @@ use App\Enums\EtapaDocumento;
 use App\Enums\ModalidadeCota;
 use App\Enums\NaturezaProponente;
 use App\Enums\SituacaoInscricao;
+use App\Http\Controllers\InscricaoController;
 use App\Http\Controllers\PortalController;
 use App\Models\Edital;
 use App\Models\EditalCategoria;
@@ -345,6 +346,71 @@ class InscricaoTest extends TestCase
         $this->assertSame((int) $geral->id, (int) $restante->edital_documento_id);
         Storage::disk('local')->assertMissing("inscricoes/{$inscricao->id}/{$daA->id}.pdf");
         Storage::disk('local')->assertExists("inscricoes/{$inscricao->id}/{$geral->id}.pdf");
+    }
+
+    public function test_finalizar_entre_a_leitura_e_a_gravacao_nao_troca_as_escolhas_nem_descarta_documentos(): void
+    {
+        Storage::fake('local');
+        $user = User::factory()->proponente()->create(['cpf' => self::CPF]);
+        $edital = $this->editalAberto(['cotas' => ['pcd' => ['ativa' => true]]]);
+        $a = EditalCategoria::factory()->for($edital)->create(['ordem' => 1]);
+        $b = EditalCategoria::factory()->for($edital)->create(['ordem' => 2]);
+        $daA = EditalDocumento::factory()->for($edital)->create(['todas_categorias' => false, 'ordem' => 1]);
+        $daA->categorias()->attach($a);
+        $inscricao = $this->rascunho($edital, $user, ['edital_categoria_id' => $a->id]);
+        $caminho = "inscricoes/{$inscricao->id}/{$daA->id}.pdf";
+        Storage::disk('local')->put($caminho, 'pdf');
+        InscricaoDocumento::factory()->for($inscricao)->for($daA, 'documento')->create(['arquivo' => $caminho]);
+
+        // Outra aba finaliza logo depois de a requisição ler o rascunho (a leitura da rota), antes da transação.
+        $finalizou = false;
+        Inscricao::retrieved(function (Inscricao $lida) use (&$finalizou): void {
+            if ($finalizou) {
+                return;
+            }
+            $finalizou = true;
+            Inscricao::query()->whereKey($lida->id)->update([
+                'situacao' => SituacaoInscricao::Finalizada->value, 'numero' => 'INS-00000001', 'finalizada_em' => now(),
+            ]);
+        });
+
+        $this->actingAs($user)->put(route('portal.inscricoes.update', $inscricao), [
+            'cadastro' => 'pessoa_fisica', 'categoria' => $b->id, 'cotas' => ['pcd'],
+        ])
+            ->assertRedirect(route('portal.inscricoes.show', $inscricao))
+            ->assertSessionHas('erro', InscricaoController::ERRO_REABRIR);
+
+        $this->assertTrue($finalizou);
+        $inscricao->refresh();
+        $this->assertSame(SituacaoInscricao::Finalizada, $inscricao->situacao);
+        $this->assertSame((int) $a->id, (int) $inscricao->edital_categoria_id);
+        $this->assertEmpty($inscricao->cotas);
+        $this->assertSame(1, InscricaoDocumento::count());
+        Storage::disk('local')->assertExists($caminho);
+    }
+
+    public function test_trocar_para_categoria_de_chamada_encerrada_nao_grava_nem_descarta_documentos(): void
+    {
+        Storage::fake('local');
+        $user = User::factory()->proponente()->create(['cpf' => self::CPF]);
+        $edital = $this->editalAberto();
+        $encerrada = EditalChamada::factory()->for($edital)->create(['inicio' => '2026-10-01', 'fim' => '2026-11-05', 'ordem' => 2]);
+        $a = EditalCategoria::factory()->for($edital)->create(['edital_chamada_id' => $edital->chamadas()->first()->id, 'ordem' => 1]);
+        $b = EditalCategoria::factory()->for($edital)->create(['edital_chamada_id' => $encerrada->id, 'ordem' => 2]);
+        $daA = EditalDocumento::factory()->for($edital)->create(['todas_categorias' => false, 'ordem' => 1]);
+        $daA->categorias()->attach($a);
+        $inscricao = $this->rascunho($edital, $user, ['edital_categoria_id' => $a->id]);
+        $caminho = "inscricoes/{$inscricao->id}/{$daA->id}.pdf";
+        Storage::disk('local')->put($caminho, 'pdf');
+        InscricaoDocumento::factory()->for($inscricao)->for($daA, 'documento')->create(['arquivo' => $caminho]);
+
+        $this->actingAs($user)->put(route('portal.inscricoes.update', $inscricao), ['cadastro' => 'pessoa_fisica', 'categoria' => $b->id])
+            ->assertRedirect(route('portal.editais'))
+            ->assertSessionHas('aviso', PortalController::AVISO_INSCRICOES_FECHADAS);
+
+        $this->assertSame((int) $a->id, (int) $inscricao->fresh()->edital_categoria_id);
+        $this->assertSame(1, InscricaoDocumento::count());
+        Storage::disk('local')->assertExists($caminho);
     }
 
     public function test_trocar_a_cota_e_o_cadastro_do_rascunho(): void
