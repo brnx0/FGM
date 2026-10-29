@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Enums\SituacaoEdital;
 use App\Models\Edital;
+use App\Support\Inscricao\PropsDaInscricao;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -40,8 +42,8 @@ class PortalController extends Controller
         return Inertia::render('Portal/Editais', ['editais' => $editais]);
     }
 
-    /** Início da inscrição num edital aberto. O envio dos documentos ainda não existe: a tela mostra o edital e o aviso. */
-    public function inscricao(Edital $edital): Response|RedirectResponse
+    /** Início da inscrição num edital aberto: as inscrições do usuário nele e as escolhas para criar outra. */
+    public function inscricao(Request $request, Edital $edital): Response|RedirectResponse
     {
         abort_unless($edital->estaVisivel(), 404);
 
@@ -50,12 +52,9 @@ class PortalController extends Controller
         }
 
         return Inertia::render('Portal/Inscricao', [
-            'edital' => [
-                'titulo' => $edital->titulo,
-                'categoria' => $edital->categoria,
-                'periodo' => $edital->inscricoes_inicio->format('d/m/Y').' a '.$edital->inscricoes_fim->format('d/m/Y'),
-                'pdf' => $edital->pdfUrl(),
-            ],
+            'edital' => PropsDaInscricao::edital($edital),
+            'inscricoes' => PropsDaInscricao::minhasInscricoes($request->user(), $edital),
+            ...PropsDaInscricao::opcoes($request->user(), $edital),
         ]);
     }
 

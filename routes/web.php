@@ -10,6 +10,7 @@ use App\Http\Controllers\DocumentoModeloController;
 use App\Http\Controllers\EditalController;
 use App\Http\Controllers\EventoController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\InscricaoController;
 use App\Http\Controllers\OrganizacaoController;
 use App\Http\Controllers\PaginaController;
 use App\Http\Controllers\PortalController;
@@ -52,6 +53,13 @@ Route::middleware(['auth', 'nao-gestor', 'cadastro-completo', 'inertia.encrypt']
     Route::get('/portal/editais', 'editais')->middleware('tipo-cadastro:proponente')->name('portal.editais');
     Route::get('/portal/editais/{edital:slug}/inscricao', 'inscricao')->middleware('tipo-cadastro:proponente')->name('portal.editais.inscricao');
     Route::get('/portal/projetos', 'projetos')->middleware('tipo-cadastro:patrocinador')->name('portal.projetos');
+});
+
+// A inscrição é só de quem a criou (InscricaoPolicy): para os outros, 404. whereNumber: id não numérico não chega ao Oracle (ORA-01722).
+Route::middleware(['auth', 'nao-gestor', 'cadastro-completo', 'inertia.encrypt', 'tipo-cadastro:proponente'])->controller(InscricaoController::class)->group(function () {
+    Route::post('/portal/editais/{edital:slug}/inscricoes', 'store')->name('portal.inscricoes.store');
+    Route::get('/portal/inscricoes/{inscricao}', 'show')->whereNumber('inscricao')->name('portal.inscricoes.show');
+    Route::put('/portal/inscricoes/{inscricao}', 'update')->whereNumber('inscricao')->name('portal.inscricoes.update');
 });
 
 Route::middleware(['auth', 'nao-gestor', 'cadastro-completo', 'inertia.encrypt'])->controller(OrganizacaoController::class)->group(function () {

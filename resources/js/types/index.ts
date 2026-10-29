@@ -427,9 +427,95 @@ export interface PortalEditaisProps {
     editais: Paginado<EditalPortal>;
 }
 
+/** App\Enums\SituacaoInscricao. */
+export type SituacaoInscricao = 'rascunho' | 'finalizada';
+
+/** Cadastro com que o usuário pode se inscrever (App\Support\Inscricao\PropsDaInscricao). */
+export interface CadastroDaInscricao {
+    /** Valor enviado no formulário: "pessoa_fisica" ou "organizacao:{id}". */
+    chave: string;
+    nome: string;
+    /** CPF ou CNPJ já formatado. */
+    documento: string;
+    /** Valor de App\Enums\NaturezaProponente. */
+    natureza: string;
+    naturezaRotulo: string;
+    /** A natureza do cadastro é uma das que o edital aceita. */
+    aceito: boolean;
+    /** Nenhuma chamada do edital aceita mais inscrição deste cadastro. */
+    limiteAtingido: boolean;
+    /** Situação da inscrição do mesmo CPF/CNPJ feita por outro usuário, que o usuário não abre. */
+    inscricaoDeOutro: SituacaoInscricao | null;
+}
+
+export interface CategoriaDaInscricao {
+    id: number;
+    nome: string;
+    /** Valores de NaturezaProponente que podem escolher a categoria; vazio vale para todas. */
+    naturezas: string[];
+}
+
+export interface CotaDaInscricao {
+    /** Valor de App\Enums\ModalidadeCota. */
+    valor: string;
+    rotulo: string;
+}
+
+/** O que o proponente escolhe ao criar a inscrição ou trocar as escolhas do rascunho. */
+export interface OpcoesDaInscricao {
+    cadastros: CadastroDaInscricao[];
+    categorias: CategoriaDaInscricao[];
+    /** Só as cotas que o edital oferece. */
+    cotas: CotaDaInscricao[];
+    /** Não pode marcar pessoas negras e indígenas ao mesmo tempo. */
+    vedaNegroIndigena: boolean;
+}
+
+export interface InscricaoResumo {
+    id: number;
+    /** Nulo até a inscrição ser finalizada pela primeira vez. */
+    numero: string | null;
+    situacao: SituacaoInscricao;
+    situacaoRotulo: string;
+    /** Nome do cadastro com que a inscrição foi feita. */
+    cadastro: string;
+    categoria: string | null;
+}
+
 /** Tela de inscrição num edital aberto (PortalController@inscricao). */
-export interface PortalInscricaoProps {
-    edital: Pick<EditalPortal, 'titulo' | 'categoria' | 'periodo' | 'pdf'>;
+export interface PortalInscricaoProps extends OpcoesDaInscricao {
+    edital: Pick<EditalPortal, 'slug' | 'titulo' | 'categoria' | 'periodo' | 'pdf'>;
+    inscricoes: InscricaoResumo[];
+}
+
+export interface DocumentoDaInscricao {
+    id: number;
+    nome: string;
+    orientacao: string | null;
+    /** Valor de App\Enums\EtapaDocumento. */
+    etapa: string;
+    etapaRotulo: string;
+    obrigatorio: boolean;
+    modeloUrl: string | null;
+    modeloNome: string | null;
+}
+
+/** Tela da inscrição com a lista de documentos (InscricaoController@show). */
+export interface PortalInscricaoDocumentosProps extends OpcoesDaInscricao {
+    edital: Pick<EditalPortal, 'slug' | 'titulo' | 'categoria' | 'periodo' | 'pdf'>;
+    inscricao: InscricaoResumo & {
+        /** Valor de CadastroDaInscricao.chave do cadastro da inscrição. */
+        cadastroChave: string;
+        categoriaId: number | null;
+        /** Valores de ModalidadeCota marcados. */
+        cotas: string[];
+        /** Último dia da chamada da inscrição ("15/11/2026"). */
+        fimDoPeriodo: string | null;
+    };
+    /** Rascunho dentro do período da chamada: só então as escolhas podem ser trocadas. */
+    podeEditar: boolean;
+    /** Os exigidos para as escolhas da inscrição, de todas as etapas, na ordem do edital. */
+    documentos: DocumentoDaInscricao[];
 }
 
 export interface RetaguardaEditaisIndexProps {
