@@ -53,9 +53,16 @@ return new class extends Migration
 
     /**
      * Oracle: MODIFY só no que muda (repetir o estado atual dá ORA-01451/01442) e sem repetir o tipo (CLOB não aceita).
+     * PostgreSQL: ALTER COLUMN, que aceita repetir o estado atual.
      */
     private function definirNulo(string $coluna, bool $aceitaNulo): void
     {
+        if (DB::getDriverName() !== 'oracle') {
+            DB::statement(sprintf('alter table editais alter column %s %s not null', $coluna, $aceitaNulo ? 'drop' : 'set'));
+
+            return;
+        }
+
         $atual = DB::selectOne(
             'select nullable from user_tab_columns where table_name = ? and column_name = ?',
             ['EDITAIS', strtoupper($coluna)],
