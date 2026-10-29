@@ -170,6 +170,10 @@ class EditalController extends Controller
                     'nome' => $chamada->nome,
                     'inicio' => $chamada->inicio?->toDateString(),
                     'fim' => $chamada->fim?->toDateString(),
+                    'validacao_inicio' => $chamada->validacao_inicio?->toDateString(),
+                    'validacao_fim' => $chamada->validacao_fim?->toDateString(),
+                    'homologacao_inicio' => $chamada->homologacao_inicio?->toDateString(),
+                    'homologacao_fim' => $chamada->homologacao_fim?->toDateString(),
                 ])->all(),
                 'categorias' => $edital->categorias->map(fn (EditalCategoria $categoria): array => [
                     'id' => (int) $categoria->id,

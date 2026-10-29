@@ -12,8 +12,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-/** Período de inscrição do edital; o edital comum tem uma, alguns têm várias. */
-#[Fillable(['nome', 'inicio', 'fim', 'ordem'])]
+/** Chamada do edital (o edital comum tem uma, alguns têm várias): a Inscrição (`inicio`/`fim`), a Validação e a Homologação. */
+#[Fillable(['nome', 'inicio', 'fim', 'validacao_inicio', 'validacao_fim', 'homologacao_inicio', 'homologacao_fim', 'ordem'])]
 class EditalChamada extends Model
 {
     /** @use HasFactory<EditalChamadaFactory> */
@@ -29,6 +29,10 @@ class EditalChamada extends Model
         return [
             'inicio' => 'date',
             'fim' => 'date',
+            'validacao_inicio' => 'date',
+            'validacao_fim' => 'date',
+            'homologacao_inicio' => 'date',
+            'homologacao_fim' => 'date',
             'ordem' => 'integer',
         ];
     }
@@ -39,6 +43,26 @@ class EditalChamada extends Model
     }
 
     protected function fim(): Attribute
+    {
+        return Attribute::set(fn ($v) => self::diaParaGravar($v));
+    }
+
+    protected function validacaoInicio(): Attribute
+    {
+        return Attribute::set(fn ($v) => self::diaParaGravar($v));
+    }
+
+    protected function validacaoFim(): Attribute
+    {
+        return Attribute::set(fn ($v) => self::diaParaGravar($v));
+    }
+
+    protected function homologacaoInicio(): Attribute
+    {
+        return Attribute::set(fn ($v) => self::diaParaGravar($v));
+    }
+
+    protected function homologacaoFim(): Attribute
     {
         return Attribute::set(fn ($v) => self::diaParaGravar($v));
     }
