@@ -11,6 +11,7 @@ use App\Http\Controllers\EditalController;
 use App\Http\Controllers\EventoController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\InscricaoController;
+use App\Http\Controllers\InscricaoDocumentoController;
 use App\Http\Controllers\OrganizacaoController;
 use App\Http\Controllers\PaginaController;
 use App\Http\Controllers\PortalController;
@@ -60,6 +61,13 @@ Route::middleware(['auth', 'nao-gestor', 'cadastro-completo', 'inertia.encrypt',
     Route::post('/portal/editais/{edital:slug}/inscricoes', 'store')->name('portal.inscricoes.store');
     Route::get('/portal/inscricoes/{inscricao}', 'show')->whereNumber('inscricao')->name('portal.inscricoes.show');
     Route::put('/portal/inscricoes/{inscricao}', 'update')->whereNumber('inscricao')->name('portal.inscricoes.update');
+
+    // {documento} é o id em edital_documentos; se a inscrição não o exige, 404.
+    Route::controller(InscricaoDocumentoController::class)->group(function () {
+        Route::post('/portal/inscricoes/{inscricao}/documentos/{documento}', 'store')->middleware('throttle:30,1')->whereNumber(['inscricao', 'documento'])->name('portal.inscricoes.documentos.store');
+        Route::delete('/portal/inscricoes/{inscricao}/documentos/{documento}', 'destroy')->whereNumber(['inscricao', 'documento'])->name('portal.inscricoes.documentos.destroy');
+        Route::get('/portal/inscricoes/{inscricao}/documentos/{documento}/arquivo', 'arquivo')->whereNumber(['inscricao', 'documento'])->name('portal.inscricoes.documentos.arquivo');
+    });
 });
 
 Route::middleware(['auth', 'nao-gestor', 'cadastro-completo', 'inertia.encrypt'])->controller(OrganizacaoController::class)->group(function () {
