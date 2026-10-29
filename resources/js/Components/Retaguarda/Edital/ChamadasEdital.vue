@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import CampoCadastro from '../../CampoCadastro.vue';
 import ListaEditavel from './ListaEditavel.vue';
-import { classeCampo, novaChave } from '../listaEditavel';
+import { classeCampo, classeDica, novaChave } from '../listaEditavel';
 import type { ChamadaEditavel } from '../../../types';
 
 defineProps<{
@@ -18,7 +18,7 @@ const data = (texto: string): string => (texto ? texto.split('-').reverse().join
 const resumo = (chamada: ChamadaEditavel): string =>
     chamada.inicio || chamada.fim ? `${data(chamada.inicio) || '…'} a ${data(chamada.fim) || '…'}` : 'Datas a preencher';
 
-const nova = (): ChamadaEditavel => ({ chave: novaChave(), id: null, nome: `Chamada ${chamadas.value.length + 1}`, inicio: '', fim: '' });
+const nova = (): ChamadaEditavel => ({ chave: novaChave(), id: null, nome: `Chamada ${chamadas.value.length + 1}`, inicio: '', fim: '', validacao_inicio: '', validacao_fim: '', homologacao_inicio: '', homologacao_fim: '' });
 </script>
 
 <template>
@@ -53,34 +53,99 @@ const nova = (): ChamadaEditavel => ({ chave: novaChave(), id: null, nome: `Cham
                 />
             </CampoCadastro>
 
-            <div class="grid gap-x-6 gap-y-5 @lg:grid-cols-2">
-                <CampoCadastro :id="idCampo('inicio')" rotulo="Início das inscrições" obrigatorio :erro="erro('inicio')" v-slot="{ descricao, invalido }">
-                    <input
-                        :id="idCampo('inicio')"
-                        v-model="chamada.inicio"
-                        type="date"
-                        required
-                        :class="classeCampo"
-                        :aria-invalid="invalido || undefined"
-                        :aria-describedby="descricao"
-                        @input="limpar('inicio', 'fim')"
-                    />
-                </CampoCadastro>
+            <fieldset class="min-w-0">
+                <legend class="text-[0.9375rem] font-semibold">Inscrição</legend>
+                <div class="mt-3 grid gap-x-6 gap-y-5 @lg:grid-cols-2">
+                    <CampoCadastro :id="idCampo('inicio')" rotulo="Início" obrigatorio :erro="erro('inicio')" v-slot="{ descricao, invalido }">
+                        <input
+                            :id="idCampo('inicio')"
+                            v-model="chamada.inicio"
+                            type="date"
+                            required
+                            :class="classeCampo"
+                            :aria-invalid="invalido || undefined"
+                            :aria-describedby="descricao"
+                            @input="limpar('inicio', 'fim')"
+                        />
+                    </CampoCadastro>
 
-                <CampoCadastro :id="idCampo('fim')" rotulo="Fim das inscrições" obrigatorio :erro="erro('fim')" v-slot="{ descricao, invalido }">
-                    <input
-                        :id="idCampo('fim')"
-                        v-model="chamada.fim"
-                        type="date"
-                        required
-                        :min="chamada.inicio || undefined"
-                        :class="classeCampo"
-                        :aria-invalid="invalido || undefined"
-                        :aria-describedby="descricao"
-                        @input="limpar('fim')"
-                    />
-                </CampoCadastro>
-            </div>
+                    <CampoCadastro :id="idCampo('fim')" rotulo="Fim" obrigatorio :erro="erro('fim')" v-slot="{ descricao, invalido }">
+                        <input
+                            :id="idCampo('fim')"
+                            v-model="chamada.fim"
+                            type="date"
+                            required
+                            :min="chamada.inicio || undefined"
+                            :class="classeCampo"
+                            :aria-invalid="invalido || undefined"
+                            :aria-describedby="descricao"
+                            @input="limpar('fim')"
+                        />
+                    </CampoCadastro>
+                </div>
+            </fieldset>
+
+            <fieldset class="min-w-0">
+                <legend class="text-[0.9375rem] font-semibold">Validação</legend>
+                <p :class="[classeDica, 'mt-1']">Opcional. Preencha quando o edital trouxer as datas.</p>
+                <div class="mt-3 grid gap-x-6 gap-y-5 @lg:grid-cols-2">
+                    <CampoCadastro :id="idCampo('validacao_inicio')" rotulo="Início" :erro="erro('validacao_inicio')" v-slot="{ descricao, invalido }">
+                        <input
+                            :id="idCampo('validacao_inicio')"
+                            v-model="chamada.validacao_inicio"
+                            type="date"
+                            :class="classeCampo"
+                            :aria-invalid="invalido || undefined"
+                            :aria-describedby="descricao"
+                            @input="limpar('validacao_inicio', 'validacao_fim')"
+                        />
+                    </CampoCadastro>
+
+                    <CampoCadastro :id="idCampo('validacao_fim')" rotulo="Fim" :erro="erro('validacao_fim')" v-slot="{ descricao, invalido }">
+                        <input
+                            :id="idCampo('validacao_fim')"
+                            v-model="chamada.validacao_fim"
+                            type="date"
+                            :min="chamada.validacao_inicio || undefined"
+                            :class="classeCampo"
+                            :aria-invalid="invalido || undefined"
+                            :aria-describedby="descricao"
+                            @input="limpar('validacao_fim')"
+                        />
+                    </CampoCadastro>
+                </div>
+            </fieldset>
+
+            <fieldset class="min-w-0">
+                <legend class="text-[0.9375rem] font-semibold">Homologação</legend>
+                <p :class="[classeDica, 'mt-1']">Opcional. Preencha quando o edital trouxer as datas.</p>
+                <div class="mt-3 grid gap-x-6 gap-y-5 @lg:grid-cols-2">
+                    <CampoCadastro :id="idCampo('homologacao_inicio')" rotulo="Início" :erro="erro('homologacao_inicio')" v-slot="{ descricao, invalido }">
+                        <input
+                            :id="idCampo('homologacao_inicio')"
+                            v-model="chamada.homologacao_inicio"
+                            type="date"
+                            :class="classeCampo"
+                            :aria-invalid="invalido || undefined"
+                            :aria-describedby="descricao"
+                            @input="limpar('homologacao_inicio', 'homologacao_fim')"
+                        />
+                    </CampoCadastro>
+
+                    <CampoCadastro :id="idCampo('homologacao_fim')" rotulo="Fim" :erro="erro('homologacao_fim')" v-slot="{ descricao, invalido }">
+                        <input
+                            :id="idCampo('homologacao_fim')"
+                            v-model="chamada.homologacao_fim"
+                            type="date"
+                            :min="chamada.homologacao_inicio || undefined"
+                            :class="classeCampo"
+                            :aria-invalid="invalido || undefined"
+                            :aria-describedby="descricao"
+                            @input="limpar('homologacao_fim')"
+                        />
+                    </CampoCadastro>
+                </div>
+            </fieldset>
         </template>
     </ListaEditavel>
 </template>

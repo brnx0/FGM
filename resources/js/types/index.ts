@@ -517,6 +517,10 @@ export interface ChamadaFormulario {
     nome: string;
     inicio: string | null;
     fim: string | null;
+    validacao_inicio: string | null;
+    validacao_fim: string | null;
+    homologacao_inicio: string | null;
+    homologacao_fim: string | null;
 }
 
 export interface CategoriaItemFormulario {
@@ -591,6 +595,10 @@ export interface ChamadaEditavel extends ItemEditavel {
     nome: string;
     inicio: string;
     fim: string;
+    validacao_inicio: string;
+    validacao_fim: string;
+    homologacao_inicio: string;
+    homologacao_fim: string;
 }
 
 export interface CategoriaItemEditavel extends ItemEditavel {

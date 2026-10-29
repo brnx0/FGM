@@ -60,6 +60,10 @@ const chamadasSalvas: ChamadaEditavel[] = (salvo?.chamadas ?? []).map((chamada) 
     nome: chamada.nome,
     inicio: chamada.inicio ?? '',
     fim: chamada.fim ?? '',
+    validacao_inicio: chamada.validacao_inicio ?? '',
+    validacao_fim: chamada.validacao_fim ?? '',
+    homologacao_inicio: chamada.homologacao_inicio ?? '',
+    homologacao_fim: chamada.homologacao_fim ?? '',
 }));
 
 const categoriasSalvas: CategoriaEditavel[] = (salvo?.categorias ?? []).map((categoria) => ({
@@ -201,7 +205,7 @@ const escolherArquivo = (arquivo: File | null, campo: 'pdf' | 'imagem'): void =>
 // Uma aba por bloco do edital. Campo terminado em ".*" vale para todo erro que começa com o prefixo ("chamadas.0.nome").
 const DEFINICAO_ABAS: AbaFormulario[] = [
     { id: 'identificacao', rotulo: 'Identificação', campos: ['numero', 'tipo', 'titulo', 'objeto', 'dom_data', 'dom_numero', 'categoria', 'resumo'] },
-    { id: 'inscricao', rotulo: 'Inscrição', campos: ['chamadas', 'chamadas.*', 'forma_inscricao_original'] },
+    { id: 'inscricao', rotulo: 'Períodos', campos: ['chamadas', 'chamadas.*', 'forma_inscricao_original'] },
     { id: 'participacao', rotulo: 'Participação', campos: ['naturezas', 'naturezas.*', 'aceita_coletivos', 'inscricoes_por_proponente', 'limite_por_chamada'] },
     { id: 'categorias', rotulo: 'Categorias', campos: ['categorias', 'categorias.*'] },
     { id: 'cotas', rotulo: 'Cotas', campos: ['cotas', 'cotas.*'] },
@@ -340,7 +344,16 @@ const paraEnvio = (dados: DadosDoFormulario): Record<string, unknown> => {
         pdf: dados.pdf,
         imagem: dados.imagem,
         remover_imagem: dados.remover_imagem,
-        chamadas: dados.chamadas.map(({ id, nome, inicio, fim }) => ({ id, nome, inicio, fim })),
+        chamadas: dados.chamadas.map(({ id, nome, inicio, fim, validacao_inicio, validacao_fim, homologacao_inicio, homologacao_fim }) => ({
+            id,
+            nome,
+            inicio,
+            fim,
+            validacao_inicio: validacao_inicio || null,
+            validacao_fim: validacao_fim || null,
+            homologacao_inicio: homologacao_inicio || null,
+            homologacao_fim: homologacao_fim || null,
+        })),
         categorias: dados.categorias.map(({ chave: _chave, chamada, itens, ...categoria }) => ({
             ...categoria,
             chamada: chamada === null ? null : (posicaoDaChamada.get(chamada) ?? null),
