@@ -26,7 +26,11 @@ trait RespostaDaIa
             ],
             'inscricao' => [
                 'chamadas' => [
-                    ['nome' => 'Chamada 1', 'inicio' => '2026-11-01', 'fim' => '2026-11-30'],
+                    [
+                        'nome' => 'Chamada 1', 'inicio' => '2026-11-01', 'fim' => '2026-11-30',
+                        'validacao_inicio' => '2026-12-05', 'validacao_fim' => '2026-12-12',
+                        'homologacao_inicio' => '2026-12-20', 'homologacao_fim' => '2026-12-22',
+                    ],
                     ['nome' => 'Chamada 2', 'inicio' => '2027-01-10', 'fim' => '2027-02-10'],
                 ],
                 'forma_inscricao_original' => 'Formulário on-line',

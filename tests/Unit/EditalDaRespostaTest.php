@@ -114,6 +114,74 @@ class EditalDaRespostaTest extends TestCase
         $this->assertSame('categorias', $this->importacao->atencao[3]['bloco']);
     }
 
+    /**
+     * @return list<string|null>
+     */
+    private function fasesDaChamada(Edital $edital, string $nome): array
+    {
+        $chamada = $edital->chamadas->firstWhere('nome', $nome);
+
+        return array_map(
+            fn (string $campo): ?string => $chamada->{$campo}?->toDateString(),
+            ['validacao_inicio', 'validacao_fim', 'homologacao_inicio', 'homologacao_fim'],
+        );
+    }
+
+    public function test_fases_da_chamada_sao_gravadas(): void
+    {
+        $edital = $this->criar($this->respostaCompleta());
+
+        $this->assertSame(['2026-12-05', '2026-12-12', '2026-12-20', '2026-12-22'], $this->fasesDaChamada($edital, 'Chamada 1'));
+        $this->assertSame([null, null, null, null], $this->fasesDaChamada($edital, 'Chamada 2'));
+    }
+
+    public function test_resposta_sem_os_campos_das_fases_ainda_e_lida(): void
+    {
+        $dados = $this->respostaCompleta();
+        foreach ($dados['inscricao']['chamadas'] as &$chamada) {
+            unset($chamada['validacao_inicio'], $chamada['validacao_fim'], $chamada['homologacao_inicio'], $chamada['homologacao_fim']);
+        }
+        unset($chamada);
+
+        $edital = $this->criar($dados);
+
+        $this->assertCount(2, $edital->chamadas);
+        $this->assertSame([null, null, null, null], $this->fasesDaChamada($edital, 'Chamada 1'));
+        $this->assertSame([], $this->avisos());
+    }
+
+    public function test_fase_com_so_uma_data_fica_vazia_com_ponto_de_atencao(): void
+    {
+        $dados = $this->respostaCompleta();
+        $dados['inscricao']['chamadas'][0]['validacao_inicio'] = null;
+        $dados['inscricao']['chamadas'][0]['validacao_fim'] = null;
+        $dados['inscricao']['chamadas'][0]['homologacao_fim'] = null;
+
+        $edital = $this->criar($dados);
+
+        $this->assertSame([null, null, null, null], $this->fasesDaChamada($edital, 'Chamada 1'));
+        $this->assertSame(['A chamada "Chamada 1" trouxe só uma das datas da homologação (20/12/2026); a fase ficou vazia.'], $this->avisos());
+        $ponto = collect($this->importacao->atencao)->firstWhere('tipo', 'incerta');
+        $this->assertSame('inscricao', $ponto['bloco']);
+    }
+
+    public function test_fase_com_data_impossivel_ou_fim_antes_do_inicio_fica_vazia_com_ponto_de_atencao(): void
+    {
+        $dados = $this->respostaCompleta();
+        $dados['inscricao']['chamadas'][0]['validacao_inicio'] = '2026-02-30';
+        $dados['inscricao']['chamadas'][0]['homologacao_inicio'] = '2026-12-22';
+        $dados['inscricao']['chamadas'][0]['homologacao_fim'] = '2026-12-20';
+
+        $edital = $this->criar($dados);
+
+        $this->assertSame(['Chamada 1', 'Chamada 2'], $edital->chamadas->pluck('nome')->all());
+        $this->assertSame([null, null, null, null], $this->fasesDaChamada($edital, 'Chamada 1'));
+        $this->assertSame([
+            'A chamada "Chamada 1" trouxe uma data impossível na validação; a fase ficou vazia.',
+            'A chamada "Chamada 1" trouxe o fim da homologação antes do início; a fase ficou vazia.',
+        ], $this->avisos());
+    }
+
     public function test_campos_avulsos_invalidos_ficam_vazios_com_ponto_de_atencao(): void
     {
         $dados = $this->respostaCompleta();
