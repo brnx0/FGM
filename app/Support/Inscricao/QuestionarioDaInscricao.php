@@ -255,9 +255,13 @@ class QuestionarioDaInscricao
             && array_intersect($escolhidas, $pergunta->condicao_opcoes ?? []) !== [];
     }
 
-    /** @return Collection<int, EditalQuestionarioSecao> */
+    /**
+     * Seções com as perguntas e os ids das categorias delas, numa leva só: valePara usa as categorias carregadas.
+     *
+     * @return Collection<int, EditalQuestionarioSecao>
+     */
     private function secoes(): Collection
     {
-        return $this->secoes ??= $this->inscricao->edital->secoesDoQuestionario()->with('perguntas')->get()->toBase();
+        return $this->secoes ??= $this->inscricao->edital->secoesDoQuestionario()->with('perguntas.categorias:edital_categorias.id')->get()->toBase();
     }
 }

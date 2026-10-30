@@ -68,10 +68,14 @@ class EditalPergunta extends Model
         return $this->belongsTo(self::class, 'condicao_pergunta_id');
     }
 
-    /** Sem "todas as categorias" e sem nenhuma categoria ligada: a pergunta não aparece a ninguém. */
+    /** Sem "todas as categorias" e sem nenhuma categoria ligada: a pergunta não aparece a ninguém. Usa as categorias carregadas, se houver. */
     public function semVinculo(): bool
     {
-        return ! $this->todas_categorias && ! $this->categorias()->exists();
+        if ($this->todas_categorias) {
+            return false;
+        }
+
+        return $this->relationLoaded('categorias') ? $this->categorias->isEmpty() : ! $this->categorias()->exists();
     }
 
     public function valePara(?int $categoriaId, NaturezaProponente $natureza): bool
@@ -81,7 +85,9 @@ class EditalPergunta extends Model
         }
 
         $categoriaServe = $this->todas_categorias
-            || ($categoriaId !== null && $this->categorias()->whereKey($categoriaId)->exists());
+            || ($categoriaId !== null && ($this->relationLoaded('categorias')
+                ? $this->categorias->contains(fn (EditalCategoria $categoria): bool => (int) $categoria->id === $categoriaId)
+                : $this->categorias()->whereKey($categoriaId)->exists()));
 
         return $categoriaServe && RegrasDaInscricao::aceitaNatureza($this->naturezas, $natureza);
     }

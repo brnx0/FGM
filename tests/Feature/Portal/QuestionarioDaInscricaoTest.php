@@ -19,6 +19,7 @@ use App\Support\Inscricao\QuestionarioDaInscricao;
 use Database\Factories\EditalPerguntaFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
@@ -92,6 +93,33 @@ class QuestionarioDaInscricaoTest extends TestCase
         $this->assertSame([(int) $origem->id], $visiveis([$origem->id => $this->opcoes(['nao']), $dependente->id => $this->opcoes(['sim'])]));
     }
 
+    public function test_consultas_nao_crescem_com_o_numero_de_perguntas(): void
+    {
+        $equipe = $this->secao('Equipe', 2);
+        $origem = $this->pergunta(['ordem' => 0], fabrica: EditalPergunta::factory()->simNao());
+        foreach (range(1, 49) as $ordem) {
+            $categorias = match ($ordem % 3) {
+                0 => [],
+                1 => [$this->teatro],
+                default => [$this->danca],
+            };
+            $fabrica = $ordem % 5 === 0 ? EditalPergunta::factory()->condicionadaA($origem, ['sim']) : null;
+            $this->pergunta(['ordem' => $ordem], $ordem % 2 === 0 ? $equipe : null, $fabrica, $categorias);
+        }
+        $questionario = $this->questionario();
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $valem = $questionario->perguntasQueValem();
+        $visiveis = $questionario->visiveis([$origem->id => $this->opcoes(['sim'])]);
+        $consultas = count(DB::getQueryLog());
+        DB::disableQueryLog();
+
+        $this->assertCount(34, $valem);
+        $this->assertCount(34, $visiveis);
+        $this->assertLessThan(20, $consultas);
+    }
+
     public function test_salvar_a_secao_grava_e_avanca_para_o_passo_seguinte(): void
     {
         $pergunta = $this->pergunta();
@@ -146,6 +174,16 @@ class QuestionarioDaInscricaoTest extends TestCase
         // Sem a opção "Outro" o "Qual?" não fica.
         $this->salvar([$pergunta->id => ['opcoes' => ['o1'], 'outro' => 'Circo']])->assertSessionHasNoErrors();
         $this->assertNull(InscricaoResposta::sole()->outro);
+    }
+
+    public function test_qual_com_acentos_acima_do_limite_em_bytes_e_recusado(): void
+    {
+        $pergunta = $this->pergunta(fabrica: EditalPergunta::factory()->escolha(TipoPergunta::EscolhaUnica, ['Rua'], comOutro: true));
+
+        $this->salvar([$pergunta->id => ['opcoes' => ['o2'], 'outro' => str_repeat('ç', 1000)]])
+            ->assertSessionHasErrors(["respostas.{$pergunta->id}.outro"]);
+
+        $this->assertSame(0, InscricaoResposta::count());
     }
 
     public function test_declaracao_precisa_ser_marcada(): void

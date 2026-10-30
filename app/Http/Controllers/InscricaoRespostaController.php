@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Enums\SituacaoInscricao;
 use App\Http\Requests\SalvarRespostasRequest;
-use App\Models\EditalPergunta;
 use App\Models\EditalQuestionarioSecao;
 use App\Models\Inscricao;
 use App\Support\Inscricao\PassosDaInscricao;
@@ -25,7 +24,7 @@ class InscricaoRespostaController extends Controller
         abort_unless((int) $secao->edital_id === (int) $inscricao->edital_id, 404);
 
         if (! $inscricao->noPeriodo()) {
-            return redirect()->route('portal.editais')->with('aviso', PortalController::AVISO_INSCRICOES_FECHADAS);
+            return $this->inscricoesFechadas();
         }
 
         // Saída antes de travar; a situação que vale é a relida com a linha travada, dentro da transação.
@@ -33,9 +32,7 @@ class InscricaoRespostaController extends Controller
             return $this->pedirParaReabrir($inscricao);
         }
 
-        $enviadas = $request->perguntas()->map(fn (EditalPergunta $pergunta): int => (int) $pergunta->id)->all();
-
-        $questionario = DB::transaction(function () use ($inscricao, $secao, $request, $enviadas): QuestionarioDaInscricao {
+        $questionario = DB::transaction(function () use ($inscricao, $request): QuestionarioDaInscricao {
             $travada = Inscricao::query()->whereKey($inscricao->id)->lockForUpdate()->firstOrFail();
             $travada->setRelation('edital', $inscricao->edital);
 
@@ -43,13 +40,12 @@ class InscricaoRespostaController extends Controller
                 throw new HttpResponseException($this->pedirParaReabrir($inscricao));
             }
 
-            $questionario = new QuestionarioDaInscricao($travada);
-            $perguntas = $questionario->perguntasQueValem()->filter(
-                fn (EditalPergunta $pergunta): bool => (int) $pergunta->edital_questionario_secao_id === (int) $secao->id
-                    && in_array((int) $pergunta->id, $enviadas, true),
-            );
+            if (! $travada->noPeriodo()) {
+                throw new HttpResponseException($this->inscricoesFechadas());
+            }
 
-            foreach ($perguntas as $pergunta) {
+            // As perguntas que a request validou; se a categoria mudou no meio, o descarte abaixo limpa o que não vale.
+            foreach ($request->perguntas() as $pergunta) {
                 $valor = QuestionarioDaInscricao::normalizar($pergunta, $request->validated('respostas.'.$pergunta->id));
 
                 if ($valor === null) {
@@ -62,6 +58,7 @@ class InscricaoRespostaController extends Controller
                 }
             }
 
+            $questionario = new QuestionarioDaInscricao($travada);
             $questionario->descartarRespostasQueNaoValem();
 
             return $questionario;
@@ -79,6 +76,11 @@ class InscricaoRespostaController extends Controller
             $inscricao,
             'passo' => PassosDaInscricao::seguinte($passos, PassosDaInscricao::idDaSecao((int) $secao->id)),
         ]);
+    }
+
+    private function inscricoesFechadas(): RedirectResponse
+    {
+        return redirect()->route('portal.editais')->with('aviso', PortalController::AVISO_INSCRICOES_FECHADAS);
     }
 
     private function pedirParaReabrir(Inscricao $inscricao): RedirectResponse
