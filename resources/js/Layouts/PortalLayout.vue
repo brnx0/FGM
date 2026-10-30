@@ -7,6 +7,7 @@ import SiteFooter from '../Components/SiteFooter.vue';
 import SiteHeader from '../Components/SiteHeader.vue';
 import SkipLink from '../Components/SkipLink.vue';
 import TestEnvBanner from '../Components/TestEnvBanner.vue';
+import TransicaoIris from '../Components/TransicaoIris.vue';
 
 const ambienteTeste = computed(() => usePage().props.ambienteTeste);
 </script>
@@ -24,5 +25,6 @@ const ambienteTeste = computed(() => usePage().props.ambienteTeste);
 
         <SiteFooter />
         <CookieNotice />
+        <TransicaoIris />
     </div>
 </template>

@@ -11,6 +11,7 @@ import CookieNotice from '../Components/CookieNotice.vue';
 import FlashMessage from '../Components/FlashMessage.vue';
 import SkipLink from '../Components/SkipLink.vue';
 import TestEnvBanner from '../Components/TestEnvBanner.vue';
+import TransicaoIris from '../Components/TransicaoIris.vue';
 import VidroLiquido from '../Components/VidroLiquido.vue';
 
 const page = usePage();
@@ -181,7 +182,7 @@ onBeforeUnmount(() => {
                             </div>
                         </Transition>
 
-                        <form ref="formularioSair" method="post" action="/logout">
+                        <form ref="formularioSair" method="post" action="/logout" data-iris>
                             <input type="hidden" name="_token" :value="csrf" />
                             <button
                                 type="submit"
@@ -213,5 +214,6 @@ onBeforeUnmount(() => {
             </footer>
         </VidroLiquido>
         <CookieNotice />
+        <TransicaoIris />
     </div>
 </template>
