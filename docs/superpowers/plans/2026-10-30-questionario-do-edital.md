@@ -20,6 +20,7 @@
 - Sim/não, declarações e opções de múltipla escolha são toggle (`role="switch"`, componente `Interruptor` da Task 1), nunca checkbox; vale na retaguarda e no portal.
 - Execução neste worktree, `$W` = `C:/Users/Breno/AppData/Local/Temp/claude/E--Dev-Mapa-Cultura/e4d54214-7206-4ddb-aab8-4b4296549565/scratchpad/wt-questionario`. PHP só por container descartável; abaixo, `art` abrevia
   `MSYS_NO_PATHCONV=1 docker run --rm -v "$W:/var/www/html" -v "E:/Dev/Mapa_Cultura/vendor:/var/www/html/vendor:ro" --network mapa_cultura_default -w /var/www/html mapa_cultura-app php artisan` e `pint` abrevia o mesmo `docker run ... mapa_cultura-app vendor/bin/pint <arquivos> --format agent` (nunca `--dirty`, nunca `--test`).
+- Nunca rodar `migrate` no banco de dev durante as tasks: os testes usam o banco de testes (RefreshDatabase); o banco de dev recebe as migrations só depois do merge, com o OK do usuário.
 - Banco de testes Oracle compartilhado: um arquivo de teste por vez (`art test --compact <arquivo>`); a suíte completa só na Task 13, sozinha.
 - `npm run build` no worktree (se faltar `node_modules`, junção para `E:/Dev/Mapa_Cultura/node_modules`).
 - Commits pequenos em português (`feat:`, `test:`, `refactor:`), mensagem terminando com linha em branco e `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. Sem push.
@@ -43,7 +44,7 @@
 **Interfaces:**
 - Produces: `Interruptor.vue` — `defineModel<boolean>({ required: true })`; props `{ id: string; rotulo: string; ajuda?: string; erro?: string; obrigatorio?: boolean; desabilitado?: boolean; variante?: 'caixa' | 'linha' }` (padrão `'caixa'`: a caixa com borda de hoje; `'linha'`: sem borda, para listas de opções); emite `change`. Renderiza `<label>` com `<input type="checkbox" role="switch" class="peer sr-only">` e o trilho/botão visuais copiados do `IntegracaoIa.vue`; `aria-describedby` com os ids de ajuda e erro (`${id}-ajuda`, `${id}-erro`), `aria-invalid` com erro, classe `campo-invalido` na caixa com erro, asterisco vermelho com `obrigatorio`. O rótulo aceita slot `default` para texto rico (declarações).
 
-- [ ] **Step 1: Trazer a master para o branch.** `git -C "$W" merge master` (o branch nasceu de `69176e6`, antes de `3d1a6d0`, que tirou os requisitos). Se faltar `$W/.env`, copiar `E:/Dev/Mapa_Cultura/.env` (não versionado).
+- [ ] **Step 1: Preparar o worktree.** O branch já está sobre a `master` `3d1a6d0` (sem os requisitos). Se faltar `$W/.env`, copiar `E:/Dev/Mapa_Cultura/.env` (não versionado); se faltar `node_modules`, criar a junção para `E:/Dev/Mapa_Cultura/node_modules`.
 - [ ] **Step 2: Criar `Interruptor.vue`** com a marcação do toggle de `IntegracaoIa.vue` e trocar o de `IntegracaoIa.vue` por `<Interruptor id="ia-ativo" v-model="formPrincipal.ativo" rotulo="Ativar validação por IA" ajuda="Ligada, as validações automáticas usam este provedor (e a redundância, quando ele falhar)." :erro="formPrincipal.errors.ativo" @change="formPrincipal.clearErrors('ativo')" />`.
 - [ ] **Step 3: Verificar.** `npm run build` sem erro; `art test --compact tests/Feature/Retaguarda/IntegracaoIaTest.php` passa; na tela Integração com IA o toggle liga, desliga, recebe foco pelo teclado (Espaço alterna) e mostra o erro.
 - [ ] **Step 4: Commit** `feat: componente de toggle reutilizável`.
@@ -79,7 +80,7 @@
 - [ ] **Step 2:** `art test --compact tests/Feature/CadastroTest.php` — falham.
 - [ ] **Step 3: Implementar.** Regras: `deficiencia` `['nullable', 'required_if_accepted:pcd', Rule::enum(TipoDeficiencia::class)]`; `deficiencia_outra` `['nullable', 'required_if:deficiencia,outra', 'string', 'max:255', new TamanhoEmBytes(255)]`; `escolaridade`, `renda`, `povo_tradicional` `required` + `Rule::enum`; `anos_atuacao` `['required', 'integer', 'min:0', 'max:100']` (mensagens `Informe um número inteiro.`, `Informe 0 ou mais.`, `Informe no máximo 100.`). O controller zera `deficiencia`/`deficiencia_outra` conforme o teste e manda as opções novas (generalizar o tipo de `opcoes()` para `list<BackedEnum>`). Na tela, seção 5 vira "Identidade e perfil": selects de escolaridade, renda e povos (obrigatórios), número de anos (obrigatório, `inputmode="numeric"`), `pcd` como `Interruptor`; com `pcd`, select de tipo (obrigatório) e, com "Outra", texto "Qual?" (obrigatório). Os quatro sim/não da seção 3 também viram `Interruptor`.
 - [ ] **Step 4:** `art test --compact tests/Feature/CadastroTest.php` passa; `npm run build` passa.
-- [ ] **Step 5:** Migration nova: `art migrate` (só para frente). `pint` nos PHP alterados. Commit `feat: perfil da pessoa física no cadastro`.
+- [ ] **Step 5:** `pint` nos PHP alterados. Commit `feat: perfil da pessoa física no cadastro`.
 
 ---
 
@@ -108,7 +109,7 @@
   - `test_vale_para_categoria_e_natureza` — todas + naturezas nulas; algumas; natureza fora da lista; sem vínculo → false; inscrição sem categoria só vê "todas".
   - `test_chaves_das_opcoes_por_tipo`.
 - [ ] **Step 2:** Rodar o arquivo — falha.
-- [ ] **Step 3: Implementar** o acima; `art migrate`.
+- [ ] **Step 3: Implementar** o acima.
 - [ ] **Step 4:** Rodar o arquivo e `tests/Feature/Retaguarda/EditaisTest.php` — passam.
 - [ ] **Step 5:** `pint`; commit `feat: estrutura do questionário do edital, pendência e trava`.
 
@@ -282,7 +283,7 @@
   - `test_trava_durante_a_analise_nao_substitui` — o lançador falso cria inscrição com `numero` antes do `Artisan::call`; importação termina com o aviso da trava e o questionário antigo fica.
   - `test_arquivo_que_nao_e_pdf_nem_docx_e_recusado` e `test_acima_de_14_mb_e_recusado`.
   - `test_consulta_da_situacao_e_marcar_como_conferida` e `test_proponente_nao_acessa`.
-- [ ] **Step 2:** Rodar — falha. **Step 3:** Implementar; `art migrate`. **Step 4:** Este arquivo passa; `tests/Feature/Retaguarda/ImportacaoEditalTest.php` continua passando.
+- [ ] **Step 2:** Rodar — falha. **Step 3:** Implementar. **Step 4:** Este arquivo passa; `tests/Feature/Retaguarda/ImportacaoEditalTest.php` continua passando.
 - [ ] **Step 5:** `pint`; commit `feat: importação do questionário do edital por IA`.
 
 ---
@@ -337,7 +338,7 @@
   - `test_trocar_a_categoria_apaga_respostas_que_deixaram_de_valer` (pelo `PUT` das escolhas).
   - `test_secao_de_outro_edital_404_outro_usuario_404_finalizada_e_fora_do_periodo_recusam`.
   - `test_passos_pulam_secao_sem_pergunta_visivel_e_param_no_primeiro_incompleto` — `atual(passos, 'revisao')` com seção incompleta devolve a seção; rascunho sem pedido abre no primeiro incompleto.
-- [ ] **Step 2:** Rodar — falha. **Step 3:** Implementar; `art migrate`. **Step 4:** Este arquivo passa; `tests/Feature/Portal/InscricaoTest.php` continua passando.
+- [ ] **Step 2:** Rodar — falha. **Step 3:** Implementar. **Step 4:** Este arquivo passa; `tests/Feature/Portal/InscricaoTest.php` continua passando.
 - [ ] **Step 5:** `pint`; commit `feat: respostas do questionário na inscrição`.
 
 ---
@@ -370,7 +371,7 @@
   - `test_salvar_escolhas_avanca_para_o_passo_seguinte`.
   - `test_pagina_de_inscricao_do_edital_avisa_perfil_incompleto`.
   - Ajustar os testes existentes desses três arquivos (`comPerfil()`, `assertRedirect` com `passo`, componente `Portal/InscricaoPassos`).
-- [ ] **Step 2:** Rodar cada arquivo — falham. **Step 3:** Implementar; `art migrate`. **Step 4:** `InscricaoTest`, `FinalizarInscricaoTest`, `InscricaoDocumentosTest`, `QuestionarioDaInscricaoTest` passam (um por vez).
+- [ ] **Step 2:** Rodar cada arquivo — falham. **Step 3:** Implementar. **Step 4:** `InscricaoTest`, `FinalizarInscricaoTest`, `InscricaoDocumentosTest`, `QuestionarioDaInscricaoTest` passam (um por vez).
 - [ ] **Step 5:** `pint`; commit `feat: passos da inscrição, retrato e perfil ao finalizar`.
 
 ---
@@ -406,5 +407,5 @@
 - [ ] **Step 2:** `npm run build` — sem erro de vue-tsc.
 - [ ] **Step 3:** Suíte completa, sozinha: `art test --compact` — tudo passa.
 - [ ] **Step 4: PostgreSQL descartável.** `docker run -d --name pg-questionario -e POSTGRES_PASSWORD=teste -e POSTGRES_DB=mapa -p 127.0.0.1:55432:5432 postgres:16`; no worktree, com o PHP da máquina (junção `vendor` → `E:/Dev/Mapa_Cultura/vendor` se faltar): `DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=55432 DB_DATABASE=mapa DB_USERNAME=postgres DB_PASSWORD=teste php artisan migrate --force`, depois `migrate:rollback --step=5 --force` (as cinco migrations novas) e `migrate --force` de novo — sem erro; `docker rm -f pg-questionario`. Não tocar no `sie_pg_homolog`.
-- [ ] **Step 5:** Oracle de dev: `art migrate:status` mostra as cinco migrations aplicadas (sem `migrate:fresh`).
+- [ ] **Step 5:** Banco Oracle de dev: nada aqui. As migrations só rodam nele depois do merge e com o OK do usuário (`php artisan migrate`, sem `migrate:fresh`).
 - [ ] **Step 6:** Commit das correções, se houver (`fix: ...`).
