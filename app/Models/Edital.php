@@ -113,12 +113,6 @@ class Edital extends Model
         return $this->hasMany(EditalDocumento::class)->orderBy('ordem')->orderBy('id');
     }
 
-    /** @return HasMany<EditalRequisito, $this> */
-    public function requisitos(): HasMany
-    {
-        return $this->hasMany(EditalRequisito::class)->orderBy('ordem')->orderBy('id');
-    }
-
     /** @return HasMany<EditalCriterio, $this> */
     public function criterios(): HasMany
     {

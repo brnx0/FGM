@@ -9,21 +9,20 @@ use App\Models\EditalCategoriaItem;
 use App\Models\EditalChamada;
 use App\Models\EditalCriterio;
 use App\Models\EditalDocumento;
-use App\Models\EditalRequisito;
 use App\Support\ArquivoArmazenado;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\UploadedFile;
 
 /**
- * Grava as listas do edital (chamadas, categorias com itens, documentos, requisitos, critérios) e deriva dele
+ * Grava as listas do edital (chamadas, categorias com itens, documentos, critérios) e deriva dele
  * o período de inscrição (menor início e maior fim das chamadas com as duas datas; nulo sem nenhuma).
  *
  * Usado pelo cadastro da retaguarda e pela importação do PDF; deve rodar dentro da transação de quem chama.
  * Cada item com `id` de um registro da mesma lista do edital é atualizado; os demais viram novos, e os
  * registros que não vieram são apagados. A ordem é a da lista. Referências entre listas são posições
- * (índice, a partir de 0, na lista enviada): `chamada` da categoria, `categorias` do documento e do critério,
- * `documentos` do requisito; posição inexistente é ignorada. Valores em reais.
+ * (índice, a partir de 0, na lista enviada): `chamada` da categoria, `categorias` do documento e do critério;
+ * posição inexistente é ignorada. Valores em reais.
  *
  * Arquivos-modelo: os gravados agora ficam em arquivosNovos() (apagar se a transação falhar) e os
  * substituídos ou de documentos removidos em arquivosSubstituidos() (apagar depois do commit).
@@ -32,7 +31,6 @@ use Illuminate\Http\UploadedFile;
  *  - chamadas: list<{id?, nome, inicio?: Y-m-d, fim?: Y-m-d, validacao_inicio?: Y-m-d, validacao_fim?: Y-m-d, homologacao_inicio?: Y-m-d, homologacao_fim?: Y-m-d}>
  *  - categorias: list<{id?, nome, descricao?, valor?, vagas?, naturezas?: list<string>, chamada?: posição, itens?: list<{id?, nome, valor?, vagas?, suplentes?}>}>
  *  - documentos: list<{id?, nome, orientacao?, etapa, obrigatorio?, naturezas?, todas_categorias?, categorias?: list<posição>, modalidade_cota?, checagem?, instrucao_ia?, modelo?: UploadedFile, remover_modelo?}>
- *  - requisitos: list<{id?, descricao, documentos?: list<posição>}>
  *  - criterios: list<{id?, nome, descricao?, peso?, pontos_maximos?, todas_categorias?, categorias?: list<posição>}>
  */
 class SincronizadorDoEdital
@@ -41,7 +39,7 @@ class SincronizadorDoEdital
 
     private const string PASTA_MODELOS = 'editais/modelos';
 
-    private const array LISTAS = ['chamadas', 'categorias', 'documentos', 'requisitos', 'criterios'];
+    private const array LISTAS = ['chamadas', 'categorias', 'documentos', 'criterios'];
 
     /** @var list<array{string, string}> */
     private array $arquivosNovos = [];
@@ -50,7 +48,7 @@ class SincronizadorDoEdital
     private array $arquivosSubstituidos = [];
 
     /**
-     * @param  array{chamadas?: list<array<string, mixed>>, categorias?: list<array<string, mixed>>, documentos?: list<array<string, mixed>>, requisitos?: list<array<string, mixed>>, criterios?: list<array<string, mixed>>}  $listas
+     * @param  array{chamadas?: list<array<string, mixed>>, categorias?: list<array<string, mixed>>, documentos?: list<array<string, mixed>>, criterios?: list<array<string, mixed>>}  $listas
      */
     public function sincronizar(Edital $edital, array $listas): void
     {
@@ -122,14 +120,6 @@ class SincronizadorDoEdital
         foreach ($documentos as $posicao => $documento) {
             $item = $listas['documentos'][$posicao];
             $documento->categorias()->sync(self::categoriasEscolhidas($item, $categorias) ?? []);
-        }
-
-        $requisitos = $this->sincronizarLista($edital->requisitos(), $listas['requisitos'], function (EditalRequisito $requisito, array $item): void {
-            $requisito->fill(['descricao' => $item['descricao']]);
-        });
-
-        foreach ($requisitos as $posicao => $requisito) {
-            $requisito->documentos()->sync(self::idsEmPosicoes($documentos, $listas['requisitos'][$posicao]['documentos'] ?? []));
         }
 
         $criterios = $this->sincronizarLista($edital->criterios(), $listas['criterios'], function (EditalCriterio $criterio, array $item) use ($categorias): void {

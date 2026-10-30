@@ -690,13 +690,6 @@ export interface DocumentoFormulario {
     modeloNome: string | null;
 }
 
-export interface RequisitoFormulario {
-    id: number;
-    descricao: string;
-    /** Posições dos documentos. */
-    documentos: number[];
-}
-
 export interface CriterioFormulario {
     id: number;
     nome: string;
@@ -766,13 +759,6 @@ export interface DocumentoEditavel extends ItemEditavel {
     remover_modelo: boolean;
     modeloUrl: string | null;
     modeloNome: string | null;
-}
-
-export interface RequisitoEditavel extends ItemEditavel {
-    id: number | null;
-    descricao: string;
-    /** Chaves dos documentos. */
-    documentos: string[];
 }
 
 export interface CriterioEditavel extends ItemEditavel {
@@ -846,7 +832,6 @@ export interface EditalFormulario {
     chamadas: ChamadaFormulario[];
     categorias: CategoriaFormulario[];
     documentos: DocumentoFormulario[];
-    requisitos: RequisitoFormulario[];
     criterios: CriterioFormulario[];
 }
 

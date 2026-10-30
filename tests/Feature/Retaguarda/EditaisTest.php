@@ -349,6 +349,29 @@ class EditaisTest extends TestCase
             ->has('importacoes', 4));
     }
 
+    public function test_importacao_antiga_com_bloco_homologacao_nao_oferece_a_aba_extinta(): void
+    {
+        $importacao = ImportacaoEdital::factory()->concluida()->create([
+            'confiabilidade' => [
+                'geral' => 80,
+                'blocos' => [
+                    'homologacao' => ['nota' => 80, 'justificativa' => 'Bloco extinto.'],
+                    'identificacao' => ['nota' => 80, 'justificativa' => 'Claro.'],
+                ],
+            ],
+            'atencao' => [
+                ['bloco' => 'homologacao', 'tipo' => 'incerta', 'texto' => 'Requisito ilegível.', 'itens' => []],
+            ],
+        ]);
+
+        $this->get("/retaguarda/editais/{$importacao->edital->slug}/edit")->assertInertia(fn (Assert $p) => $p
+            ->where('importacao.confiabilidade.blocos', [
+                ['bloco' => 'identificacao', 'rotulo' => 'Identificação', 'nota' => 80, 'justificativa' => 'Claro.'],
+            ])
+            ->where('importacao.atencao.0.bloco', null)
+            ->where('importacao.atencao.0.blocoRotulo', 'Geral'));
+    }
+
     public function test_edital_importado_e_nao_conferido_traz_o_quadro_da_importacao(): void
     {
         $this->travelTo(Carbon::parse('2026-10-28 15:00'));

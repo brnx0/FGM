@@ -4,7 +4,7 @@ import { MAXIMO_ITENS, classeBotaoCartao, useListaEditavel } from '../listaEdita
 import type { ItemEditavel } from '../../../types';
 
 /**
- * Lista do edital em cartões de sanfona (chamadas, categorias e itens, documentos, requisitos, critérios, grupos):
+ * Lista do edital em cartões de sanfona (chamadas, categorias e itens, documentos, critérios, grupos):
  * cabeçalho com nome e resumo, subir/descer, remover com confirmação e "Adicionar". Os campos vêm do slot.
  */
 const props = withDefaults(

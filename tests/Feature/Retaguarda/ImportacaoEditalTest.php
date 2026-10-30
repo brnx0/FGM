@@ -148,8 +148,8 @@ class ImportacaoEditalTest extends TestCase
         $this->assertSame('gemini-2.5-pro', $importacao->modelo);
         $this->assertSame('edital-007.pdf', $importacao->pdf_nome);
         $this->assertSame($resposta, $importacao->resposta);
-        // (8 × 80 + 35) / 9 = 75
-        $this->assertSame(75, $importacao->confiabilidade['geral']);
+        // (7 × 80 + 35) / 8 = 74
+        $this->assertSame(74, $importacao->confiabilidade['geral']);
         $this->assertSame(['nota' => 35, 'justificativa' => 'Texto claro.'], $importacao->confiabilidade['blocos']['cotas']);
         $this->assertSame([[
             'bloco' => 'inscricao',
@@ -186,7 +186,6 @@ class ImportacaoEditalTest extends TestCase
         $this->assertSame([(int) $danca->id], $portfolio->categorias->map(fn ($c): int => (int) $c->id)->all());
         $this->assertTrue($autodeclaracao->todas_categorias);
         $this->assertSame(EtapaDocumento::ValidacaoCotas, $autodeclaracao->etapa);
-        $this->assertSame([(int) $portfolio->id], $edital->requisitos->sole()->documentos->map(fn ($d): int => (int) $d->id)->all());
         $this->assertSame([(int) $teatro->id], $edital->criterios->sole()->categorias->map(fn ($c): int => (int) $c->id)->all());
 
         Http::assertSent(fn (Request $pedido): bool => $pedido->header('x-goog-api-key') === [self::CHAVE]

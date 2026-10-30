@@ -20,7 +20,6 @@ use App\Models\EditalCategoriaItem;
 use App\Models\EditalChamada;
 use App\Models\EditalCriterio;
 use App\Models\EditalDocumento;
-use App\Models\EditalRequisito;
 use App\Models\ImportacaoEdital;
 use App\Support\ArquivoArmazenado;
 use App\Support\Edital\SincronizadorDoEdital;
@@ -129,12 +128,11 @@ class EditalController extends Controller
 
     public function edit(Edital $edital): Response
     {
-        $edital->load(['chamadas', 'categorias.itens', 'documentos.categorias', 'requisitos.documentos', 'criterios.categorias']);
+        $edital->load(['chamadas', 'categorias.itens', 'documentos.categorias', 'criterios.categorias']);
 
         // Referências entre listas vão por posição, como o formulário as envia de volta.
         $posicaoDaChamada = $this->posicoesPorId($edital->chamadas);
         $posicaoDaCategoria = $this->posicoesPorId($edital->categorias);
-        $posicaoDoDocumento = $this->posicoesPorId($edital->documentos);
 
         return Inertia::render('Retaguarda/Editais/Form', [
             'edital' => [
@@ -206,11 +204,6 @@ class EditalController extends Controller
                     'instrucao_ia' => $documento->instrucao_ia,
                     'modeloUrl' => $documento->modelo ? route('retaguarda.editais.documentos.modelo', [$edital, $documento]) : null,
                     'modeloNome' => $documento->modelo ? $documento->modelo_nome : null,
-                ])->all(),
-                'requisitos' => $edital->requisitos->map(fn (EditalRequisito $requisito): array => [
-                    'id' => (int) $requisito->id,
-                    'descricao' => $requisito->descricao,
-                    'documentos' => $this->posicoesDe($requisito->documentos, $posicaoDoDocumento),
                 ])->all(),
                 'criterios' => $edital->criterios->map(fn (EditalCriterio $criterio): array => [
                     'id' => (int) $criterio->id,
@@ -395,7 +388,7 @@ class EditalController extends Controller
                     ->all(),
             ],
             'atencao' => array_map(fn (array $ponto): array => [
-                'bloco' => $ponto['bloco'] ?? null,
+                'bloco' => array_key_exists($ponto['bloco'] ?? '', EsquemaDaResposta::BLOCOS) ? $ponto['bloco'] : null,
                 'blocoRotulo' => EsquemaDaResposta::BLOCOS[$ponto['bloco'] ?? ''] ?? 'Geral',
                 'tipo' => $ponto['tipo'],
                 'tipoRotulo' => EsquemaDaResposta::TIPOS_ATENCAO[$ponto['tipo']] ?? $ponto['tipo'],
