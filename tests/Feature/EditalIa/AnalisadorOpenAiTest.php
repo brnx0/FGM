@@ -30,9 +30,9 @@ class AnalisadorOpenAiTest extends TestCase
     /**
      * @return array{dados: array<mixed>, tokens: array{entrada: int, saida: int, total: int}}
      */
-    private function analisar(): array
+    private function analisar(?string $pdfBinario = '%PDF-1.4 conteúdo'): array
     {
-        return app(AnalisadorOpenAi::class)->analisar('gpt-5.4', self::CHAVE, '%PDF-1.4 conteúdo', 'Leia o edital.', 0.1, self::ESQUEMA);
+        return app(AnalisadorOpenAi::class)->analisar('gpt-5.4', self::CHAVE, $pdfBinario, 'Leia o edital.', 0.1, self::ESQUEMA);
     }
 
     private function falhaAoAnalisar(): FalhaNaIa
@@ -77,11 +77,24 @@ class AnalisadorOpenAiTest extends TestCase
             && $pedido['input'] === [[
                 'role' => 'user',
                 'content' => [
-                    ['type' => 'input_file', 'filename' => 'edital.pdf', 'file_data' => 'data:application/pdf;base64,'.base64_encode('%PDF-1.4 conteúdo')],
+                    ['type' => 'input_file', 'filename' => 'arquivo.pdf', 'file_data' => 'data:application/pdf;base64,'.base64_encode('%PDF-1.4 conteúdo')],
                     ['type' => 'input_text', 'text' => 'Leia o edital.'],
                 ],
             ]]
             && $pedido['text'] === ['format' => ['type' => 'json_schema', 'name' => 'edital', 'strict' => true, 'schema' => EsquemaOpenAi::de(self::ESQUEMA)]]);
+    }
+
+    public function test_sem_pdf_o_pedido_da_openai_so_leva_o_texto(): void
+    {
+        Http::fake([self::URL_ANALISE => Http::response(self::corpo('{"titulo": "Edital 007/2026"}'))]);
+
+        $resultado = $this->analisar(null);
+
+        $this->assertSame(['titulo' => 'Edital 007/2026'], $resultado['dados']);
+        Http::assertSent(fn (Request $pedido): bool => $pedido['input'] === [[
+            'role' => 'user',
+            'content' => [['type' => 'input_text', 'text' => 'Leia o edital.']],
+        ]]);
     }
 
     public function test_temperatura_recusada_repete_uma_vez_sem_ela(): void
@@ -184,7 +197,7 @@ class AnalisadorOpenAiTest extends TestCase
     {
         Http::fake([self::URL_ANALISE => Http::failedConnection('cURL error 28: Operation timed out after 300000 milliseconds')]);
 
-        $this->assertSame('OpenAI demorou demais para analisar o edital e a chamada foi interrompida. Tente de novo.', $this->falhaAoAnalisar()->getMessage());
+        $this->assertSame('OpenAI demorou demais para responder e a chamada foi interrompida. Tente de novo.', $this->falhaAoAnalisar()->getMessage());
     }
 
     public function test_esquema_vira_json_schema_strict(): void

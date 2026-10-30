@@ -8,9 +8,9 @@ use Illuminate\Http\Client\Response;
 use SensitiveParameter;
 
 /**
- * Análise do edital pela Responses API da OpenAI: o PDF vai como arquivo na própria chamada (input_file em base64) e
- * a resposta fica presa ao esquema (saída estruturada, json_schema strict, ver EsquemaOpenAi). store: false para a
- * OpenAI não guardar o edital no histórico da conta. A chave vai só no cabeçalho Authorization.
+ * Análise pela Responses API da OpenAI: o PDF, se houver, vai como arquivo na própria chamada (input_file em base64)
+ * e a resposta fica presa ao esquema (saída estruturada, json_schema strict, ver EsquemaOpenAi). store: false para a
+ * OpenAI não guardar o pedido (o edital, o documento) no histórico da conta. A chave vai só no cabeçalho Authorization.
  */
 class AnalisadorOpenAi extends AnalisadorPorHttp
 {
@@ -21,7 +21,7 @@ class AnalisadorOpenAi extends AnalisadorPorHttp
         return ProvedorIa::OpenAi;
     }
 
-    protected function corpo(string $modelo, string $pdfBinario, string $prompt, ?float $temperatura, array $esquema): array
+    protected function corpo(string $modelo, ?string $pdfBinario, string $prompt, ?float $temperatura, array $esquema): array
     {
         return array_filter([
             'model' => $modelo,
@@ -29,7 +29,9 @@ class AnalisadorOpenAi extends AnalisadorPorHttp
             'input' => [[
                 'role' => 'user',
                 'content' => [
-                    ['type' => 'input_file', 'filename' => 'edital.pdf', 'file_data' => 'data:application/pdf;base64,'.base64_encode($pdfBinario)],
+                    ...($pdfBinario === null ? [] : [
+                        ['type' => 'input_file', 'filename' => 'arquivo.pdf', 'file_data' => 'data:application/pdf;base64,'.base64_encode($pdfBinario)],
+                    ]),
                     ['type' => 'input_text', 'text' => $prompt],
                 ],
             ]],

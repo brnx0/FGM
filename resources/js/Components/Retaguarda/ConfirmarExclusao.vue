@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, useId } from 'vue';
+import { nextTick, ref, useId } from 'vue';
 import { router } from '@inertiajs/vue3';
 
 const props = withDefaults(defineProps<{
@@ -17,7 +17,9 @@ const props = withDefaults(defineProps<{
     acaoEmAndamento?: string;
     /** Mantém a rolagem após excluir; desligue quando a mensagem de sucesso fica no topo da página. */
     manterRolagem?: boolean;
-}>(), { manterRolagem: true });
+    /** Trava o botão que abre a pergunta (por exemplo, enquanto outra requisição da tela está em andamento). */
+    desabilitado?: boolean;
+}>(), { manterRolagem: true, desabilitado: false });
 
 const dialogo = ref<HTMLDialogElement | null>(null);
 const excluindo = ref<boolean>(false);
@@ -35,7 +37,8 @@ const excluir = (): void => {
         },
         onFinish: () => {
             excluindo.value = false;
-            fechar();
+            // Depois da tela se atualizar: ao fechar, o foco volta ao botão que abriu, que só destrava quando a requisição termina.
+            void nextTick(fechar);
         },
     });
 };
@@ -45,7 +48,8 @@ const excluir = (): void => {
     <div class="inline-flex">
         <button
             type="button"
-            class="pressionavel inline-flex min-h-11 items-center gap-1.5 rounded-pill px-3 text-[0.8125rem] font-bold text-erro-texto hover:bg-erro-fundo"
+            :disabled="desabilitado"
+            class="pressionavel inline-flex min-h-11 items-center gap-1.5 rounded-pill px-3 text-[0.8125rem] font-bold text-erro-texto hover:bg-erro-fundo disabled:cursor-not-allowed disabled:opacity-70"
             @click="abrir"
         >
             <svg aria-hidden="true" viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

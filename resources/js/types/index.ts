@@ -421,15 +421,139 @@ export interface EditalPortal {
     pdf: string;
     /** Foto enviada na retaguarda; sem ela, o card usa uma foto da vitrine. */
     imagem: string | null;
+    /** Situação da inscrição do usuário no edital: finalizada se alguma estiver finalizada; nulo sem inscrição. */
+    minhaInscricao: SituacaoInscricao | null;
 }
 
 export interface PortalEditaisProps {
     editais: Paginado<EditalPortal>;
 }
 
+/** App\Enums\SituacaoInscricao. */
+export type SituacaoInscricao = 'rascunho' | 'finalizada';
+
+/** Cadastro com que o usuário pode se inscrever (App\Support\Inscricao\PropsDaInscricao). */
+export interface CadastroDaInscricao {
+    /** Valor enviado no formulário: "pessoa_fisica" ou "organizacao:{id}". */
+    chave: string;
+    nome: string;
+    /** CPF ou CNPJ já formatado. */
+    documento: string;
+    /** Valor de App\Enums\NaturezaProponente. */
+    natureza: string;
+    naturezaRotulo: string;
+    /** A natureza do cadastro é uma das que o edital aceita. */
+    aceito: boolean;
+    /** Nenhuma chamada do edital aceita mais inscrição deste cadastro. */
+    limiteAtingido: boolean;
+    /** Situação da inscrição do mesmo CPF/CNPJ feita por outro usuário, que o usuário não abre. */
+    inscricaoDeOutro: SituacaoInscricao | null;
+}
+
+export interface CategoriaDaInscricao {
+    id: number;
+    nome: string;
+    /** Valores de NaturezaProponente que podem escolher a categoria; vazio vale para todas. */
+    naturezas: string[];
+}
+
+export interface CotaDaInscricao {
+    /** Valor de App\Enums\ModalidadeCota. */
+    valor: string;
+    rotulo: string;
+}
+
+/** O que o proponente escolhe ao criar a inscrição ou trocar as escolhas do rascunho. */
+export interface OpcoesDaInscricao {
+    cadastros: CadastroDaInscricao[];
+    categorias: CategoriaDaInscricao[];
+    /** Só as cotas que o edital oferece. */
+    cotas: CotaDaInscricao[];
+    /** Não pode marcar pessoas negras e indígenas ao mesmo tempo. */
+    vedaNegroIndigena: boolean;
+}
+
+export interface InscricaoResumo {
+    id: number;
+    /** Nulo até a inscrição ser finalizada pela primeira vez. */
+    numero: string | null;
+    situacao: SituacaoInscricao;
+    situacaoRotulo: string;
+    /** Nome do cadastro com que a inscrição foi feita. */
+    cadastro: string;
+    categoria: string | null;
+}
+
 /** Tela de inscrição num edital aberto (PortalController@inscricao). */
-export interface PortalInscricaoProps {
-    edital: Pick<EditalPortal, 'titulo' | 'categoria' | 'periodo' | 'pdf'>;
+export interface PortalInscricaoProps extends OpcoesDaInscricao {
+    edital: Pick<EditalPortal, 'slug' | 'titulo' | 'categoria' | 'periodo' | 'pdf'>;
+    inscricoes: InscricaoResumo[];
+}
+
+/** AppEnumsChecagemDocumento. */
+export type ChecagemDocumento = 'rigorosa' | 'aceita_sem_validar' | 'nenhuma';
+
+/** AppEnumsSituacaoConferencia; a conferência parada há mais de 5 minutos já vem como nao_conferido. */
+export type SituacaoConferencia = 'enviado' | 'conferindo' | 'aprovado' | 'reprovado' | 'nao_conferido';
+
+/** Resultado da conferência de um documento enviado; o motivo vem da IA (reprovado) ou da mensagem padrão (não conferido). */
+export interface SituacaoDoDocumento {
+    situacao: SituacaoConferencia;
+    motivo: string | null;
+}
+
+/** Arquivo que o proponente enviou para um documento exigido. */
+export interface ArquivoEnviado extends SituacaoDoDocumento {
+    nome: string;
+    /** Download do arquivo (rota portal.inscricoes.documentos.arquivo). */
+    url: string;
+}
+
+export interface DocumentoDaInscricao {
+    id: number;
+    nome: string;
+    orientacao: string | null;
+    /** Valor de AppEnumsEtapaDocumento. */
+    etapa: string;
+    etapaRotulo: string;
+    obrigatorio: boolean;
+    modeloUrl: string | null;
+    modeloNome: string | null;
+    checagem: ChecagemDocumento;
+    /** Nulo enquanto nada foi enviado. */
+    enviado: ArquivoEnviado | null;
+}
+
+/** Tela da inscrição com a lista de documentos (InscricaoController@show). */
+export interface PortalInscricaoDocumentosProps extends OpcoesDaInscricao {
+    edital: Pick<EditalPortal, 'slug' | 'titulo' | 'categoria' | 'periodo' | 'pdf'>;
+    inscricao: InscricaoResumo & {
+        /** Valor de CadastroDaInscricao.chave do cadastro da inscrição. */
+        cadastroChave: string;
+        categoriaId: number | null;
+        /** Valores de ModalidadeCota marcados. */
+        cotas: string[];
+        /** Último dia da chamada da inscrição ("15/11/2026"). */
+        fimDoPeriodo: string | null;
+        /** Data e hora do envio ("12/11/2026 15:30"); nulo no rascunho. */
+        finalizadaEm: string | null;
+    };
+    /** Rascunho dentro do período da chamada: só então as escolhas e os documentos podem ser trocados. */
+    podeEditar: boolean;
+    /** Finalizada e dentro do período da chamada. */
+    podeReabrir: boolean;
+    /** O que ainda impede de finalizar (vazio = pode finalizar); a consulta JSON de situação traz a lista atualizada e podeFinalizar. */
+    pendencias: string[];
+    /** Os exigidos para as escolhas da inscrição, de todas as etapas, na ordem do edital. */
+    documentos: DocumentoDaInscricao[];
+}
+
+/** Consulta periódica enquanto há documento conferindo (InscricaoController@situacao). */
+export interface SituacaoDaInscricao {
+    /** Um por documento enviado; id é o do documento exigido (DocumentoDaInscricao.id). */
+    documentos: (SituacaoDoDocumento & { id: number })[];
+    podeFinalizar: boolean;
+    pendencias: string[];
 }
 
 export interface RetaguardaEditaisIndexProps {
@@ -554,7 +678,8 @@ export interface DocumentoFormulario {
     /** Posições das categorias. */
     categorias: number[];
     modalidade_cota: string | null;
-    anexo_referencia: string | null;
+    checagem: string;
+    instrucao_ia: string | null;
     modeloUrl: string | null;
     modeloNome: string | null;
 }
@@ -624,7 +749,8 @@ export interface DocumentoEditavel extends ItemEditavel {
     /** Chaves das categorias. */
     categorias: string[];
     modalidade_cota: string;
-    anexo_referencia: string;
+    checagem: string;
+    instrucao_ia: string;
     /** Arquivo-modelo novo (só vai quando escolhido). */
     modelo: File | null;
     remover_modelo: boolean;
@@ -723,6 +849,7 @@ export interface RetaguardaEditaisFormProps {
     naturezas: OpcaoFormulario[];
     etapas: OpcaoFormulario[];
     modalidadesCota: OpcaoFormulario[];
+    checagensDocumento: OpcaoFormulario[];
     basesCota: OpcaoFormulario[];
     alcancesCota: OpcaoFormulario[];
     tiposEdital: OpcaoFormulario[];

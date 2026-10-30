@@ -19,7 +19,6 @@ return new class extends Migration
             $table->string('naturezas', 200)->nullable();
             $table->boolean('todas_categorias')->default(true);
             $table->string('modalidade_cota', 20)->nullable();
-            $table->string('anexo_referencia', 255)->nullable();
             $table->string('modelo', 255)->nullable();
             $table->string('modelo_nome', 255)->nullable();
             $table->integer('ordem')->default(0);

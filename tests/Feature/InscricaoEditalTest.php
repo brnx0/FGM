@@ -35,10 +35,17 @@ class InscricaoEditalTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Portal/Inscricao')
+                ->where('edital.slug', 'pnab-ii')
                 ->where('edital.titulo', 'PNAB Salvador — Ciclo II')
                 ->where('edital.categoria', 'Fomento')
                 ->where('edital.periodo', '01/11/2026 a 15/11/2026')
-                ->where('edital.pdf', route('editais.pdf', 'pnab-ii')));
+                ->where('edital.pdf', route('editais.pdf', 'pnab-ii'))
+                ->has('inscricoes', 0)
+                ->has('cadastros', 1)
+                ->where('cadastros.0.chave', 'pessoa_fisica')
+                ->has('categorias', 0)
+                ->has('cotas', 0)
+                ->where('vedaNegroIndigena', false));
     }
 
     #[DataProvider('foraDoPeriodo')]

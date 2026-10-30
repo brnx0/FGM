@@ -8,7 +8,7 @@ use Illuminate\Http\Client\Response;
 use SensitiveParameter;
 
 /**
- * Análise do edital pela API REST do Google Gemini (generateContent, sem SDK): o PDF vai em inline_data e a resposta
+ * Análise pela API REST do Google Gemini (generateContent, sem SDK): o PDF, se houver, vai em inline_data e a resposta
  * fica presa ao esquema (responseSchema). A chave vai só no cabeçalho x-goog-api-key, nunca na URL.
  */
 class AnalisadorGemini extends AnalisadorPorHttp
@@ -20,12 +20,14 @@ class AnalisadorGemini extends AnalisadorPorHttp
         return ProvedorIa::Gemini;
     }
 
-    protected function corpo(string $modelo, string $pdfBinario, string $prompt, ?float $temperatura, array $esquema): array
+    protected function corpo(string $modelo, ?string $pdfBinario, string $prompt, ?float $temperatura, array $esquema): array
     {
         return [
             'contents' => [[
                 'parts' => [
-                    ['inline_data' => ['mime_type' => 'application/pdf', 'data' => base64_encode($pdfBinario)]],
+                    ...($pdfBinario === null ? [] : [
+                        ['inline_data' => ['mime_type' => 'application/pdf', 'data' => base64_encode($pdfBinario)]],
+                    ]),
                     ['text' => $prompt],
                 ],
             ]],

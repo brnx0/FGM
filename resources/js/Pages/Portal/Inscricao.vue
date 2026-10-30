@@ -1,12 +1,29 @@
 <script setup lang="ts">
-import { Head, Link } from '@inertiajs/vue3';
+import { nextTick, ref } from 'vue';
+import { Head, Link, useForm } from '@inertiajs/vue3';
 import FaixaPortal from '../../Components/FaixaPortal.vue';
+import EscolhasDaInscricao from '../../Components/Inscricao/EscolhasDaInscricao.vue';
 import PortalProponenteLayout from '../../Layouts/PortalProponenteLayout.vue';
 import type { PortalInscricaoProps } from '../../types';
 
 defineOptions({ layout: PortalProponenteLayout });
 
-defineProps<PortalInscricaoProps>();
+const props = defineProps<PortalInscricaoProps>();
+
+const formulario = useForm<{ cadastro: string; categoria: number | null; cotas: string[] }>({
+    cadastro: '',
+    categoria: null,
+    cotas: [],
+});
+
+const escolhas = ref<InstanceType<typeof EscolhasDaInscricao> | null>(null);
+
+const criar = (): void => {
+    // Rota portal.inscricoes.store (o front não tem helper de rotas nomeadas).
+    formulario.post(`/portal/editais/${props.edital.slug}/inscricoes`, {
+        onError: () => nextTick(() => escolhas.value?.focarPrimeiroErro()),
+    });
+};
 </script>
 
 <template>
@@ -35,30 +52,68 @@ defineProps<PortalInscricaoProps>();
             </div>
         </FaixaPortal>
 
-        <div class="relative mx-auto -mt-20 max-w-6xl px-4 pb-16 md:-mt-24">
-            <!-- O envio dos documentos ainda será feito; quando houver, o formulário entra aqui. -->
+        <div class="relative mx-auto -mt-20 flex max-w-6xl flex-col gap-6 px-4 pb-16 md:-mt-24">
             <section
-                aria-labelledby="documentos-titulo"
-                class="flex flex-col items-center gap-4 rounded-[24px] border border-hairline bg-superficie px-6 py-14 text-center shadow-[0_24px_60px_-34px_rgba(6,36,74,0.45)] md:py-20"
+                v-if="inscricoes.length > 0"
+                aria-labelledby="inscricoes-titulo"
+                class="rounded-[24px] border border-hairline bg-superficie p-6 shadow-[0_24px_60px_-34px_rgba(6,36,74,0.45)] md:p-10"
             >
-                <span aria-hidden="true" class="inline-flex size-14 items-center justify-center rounded-full bg-nevoa text-acao">
-                    <svg viewBox="0 0 24 24" class="size-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="m21 11-8.5 8.5a5 5 0 0 1-7-7L14 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L15 7" />
-                    </svg>
-                </span>
-                <h2 id="documentos-titulo" class="text-[1.25rem] font-bold text-home-tinta">Anexar documentos</h2>
-                <p class="max-w-xl leading-[1.6] text-tinta-suave">
-                    Em breve você poderá anexar aqui os documentos exigidos para concluir a inscrição. Enquanto isso, confira no PDF do edital quais
-                    documentos separar.
+                <h2 id="inscricoes-titulo" class="text-[1.25rem] font-bold">Suas inscrições neste edital</h2>
+                <ul class="mt-4 divide-y divide-hairline border-y border-hairline">
+                    <li v-for="inscricao in inscricoes" :key="inscricao.id" class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3">
+                        <div class="min-w-0">
+                            <p class="font-semibold break-words">{{ inscricao.cadastro }}</p>
+                            <p class="text-[0.875rem] text-tinta-suave">
+                                {{ inscricao.situacaoRotulo }}<template v-if="inscricao.numero"> · nº {{ inscricao.numero }}</template
+                                ><template v-if="inscricao.categoria"> · {{ inscricao.categoria }}</template>
+                            </p>
+                        </div>
+                        <Link
+                            :href="`/portal/inscricoes/${inscricao.id}`"
+                            class="pressionavel inline-flex min-h-11 items-center rounded-pill px-3 text-[0.8125rem] font-bold text-acao hover:bg-nevoa"
+                        >
+                            {{ inscricao.situacao === 'rascunho' ? 'Continuar' : 'Ver' }}
+                            <span class="sr-only"> inscrição de {{ inscricao.cadastro }}</span>
+                        </Link>
+                    </li>
+                </ul>
+            </section>
+
+            <section
+                aria-labelledby="nova-titulo"
+                class="rounded-[24px] border border-hairline bg-superficie p-6 shadow-[0_24px_60px_-34px_rgba(6,36,74,0.45)] md:p-10"
+            >
+                <h2 id="nova-titulo" class="text-[1.25rem] font-bold">Nova inscrição</h2>
+                <p class="mt-2 max-w-2xl leading-[1.6] text-tinta-suave">
+                    Escolha com qual cadastro você vai se inscrever. Depois você anexa os documentos exigidos. Confira no
+                    <a :href="edital.pdf" target="_blank" rel="noopener" class="font-semibold text-acao">PDF do edital<span class="sr-only"> (abre em nova aba)</span></a>
+                    o que separar.
                 </p>
-                <a
-                    :href="edital.pdf"
-                    target="_blank"
-                    rel="noopener"
-                    class="pressionavel inline-flex min-h-12 items-center justify-center rounded-pill bg-acao px-6 text-[0.8125rem] font-bold tracking-[0.12em] text-sobre-acao uppercase no-underline hover:bg-acao-escuro"
-                >
-                    PDF do edital<span class="sr-only"> (abre em nova aba)</span>
-                </a>
+
+                <form novalidate class="mt-6 flex flex-col gap-6" @submit.prevent="criar">
+                    <EscolhasDaInscricao
+                        ref="escolhas"
+                        v-model:cadastro="formulario.cadastro"
+                        v-model:categoria="formulario.categoria"
+                        v-model:cotas-escolhidas="formulario.cotas"
+                        :cadastros="cadastros"
+                        :categorias="categorias"
+                        :cotas="cotas"
+                        :veda-negro-indigena="vedaNegroIndigena"
+                        :erros="formulario.errors"
+                        @limpar-erro="(campo) => formulario.clearErrors(campo)"
+                    />
+
+                    <div class="flex">
+                        <button
+                            type="submit"
+                            :disabled="formulario.processing || formulario.cadastro === ''"
+                            class="pressionavel inline-flex min-h-12 items-center justify-center rounded-pill bg-acao px-8 text-center text-[0.8125rem] font-bold tracking-[0.12em] text-sobre-acao uppercase hover:bg-acao-escuro disabled:cursor-not-allowed disabled:opacity-70"
+                        >
+                            {{ formulario.processing ? 'Criando…' : 'Criar inscrição' }}
+                        </button>
+                    </div>
+                </form>
             </section>
         </div>
     </div>

@@ -4,6 +4,7 @@ namespace App\Http\Requests\Retaguarda;
 
 use App\Enums\AlcanceCota;
 use App\Enums\BaseCota;
+use App\Enums\ChecagemDocumento;
 use App\Enums\EtapaDocumento;
 use App\Enums\ModalidadeCota;
 use App\Enums\NaturezaProponente;
@@ -103,7 +104,8 @@ class SalvarEditalRequest extends FormRequest
             'documentos.*.categorias' => ['required_if_declined:documentos.*.todas_categorias', 'nullable', 'array'],
             'documentos.*.categorias.*' => $posicaoDeCategoria,
             'documentos.*.modalidade_cota' => ['nullable', Rule::enum(ModalidadeCota::class)],
-            'documentos.*.anexo_referencia' => ['nullable', 'string', 'max:255', new TamanhoEmBytes(255)],
+            'documentos.*.checagem' => ['required', Rule::enum(ChecagemDocumento::class)],
+            'documentos.*.instrucao_ia' => ['nullable', 'string', 'max:2000', new TamanhoEmBytes(2000)],
             'documentos.*.modelo' => ['nullable', 'file', 'mimes:pdf,doc,docx,xls,xlsx,odt,ods', 'max:10240'],
             'documentos.*.remover_modelo' => ['boolean'],
 
@@ -242,6 +244,8 @@ class SalvarEditalRequest extends FormRequest
             'documentos' => 'documentos',
             'documentos.*.nome' => 'nome do documento',
             'documentos.*.etapa' => 'etapa do documento',
+            'documentos.*.checagem' => 'checagem pela IA',
+            'documentos.*.instrucao_ia' => 'instrução para a IA',
             'documentos.*.modelo' => 'arquivo-modelo',
             'requisitos' => 'requisitos',
             'requisitos.*.descricao' => 'descrição do requisito',

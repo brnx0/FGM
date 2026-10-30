@@ -91,6 +91,7 @@ class AnalisarEditalCommand extends Command
                 PromptModelo::fixo()."\n\n".$config->promptDaImportacao(),
                 $config->temperaturaDaImportacao(),
                 EsquemaDaResposta::esquema(),
+                EditalDaResposta::conferirRaiz(...),
             );
             unset($pdf);
 

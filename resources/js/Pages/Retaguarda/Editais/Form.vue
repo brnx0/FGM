@@ -85,7 +85,8 @@ const documentosSalvos: DocumentoEditavel[] = (salvo?.documentos ?? []).map((doc
     todas_categorias: documento.todas_categorias,
     categorias: chavesNasPosicoes(categoriasSalvas, documento.categorias),
     modalidade_cota: documento.modalidade_cota ?? '',
-    anexo_referencia: documento.anexo_referencia ?? '',
+    checagem: documento.checagem,
+    instrucao_ia: documento.instrucao_ia ?? '',
     modelo: null,
     remover_modelo: false,
     modeloUrl: documento.modeloUrl,
@@ -704,7 +705,9 @@ const tituloDaPagina = editando ? salvo.titulo || 'Edital sem título' : 'Novo e
                             :naturezas="naturezas"
                             :etapas="etapas"
                             :modalidades-cota="modalidadesCota"
+                            :checagens-documento="checagensDocumento"
                             :categorias="form.categorias"
+                            :contexto-edital="{ titulo: form.titulo, objeto: form.objeto, naturezas: form.naturezas }"
                             @limpar-erros="limparErros"
                             @definir-erro="definirErro"
                         />

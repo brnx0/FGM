@@ -15,7 +15,7 @@ use JsonException;
 use SensitiveParameter;
 
 /**
- * O que os analisadores de edital têm em comum: o pedido com tempo de até 5 minutos, a repetição sem a temperatura
+ * O que os analisadores por IA têm em comum: o pedido com tempo de até 5 minutos, a repetição sem a temperatura
  * quando o modelo não a aceita, a leitura da resposta como JSON e as falhas em português (as mensagens da
  * Integração com IA, ver ClienteIa::motivo). A chave vai só no cabeçalho e sai de qualquer mensagem.
  */
@@ -27,12 +27,12 @@ abstract class AnalisadorPorHttp implements AnalisadorDeEdital
     abstract protected function provedor(): ProvedorIa;
 
     /**
-     * Corpo do pedido; sem temperatura quando ela é null.
+     * Corpo do pedido; sem a parte do arquivo quando o PDF é null e sem temperatura quando ela é null.
      *
      * @param  array<string, mixed>  $esquema
      * @return array<string, mixed>
      */
-    abstract protected function corpo(string $modelo, string $pdfBinario, string $prompt, ?float $temperatura, array $esquema): array;
+    abstract protected function corpo(string $modelo, ?string $pdfBinario, string $prompt, ?float $temperatura, array $esquema): array;
 
     /**
      * @param  array<string, mixed>  $corpo
@@ -50,7 +50,7 @@ abstract class AnalisadorPorHttp implements AnalisadorDeEdital
      */
     abstract protected function tokens(Response $resposta): array;
 
-    public function analisar(string $modelo, #[SensitiveParameter] string $chave, string $pdfBinario, string $prompt, float $temperatura, array $esquema): array
+    public function analisar(string $modelo, #[SensitiveParameter] string $chave, ?string $pdfBinario, string $prompt, float $temperatura, array $esquema): array
     {
         $resposta = $this->chamar($modelo, $chave, $this->corpo($modelo, $pdfBinario, $prompt, $temperatura, $esquema));
 
@@ -99,7 +99,7 @@ abstract class AnalisadorPorHttp implements AnalisadorDeEdital
             $this->registrarFalha($esgotou ? 'tempo esgotado' : 'sem conexão');
 
             throw new FalhaNaIa($esgotou
-                ? "{$nome} demorou demais para analisar o edital e a chamada foi interrompida. Tente de novo."
+                ? "{$nome} demorou demais para responder e a chamada foi interrompida. Tente de novo."
                 : "{$nome} não respondeu a tempo. Confira a conexão do servidor com a internet e tente de novo.");
         }
     }
@@ -132,6 +132,6 @@ abstract class AnalisadorPorHttp implements AnalisadorDeEdital
     /** Só provedor e status: nunca a chave nem o corpo da resposta. */
     private function registrarFalha(int|string $status): void
     {
-        Log::warning('Importação de edital: chamada ao provedor falhou.', ['provedor' => $this->provedor()->value, 'status' => $status]);
+        Log::warning('Análise por IA: chamada ao provedor falhou.', ['provedor' => $this->provedor()->value, 'status' => $status]);
     }
 }

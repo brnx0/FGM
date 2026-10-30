@@ -6,7 +6,7 @@ import { fotoVitrine } from '../../Components/fotosVitrine';
 import Paginacao from '../../Components/Retaguarda/Paginacao.vue';
 import TabelaPaginada from '../../Components/Retaguarda/TabelaPaginada.vue';
 import PortalProponenteLayout from '../../Layouts/PortalProponenteLayout.vue';
-import type { PortalEditaisProps, SituacaoEdital } from '../../types';
+import type { PortalEditaisProps, SituacaoEdital, SituacaoInscricao } from '../../types';
 
 defineOptions({ layout: PortalProponenteLayout });
 
@@ -48,6 +48,17 @@ const corSituacao: Record<SituacaoEdital, string> = {
     aberto: 'bg-situacao-aberto',
     em_breve: 'bg-situacao-em-breve',
     encerrado: 'bg-situacao-encerrado',
+};
+
+// Selo da inscrição do próprio usuário no edital (nulo = ainda não se inscreveu).
+const rotuloInscricao: Record<SituacaoInscricao, string> = {
+    finalizada: 'Inscrição finalizada',
+    rascunho: 'Inscrição em rascunho',
+};
+
+const corInscricao: Record<SituacaoInscricao, string> = {
+    finalizada: 'bg-situacao-aberto',
+    rascunho: 'bg-situacao-em-breve',
 };
 
 const classeAcao = 'pressionavel inline-flex min-h-11 items-center gap-1.5 rounded-pill px-3 text-[0.8125rem] font-bold text-acao hover:bg-nevoa';
@@ -134,9 +145,13 @@ const classeInscrever =
                                     <dt class="text-[0.75rem] font-semibold tracking-[0.16em] text-tinta-suave uppercase">Inscrições</dt>
                                     <dd class="font-medium tabular-nums">{{ edital.periodo }}</dd>
                                 </dl>
+                                <p v-if="edital.minhaInscricao" class="inline-flex items-center gap-2 text-[0.8125rem] font-semibold">
+                                    <span aria-hidden="true" class="size-2 rounded-full" :class="corInscricao[edital.minhaInscricao]"></span>
+                                    {{ rotuloInscricao[edital.minhaInscricao] }}
+                                </p>
                                 <div class="mt-auto flex flex-wrap items-center gap-2 pt-1">
                                     <Link v-if="edital.situacao === 'aberto'" :href="`${BASE}/${edital.slug}/inscricao`" :class="classeInscrever">
-                                        Inscrever<span class="sr-only"> no edital {{ edital.titulo }}</span>
+                                        {{ edital.minhaInscricao ? 'Ver minha inscrição' : 'Inscrever' }}<span class="sr-only"> no edital {{ edital.titulo }}</span>
                                     </Link>
                                     <a :href="edital.pdf" :class="classeAcao" target="_blank" rel="noopener">
                                         <svg aria-hidden="true" viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -182,12 +197,16 @@ const classeInscrever =
                             <span aria-hidden="true" class="size-2.5 rounded-full" :class="corSituacao[edital.situacao]" />
                             {{ edital.situacaoRotulo }}
                         </span>
+                        <span v-if="edital.minhaInscricao" class="mt-0.5 flex items-center gap-2 text-[0.8125rem] font-semibold">
+                            <span aria-hidden="true" class="size-2.5 rounded-full" :class="corInscricao[edital.minhaInscricao]" />
+                            {{ rotuloInscricao[edital.minhaInscricao] }}
+                        </span>
                     </td>
                     <td class="px-2 py-1">
                         <div class="flex items-center justify-end gap-1 whitespace-nowrap">
                             <!-- Só há inscrição no período aberto (a rota recusa os demais). -->
                             <Link v-if="edital.situacao === 'aberto'" :href="`${BASE}/${edital.slug}/inscricao`" :class="classeInscrever">
-                                Inscrever<span class="sr-only"> no edital {{ edital.titulo }}</span>
+                                {{ edital.minhaInscricao ? 'Ver minha inscrição' : 'Inscrever' }}<span class="sr-only"> no edital {{ edital.titulo }}</span>
                             </Link>
                             <a :href="edital.pdf" :class="classeAcao" target="_blank" rel="noopener">
                                 PDF<span class="sr-only"> do edital {{ edital.titulo }} (abre em nova aba)</span>
