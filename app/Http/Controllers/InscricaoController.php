@@ -130,7 +130,8 @@ class InscricaoController extends Controller
                     'perguntas' => $secao->perguntas->map(fn (EditalPergunta $pergunta): array => $this->perguntaParaATela($pergunta))->all(),
                 ])
                 ->all(),
-            'respostas' => $questionario->respostasSalvas(),
+            // Objeto mesmo vazio: a tela lê as respostas pelo id da pergunta.
+            'respostas' => (object) $questionario->respostasSalvas(),
             'perfilIncompleto' => ! $user->perfilCompleto(),
             ...PropsDaInscricao::opcoes($user, $edital),
         ]);

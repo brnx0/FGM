@@ -329,7 +329,11 @@ class InscricaoTest extends TestCase
             ->categorias()->attach($outraCategoria);
         $inscricao = $this->rascunho($edital, $user, ['edital_categoria_id' => $categoria->id]);
 
-        $this->actingAs($user)->get(route('portal.inscricoes.show', $inscricao))->assertOk()->assertInertia(fn (Assert $p) => $p
+        $resposta = $this->actingAs($user)->get(route('portal.inscricoes.show', $inscricao));
+
+        // Sem respostas, vai um objeto vazio, não uma lista.
+        $this->assertStringContainsString('"respostas":{}', (string) json_encode($resposta->viewData('page')['props']));
+        $resposta->assertOk()->assertInertia(fn (Assert $p) => $p
             ->component('Portal/InscricaoPassos')
             ->where('edital.slug', 'pnab')
             ->where('inscricao.id', (int) $inscricao->id)

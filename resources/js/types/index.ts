@@ -499,6 +499,8 @@ export interface PortalInscricaoProps extends OpcoesDaInscricao {
     /** `periodo` nulo quando o edital ficou sem chamadas com datas. */
     edital: Pick<EditalPortal, 'slug' | 'titulo' | 'categoria' | 'pdf'> & { periodo: string | null };
     inscricoes: InscricaoResumo[];
+    /** O perfil de Pessoa Física do usuário ainda não está completo: não dá para criar a inscrição. */
+    perfilIncompleto: boolean;
 }
 
 /** AppEnumsChecagemDocumento. */
@@ -535,8 +537,50 @@ export interface DocumentoDaInscricao {
     enviado: ArquivoEnviado | null;
 }
 
-/** Tela da inscrição com a lista de documentos (InscricaoController@show). */
-export interface PortalInscricaoDocumentosProps extends OpcoesDaInscricao {
+/** Um passo da inscrição (App\Support\Inscricao\PassosDaInscricao): "escolhas", "secao-{id}", "documentos" ou "revisao". */
+export interface PassoDaInscricao {
+    id: string;
+    rotulo: string;
+    /** O que o passo pede está respondido; a revisão nunca está completa. */
+    completo: boolean;
+}
+
+/** Valor de App\Enums\TipoPergunta. */
+export type TipoPergunta = 'texto_curto' | 'texto_longo' | 'escolha_unica' | 'multipla_escolha' | 'sim_nao' | 'data' | 'numero' | 'declaracao';
+
+/** Pergunta do questionário como a inscrição a mostra (InscricaoController::perguntaParaATela). */
+export interface PerguntaDaInscricao {
+    id: number;
+    enunciado: string;
+    ajuda: string | null;
+    tipo: TipoPergunta;
+    obrigatoria: boolean;
+    /** Limite de caracteres dos textos; nulo nos outros tipos. */
+    limite: number | null;
+    /** Só nas de escolha; sim/não e declaração usam as chaves fixas ("sim", "nao", "declaro"). */
+    opcoes: OpcaoDaPergunta[];
+    /** A pergunta só aparece se a origem está visível e a resposta dela tem alguma destas opções. */
+    condicao: { pergunta: number; opcoes: string[] } | null;
+}
+
+/** Seção do questionário com as perguntas que valem para a inscrição (visíveis ou não). */
+export interface SecaoDaInscricao {
+    id: number;
+    titulo: string;
+    descricao: string | null;
+    perguntas: PerguntaDaInscricao[];
+}
+
+/** Resposta gravada (QuestionarioDaInscricao::normalizar): texto nos tipos de texto, data e número; opções nos outros. */
+export interface RespostaDaInscricao {
+    texto: string | null;
+    opcoes: string[];
+    /** O "Qual?" da opção "Outro". */
+    outro: string | null;
+}
+
+/** Tela da inscrição em passos (InscricaoController@show). */
+export interface PortalInscricaoPassosProps extends OpcoesDaInscricao {
     /** `periodo` nulo quando o edital ficou sem chamadas com datas. */
     edital: Pick<EditalPortal, 'slug' | 'titulo' | 'categoria' | 'pdf'> & { periodo: string | null };
     inscricao: InscricaoResumo & {
@@ -558,6 +602,15 @@ export interface PortalInscricaoDocumentosProps extends OpcoesDaInscricao {
     pendencias: string[];
     /** Os exigidos para as escolhas da inscrição, de todas as etapas, na ordem do edital. */
     documentos: DocumentoDaInscricao[];
+    passos: PassoDaInscricao[];
+    /** Id do passo aberto; finalizada ou fora do período, sempre "revisao". */
+    passoAtual: string;
+    /** As seções com pergunta que vale para a inscrição, na ordem. */
+    secoes: SecaoDaInscricao[];
+    /** Respostas gravadas, pelo id da pergunta. */
+    respostas: Record<number, RespostaDaInscricao>;
+    /** O perfil de Pessoa Física do dono ainda não está completo: não dá para finalizar. */
+    perfilIncompleto: boolean;
 }
 
 /** Consulta periódica enquanto há documento conferindo (InscricaoController@situacao). */

@@ -15,6 +15,8 @@ const props = defineProps<{
     podeEditar: boolean;
     /** Outra requisição da tela em andamento: enquanto durar, nada aqui dispara uma nova (ela cancelaria a primeira). */
     ocupado: boolean;
+    /** Erro da tela (ex.: obrigatório sem arquivo ao avançar); o do envio tem precedência. */
+    erro?: string;
 }>();
 
 // Mesmos tipos, limite e mensagem do servidor (Inscricao::TIPOS_DE_ARQUIVO, InscricaoDocumentoController::ERRO_ARQUIVO).
@@ -193,7 +195,7 @@ const classeAcao = 'pressionavel inline-flex min-h-11 items-center gap-1.5 round
             v-if="podeEditar"
             :id="idCampo"
             :rotulo="documento.enviado ? `Trocar o arquivo de ${documento.nome}` : `Arquivo de ${documento.nome}`"
-            :erro="formulario.errors.arquivo"
+            :erro="formulario.errors.arquivo ?? erro"
             v-slot="{ descricao, invalido }"
         >
             <CampoArquivo
