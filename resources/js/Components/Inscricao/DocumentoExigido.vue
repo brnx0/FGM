@@ -20,7 +20,8 @@ const props = defineProps<{
 // Mesmo limite e mesma mensagem do servidor (InscricaoDocumentoController::ERRO_ARQUIVO).
 const TAMANHO_MAXIMO_MB = 10;
 const ERRO_ARQUIVO = `Envie um PDF de até ${TAMANHO_MAXIMO_MB} MB.`;
-const NAO_CONFERIDO_AGORA = 'Não foi possível conferir agora; a equipe vai conferir.';
+// Mesma mensagem do servidor (InscricaoDocumentoController::NAO_CONFERIDO), caso o motivo venha vazio.
+const NAO_CONFERIDO = 'Não foi possível conferir o documento agora.';
 const ERRO_ENVIO_INTERROMPIDO = 'O envio foi interrompido; envie de novo.';
 
 type Tom = 'andamento' | 'ok' | 'erro' | 'aviso';
@@ -127,8 +128,12 @@ const estado = computed<Estado | null>(() => {
     if (falhou && checagem === 'aceita_sem_validar') {
         return {
             tom: 'aviso',
-            texto: atual.situacao === 'reprovado' ? `Atenção: ${semPontoFinal(motivo)}. Você pode seguir, e a equipe vai conferir.` : NAO_CONFERIDO_AGORA,
-            reconferivel: false,
+            texto:
+                atual.situacao === 'reprovado'
+                    ? `Atenção: ${semPontoFinal(motivo)}. Você pode seguir, e a equipe vai conferir.`
+                    : `${semPontoFinal(motivo || NAO_CONFERIDO)}. A equipe vai conferir.`,
+            // Aceito mesmo assim, mas a pessoa pode pedir outra conferência (a IA pode ter voltado, o arquivo pode ter sido trocado).
+            reconferivel: props.podeEditar,
         };
     }
 

@@ -312,6 +312,30 @@ class ConferenciaDocumentoTest extends TestCase
         $this->assertCount(2, $this->lancador->chamadas);
     }
 
+    public function test_conferir_de_novo_vale_para_documento_aceito_sem_validar(): void
+    {
+        Http::fake([self::URL_OPENAI => self::respostaDaOpenAi(['aprovado' => true, 'motivo' => 'Ok.'])]);
+        $url = route('portal.inscricoes.documentos.conferir', [$this->inscricao, $this->exigido]);
+        $this->exigido->update(['checagem' => ChecagemDocumento::AceitaSemValidar]);
+        $this->actingAs($this->user);
+
+        foreach ([SituacaoConferencia::Reprovado, SituacaoConferencia::NaoConferido] as $situacao) {
+            $documento = $this->documentoConferindo(['situacao' => $situacao, 'motivo' => 'Antigo.', 'conferido_em' => now()->subHour()]);
+
+            $this->post($url)
+                ->assertRedirect(route('portal.inscricoes.show', $this->inscricao))
+                ->assertSessionHas('sucesso');
+
+            $documento->refresh();
+            $this->assertSame(SituacaoConferencia::Aprovado, $documento->situacao);
+            $this->assertNotSame('execucao-atual', $documento->execucao);
+            $this->assertNull($documento->motivo);
+            $documento->delete();
+        }
+
+        $this->assertCount(2, $this->lancador->chamadas);
+    }
+
     public function test_conferir_de_novo_segue_as_regras_de_anexar(): void
     {
         Http::fake();
