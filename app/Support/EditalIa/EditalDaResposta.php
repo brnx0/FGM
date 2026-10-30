@@ -822,7 +822,7 @@ class EditalDaResposta
     }
 
     /** Nome para comparação: sem acento, sem diferença de caixa e de espaços. */
-    private static function chaveDoNome(string $nome): string
+    public static function chaveDoNome(string $nome): string
     {
         return (string) preg_replace('/\s+/u', ' ', TextoNormalizado::semAcento($nome));
     }
