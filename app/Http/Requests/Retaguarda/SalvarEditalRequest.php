@@ -24,6 +24,8 @@ use Illuminate\Validation\Validator;
  * Sem novo upload, o PDF, a imagem e os arquivos-modelo atuais ficam.
  * As listas (chamadas, categorias, documentos, critérios) só são tocadas com o marcador `com_listas`;
  * com ele, lista ausente = apagar todas. Referências entre listas vão por posição (índice na lista enviada).
+ * O questionário só é tocado com o marcador `com_questionario`; vai num campo só (`questionario`, texto JSON) porque
+ * o formulário envia multipart e o questionário passa de mil campos (ver RegrasDoQuestionario).
  */
 class SalvarEditalRequest extends FormRequest
 {
@@ -32,6 +34,20 @@ class SalvarEditalRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    /** JSON inválido fica como texto e cai na regra `array` do campo. */
+    protected function prepareForValidation(): void
+    {
+        $questionario = $this->input('questionario');
+
+        if ($this->boolean('com_questionario') && is_string($questionario)) {
+            $decodificado = json_decode($questionario, true);
+
+            if (is_array($decodificado)) {
+                $this->merge(['questionario' => $decodificado]);
+            }
+        }
     }
 
     /**
@@ -46,6 +62,7 @@ class SalvarEditalRequest extends FormRequest
 
         return [
             'com_listas' => ['boolean'],
+            'com_questionario' => ['boolean'],
 
             'titulo' => ['required_if_accepted:publicado', 'nullable', 'string', 'max:255', new TamanhoEmBytes(255)],
             'resumo' => ['required_if_accepted:publicado', 'nullable', 'string'],
@@ -124,6 +141,7 @@ class SalvarEditalRequest extends FormRequest
             'criterios.*.categorias.*' => $posicaoDeCategoria,
 
             ...$this->regrasDasCotas(),
+            ...($this->comQuestionario() ? RegrasDoQuestionario::regras($this->posicoesDeCategorias()) : []),
 
             'pontuacao_extra' => ['nullable', 'array'],
             'pontuacao_extra.grupos' => $lista,
@@ -159,6 +177,22 @@ class SalvarEditalRequest extends FormRequest
         }
 
         return $regras;
+    }
+
+    /**
+     * Posições das categorias a que o questionário pode se referir: as enviadas ou, sem as listas, as do edital.
+     *
+     * @return list<int>
+     */
+    private function posicoesDeCategorias(): array
+    {
+        if ($this->comListas()) {
+            return $this->posicoes('categorias');
+        }
+
+        $edital = $this->route('edital');
+
+        return $edital instanceof Edital ? array_keys($edital->categorias()->get()->all()) : [];
     }
 
     /**
@@ -224,6 +258,7 @@ class SalvarEditalRequest extends FormRequest
             'documentos.*.modelo.mimes' => 'Envie um arquivo PDF, DOC, DOCX, XLS, XLSX, ODT ou ODS.',
             'documentos.*.modelo.max' => 'O arquivo-modelo deve ter no máximo 10 MB.',
             'informacoes.array' => 'Valor inválido.',
+            ...RegrasDoQuestionario::mensagens(),
         ];
     }
 
@@ -283,6 +318,20 @@ class SalvarEditalRequest extends FormRequest
                     $validator->errors()->add('pdf', 'Envie o PDF do edital para publicar.');
                 }
             },
+            function (Validator $validator): void {
+                if (! $this->comQuestionario()) {
+                    return;
+                }
+
+                $edital = $this->route('edital');
+                if ($edital instanceof Edital && $edital->questionarioTravado()) {
+                    $validator->errors()->add('questionario', Edital::AVISO_QUESTIONARIO_TRAVADO);
+
+                    return;
+                }
+
+                RegrasDoQuestionario::conferir($validator, $this->input('questionario'));
+            },
         ];
     }
 
@@ -290,6 +339,26 @@ class SalvarEditalRequest extends FormRequest
     public function comListas(): bool
     {
         return $this->boolean('com_listas');
+    }
+
+    /** O questionário veio no envio (o formulário completo manda o marcador). */
+    public function comQuestionario(): bool
+    {
+        return $this->boolean('com_questionario');
+    }
+
+    /**
+     * Questionário validado, no formato de SincronizadorDoQuestionario; nulo sem o marcador.
+     *
+     * @return array{secoes: list<array<string, mixed>>}|null
+     */
+    public function questionarioDoEdital(): ?array
+    {
+        if (! $this->comQuestionario()) {
+            return null;
+        }
+
+        return ['secoes' => array_values($this->validated('questionario.secoes') ?? [])];
     }
 
     /**
