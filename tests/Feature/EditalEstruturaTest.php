@@ -9,7 +9,6 @@ use App\Models\EditalCategoria;
 use App\Models\EditalChamada;
 use App\Models\EditalCriterio;
 use App\Models\EditalDocumento;
-use App\Models\EditalRequisito;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -114,8 +113,6 @@ class EditalEstruturaTest extends TestCase
         $categoria->itens()->createMany([['nome' => 'Item 2', 'ordem' => 2], ['nome' => 'Item 1', 'ordem' => 1]]);
         EditalDocumento::factory()->for($edital)->create(['nome' => 'Doc 2', 'ordem' => 2]);
         EditalDocumento::factory()->for($edital)->create(['nome' => 'Doc 1', 'ordem' => 1]);
-        EditalRequisito::factory()->for($edital)->create(['descricao' => 'Req 2', 'ordem' => 2]);
-        EditalRequisito::factory()->for($edital)->create(['descricao' => 'Req 1', 'ordem' => 1]);
         EditalCriterio::factory()->for($edital)->create(['nome' => 'Crit 2', 'ordem' => 2]);
         EditalCriterio::factory()->for($edital)->create(['nome' => 'Crit 1', 'ordem' => 1]);
 
@@ -125,24 +122,20 @@ class EditalEstruturaTest extends TestCase
         $this->assertSame(['A', 'B'], $edital->categorias->pluck('nome')->all());
         $this->assertSame(['Item 1', 'Item 2'], $edital->categorias[1]->itens->pluck('nome')->all());
         $this->assertSame(['Doc 1', 'Doc 2'], $edital->documentos->pluck('nome')->all());
-        $this->assertSame(['Req 1', 'Req 2'], $edital->requisitos->pluck('descricao')->all());
         $this->assertSame(['Crit 1', 'Crit 2'], $edital->criterios->pluck('nome')->all());
     }
 
-    public function test_pivos_ligam_documentos_requisitos_e_criterios(): void
+    public function test_pivos_ligam_documentos_e_criterios(): void
     {
         $edital = Edital::factory()->create();
         $categoria = EditalCategoria::factory()->for($edital)->create();
         $documento = EditalDocumento::factory()->for($edital)->create(['todas_categorias' => false]);
-        $requisito = EditalRequisito::factory()->for($edital)->create();
         $criterio = EditalCriterio::factory()->for($edital)->create(['todas_categorias' => false]);
 
         $documento->categorias()->attach($categoria);
-        $requisito->documentos()->attach($documento);
         $criterio->categorias()->attach($categoria);
 
         $this->assertTrue($documento->categorias()->first()->is($categoria));
-        $this->assertTrue($requisito->documentos()->first()->is($documento));
         $this->assertTrue($criterio->categorias()->first()->is($categoria));
     }
 

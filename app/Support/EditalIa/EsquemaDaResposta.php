@@ -14,7 +14,7 @@ use BackedEnum;
 /**
  * Formato da resposta pedido ao Gemini (responseSchema, subconjunto OpenAPI: type, properties, items, enum,
  * nullable, required, description). Datas em texto AAAA-MM-DD; valores em reais como número.
- * Referências entre listas vão pelo nome (categoria do documento e do critério, documento do requisito, chamada da categoria).
+ * Referências entre listas vão pelo nome (categoria do documento e do critério, chamada da categoria).
  */
 final class EsquemaDaResposta
 {
@@ -26,7 +26,6 @@ final class EsquemaDaResposta
         'categorias' => 'Categorias',
         'cotas' => 'Cotas',
         'documentos' => 'Documentos',
-        'homologacao' => 'Homologação',
         'avaliacao' => 'Avaliação',
         'informacoes' => 'Informações',
     ];
@@ -112,10 +111,6 @@ final class EsquemaDaResposta
                 'categorias' => $nomesDeCategorias,
                 'modalidade_cota' => self::enum(ModalidadeCota::class, 'Só nos documentos da validação de cotas.'),
             ], ['nome', 'etapa'])),
-            'requisitos' => self::lista(self::objeto([
-                'descricao' => self::texto('Condição que a inscrição precisa cumprir para ser homologada.'),
-                'documentos' => self::lista(self::texto(), 'Nomes dos documentos que comprovam, exatamente como na lista de documentos.'),
-            ], ['descricao'])),
             'avaliacao' => self::objeto([
                 'nota_maxima' => self::inteiro(),
                 'nota_corte' => self::numero(),
@@ -153,7 +148,7 @@ final class EsquemaDaResposta
                 'texto' => self::texto(null, false),
                 'itens' => self::lista(self::texto(null, false), 'Itens, subitens ou anexos do edital citados, ex.: item 5.1.'),
             ], ['bloco', 'tipo', 'texto', 'itens'])),
-        ], ['identificacao', 'inscricao', 'participacao', 'categorias', 'cotas', 'documentos', 'requisitos', 'avaliacao', 'informacoes', 'confiabilidade', 'atencao']);
+        ], ['identificacao', 'inscricao', 'participacao', 'categorias', 'cotas', 'documentos', 'avaliacao', 'informacoes', 'confiabilidade', 'atencao']);
     }
 
     /**

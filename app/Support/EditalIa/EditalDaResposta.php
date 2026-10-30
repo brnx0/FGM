@@ -28,7 +28,7 @@ use Throwable;
  * - Item de lista inválido (data impossível, fim antes do início, opção desconhecida, número negativo, fora do
  *   limite ou que não é número, nome vazio): descartado, e vira ponto de atenção "incerta" dizendo o que saiu.
  *   Campo avulso inválido fica vazio, com ponto de atenção.
- * - Referências por nome (categoria do documento e do critério, documento do requisito, chamada da categoria): nome
+ * - Referências por nome (categoria do documento e do critério, chamada da categoria): nome
  *   sem par sai, com ponto de atenção; documento ou critério sem nenhuma categoria encontrada vale para todas.
  * - Textos cortados nos limites das colunas, em bytes (VARCHAR2 do Oracle).
  *
@@ -41,7 +41,7 @@ class EditalDaResposta
 
     private const array BLOCOS_OBJETO = ['identificacao', 'inscricao', 'participacao', 'cotas', 'avaliacao', 'informacoes', 'confiabilidade'];
 
-    private const array BLOCOS_LISTA = ['categorias', 'documentos', 'requisitos', 'atencao'];
+    private const array BLOCOS_LISTA = ['categorias', 'documentos', 'atencao'];
 
     private const float VALOR_MAXIMO = 10_000_000_000;
 
@@ -167,7 +167,7 @@ class EditalDaResposta
      * Listas no formato de SincronizadorDoEdital, com as referências por nome trocadas por posições.
      *
      * @param  array<mixed>  $dados
-     * @return array{chamadas: list<array<string, mixed>>, categorias: list<array<string, mixed>>, documentos: list<array<string, mixed>>, requisitos: list<array<string, mixed>>, criterios: list<array<string, mixed>>}
+     * @return array{chamadas: list<array<string, mixed>>, categorias: list<array<string, mixed>>, documentos: list<array<string, mixed>>, criterios: list<array<string, mixed>>}
      */
     private function listas(array $dados): array
     {
@@ -192,21 +192,6 @@ class EditalDaResposta
         unset($documento);
         $posicaoDoDocumento = self::posicoesPorNome($documentos, 'nome');
 
-        $requisitos = $this->filtrar($dados['requisitos'], 'homologacao', 'de "Requisitos"', $this->requisito(...));
-        foreach ($requisitos as &$requisito) {
-            $posicoes = [];
-            foreach ($requisito['documentos'] as $nome) {
-                $posicao = $posicaoDoDocumento[self::chaveDoNome($nome)] ?? null;
-                if ($posicao === null) {
-                    $this->avisar('homologacao', "O requisito \"{$requisito['descricao']}\" cita o documento \"{$nome}\", que não está na lista de documentos; ficou sem esse documento.");
-                } else {
-                    $posicoes[] = $posicao;
-                }
-            }
-            $requisito['documentos'] = $posicoes;
-        }
-        unset($requisito);
-
         $criterios = $this->filtrar($dados['avaliacao']['criterios'] ?? [], 'avaliacao', 'de "Critérios"', $this->criterio(...));
         foreach ($criterios as &$criterio) {
             $criterio = $this->ligarCategorias($criterio, $posicaoDaCategoria, 'avaliacao', "O critério \"{$criterio['nome']}\"");
@@ -217,7 +202,6 @@ class EditalDaResposta
             'chamadas' => $chamadas,
             'categorias' => $categorias,
             'documentos' => $documentos,
-            'requisitos' => $requisitos,
             'criterios' => $criterios,
         ];
     }
@@ -412,19 +396,6 @@ class EditalDaResposta
                 'modalidade_cota' => $modalidade?->value,
             ],
         };
-    }
-
-    /**
-     * @param  array<mixed>  $item
-     * @return array<string, mixed>|string
-     */
-    private function requisito(array $item): array|string
-    {
-        $descricao = self::texto($item['descricao'] ?? null, 1000);
-
-        return $descricao === null
-            ? 'sem descrição'
-            : ['descricao' => $descricao, 'documentos' => self::nomes($item['documentos'] ?? null, self::BYTES_NOME_DOCUMENTO)];
     }
 
     /**

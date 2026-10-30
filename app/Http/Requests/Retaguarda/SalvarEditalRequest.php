@@ -22,7 +22,7 @@ use Illuminate\Validation\Validator;
  * Criação e edição de edital na retaguarda. Tudo é opcional no rascunho; publicado exige título, resumo e categoria
  * (e, ao passar a publicado, o edital completo — ver EditalController).
  * Sem novo upload, o PDF, a imagem e os arquivos-modelo atuais ficam.
- * As listas (chamadas, categorias, documentos, requisitos, critérios) só são tocadas com o marcador `com_listas`;
+ * As listas (chamadas, categorias, documentos, critérios) só são tocadas com o marcador `com_listas`;
  * com ele, lista ausente = apagar todas. Referências entre listas vão por posição (índice na lista enviada).
  */
 class SalvarEditalRequest extends FormRequest
@@ -112,12 +112,6 @@ class SalvarEditalRequest extends FormRequest
             'documentos.*.instrucao_ia' => ['nullable', 'string', 'max:2000', new TamanhoEmBytes(2000)],
             'documentos.*.modelo' => ['nullable', 'file', 'mimes:pdf,doc,docx,xls,xlsx,odt,ods', 'max:10240'],
             'documentos.*.remover_modelo' => ['boolean'],
-
-            'requisitos' => $lista,
-            'requisitos.*.id' => ['nullable', 'integer'],
-            'requisitos.*.descricao' => ['required', 'string', 'max:1000', new TamanhoEmBytes(1000)],
-            'requisitos.*.documentos' => ['nullable', 'array'],
-            'requisitos.*.documentos.*' => ['integer', Rule::in($this->posicoes('documentos'))],
 
             'criterios' => $lista,
             'criterios.*.id' => ['nullable', 'integer'],
@@ -261,8 +255,6 @@ class SalvarEditalRequest extends FormRequest
             'documentos.*.checagem' => 'checagem pela IA',
             'documentos.*.instrucao_ia' => 'instrução para a IA',
             'documentos.*.modelo' => 'arquivo-modelo',
-            'requisitos' => 'requisitos',
-            'requisitos.*.descricao' => 'descrição do requisito',
             'criterios' => 'critérios',
             'criterios.*.nome' => 'nome do critério',
             'naturezas.*' => 'natureza',
@@ -336,7 +328,7 @@ class SalvarEditalRequest extends FormRequest
     /**
      * Listas no formato que SincronizadorDoEdital recebe.
      *
-     * @return array{chamadas: list<array<string, mixed>>, categorias: list<array<string, mixed>>, documentos: list<array<string, mixed>>, requisitos: list<array<string, mixed>>, criterios: list<array<string, mixed>>}
+     * @return array{chamadas: list<array<string, mixed>>, categorias: list<array<string, mixed>>, documentos: list<array<string, mixed>>, criterios: list<array<string, mixed>>}
      */
     public function listasDoEdital(): array
     {
@@ -344,7 +336,6 @@ class SalvarEditalRequest extends FormRequest
             'chamadas' => array_values($this->validated('chamadas') ?? []),
             'categorias' => array_values($this->validated('categorias') ?? []),
             'documentos' => array_values($this->validated('documentos') ?? []),
-            'requisitos' => array_values($this->validated('requisitos') ?? []),
             'criterios' => array_values($this->validated('criterios') ?? []),
         ];
     }

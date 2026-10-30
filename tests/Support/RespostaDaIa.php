@@ -68,9 +68,6 @@ trait RespostaDaIa
                     'naturezas' => ['pessoa_fisica'], 'categorias' => [], 'modalidade_cota' => 'negros',
                 ],
             ],
-            'requisitos' => [
-                ['descricao' => 'Domicílio em Salvador há pelo menos 2 anos', 'documentos' => ['Portfólio']],
-            ],
             'avaliacao' => [
                 'nota_maxima' => 100,
                 'nota_corte' => 60.5,

@@ -12,7 +12,6 @@ import CriteriosEdital from '../../../Components/Retaguarda/Edital/CriteriosEdit
 import DocumentosEdital from '../../../Components/Retaguarda/Edital/DocumentosEdital.vue';
 import InformacoesEdital from '../../../Components/Retaguarda/Edital/InformacoesEdital.vue';
 import QuadroImportacao from '../../../Components/Retaguarda/Edital/QuadroImportacao.vue';
-import RequisitosEdital from '../../../Components/Retaguarda/Edital/RequisitosEdital.vue';
 import {
     OPCOES_SIM_NAO,
     classeCaixa,
@@ -38,7 +37,6 @@ import type {
     CriterioEditavel,
     DocumentoEditavel,
     ItemEditavel,
-    RequisitoEditavel,
     RetaguardaEditaisFormProps,
 } from '../../../types';
 
@@ -99,13 +97,6 @@ const documentosSalvos: DocumentoEditavel[] = (salvo?.documentos ?? []).map((doc
     modeloNome: documento.modeloNome,
 }));
 
-const requisitosSalvos: RequisitoEditavel[] = (salvo?.requisitos ?? []).map((requisito) => ({
-    chave: novaChave(),
-    id: requisito.id,
-    descricao: requisito.descricao,
-    documentos: chavesNasPosicoes(documentosSalvos, requisito.documentos),
-}));
-
 const criteriosSalvos: CriterioEditavel[] = (salvo?.criterios ?? []).map((criterio) => ({
     chave: novaChave(),
     id: criterio.id,
@@ -155,7 +146,6 @@ const form = useForm({
     categorias: categoriasSalvas,
     cotas,
     documentos: documentosSalvos,
-    requisitos: requisitosSalvos,
     nota_maxima: salvo?.nota_maxima ?? null,
     nota_corte: textoDecimal(salvo?.nota_corte),
     criterios: criteriosSalvos,
@@ -213,7 +203,6 @@ const DEFINICAO_ABAS: AbaFormulario[] = [
     { id: 'categorias', rotulo: 'Categorias', campos: ['categorias', 'categorias.*'] },
     { id: 'cotas', rotulo: 'Cotas', campos: ['cotas', 'cotas.*'] },
     { id: 'documentos', rotulo: 'Documentos', campos: ['documentos', 'documentos.*'] },
-    { id: 'homologacao', rotulo: 'Homologação', campos: ['requisitos', 'requisitos.*'] },
     { id: 'avaliacao', rotulo: 'Avaliação', campos: ['nota_maxima', 'nota_corte', 'criterios', 'criterios.*', 'pontuacao_extra', 'pontuacao_extra.*'] },
     { id: 'informacoes', rotulo: 'Informações', campos: ['informacoes', 'informacoes.*'] },
     { id: 'arquivos', rotulo: 'Arquivos', campos: ['pdf', 'imagem', 'remover_imagem'] },
@@ -279,16 +268,6 @@ vigiarReferencias(
     /^(documentos|criterios)\.\d+\.categorias(\.\d+)?$/,
 );
 
-vigiarReferencias(
-    () => form.documentos.map((documento) => documento.chave),
-    (existentes) => {
-        for (const requisito of form.requisitos) {
-            if (requisito.documentos.some((chave) => !existentes.has(chave))) requisito.documentos = requisito.documentos.filter((chave) => existentes.has(chave));
-        }
-    },
-    /^requisitos\.\d+\.documentos(\.\d+)?$/,
-);
-
 /** Período do edital como o servidor calcula: menor início e maior fim das chamadas com as duas datas. */
 const periodo = computed<string | null>(() => {
     const completas = form.chamadas.filter((chamada) => chamada.inicio && chamada.fim);
@@ -323,7 +302,6 @@ const cotasPreenchidas = (dados: CotasEditavel): boolean =>
 const paraEnvio = (dados: DadosDoFormulario): Record<string, unknown> => {
     const posicaoDaChamada = posicoes(dados.chamadas);
     const posicaoDaCategoria = posicoes(dados.categorias);
-    const posicaoDoDocumento = posicoes(dados.documentos);
 
     return {
         com_listas: true,
@@ -366,7 +344,6 @@ const paraEnvio = (dados: DadosDoFormulario): Record<string, unknown> => {
             categorias: documento.todas_categorias ? [] : emPosicoes(categorias, posicaoDaCategoria),
             ...(modelo ? { modelo } : {}),
         })),
-        requisitos: dados.requisitos.map(({ id, descricao, documentos }) => ({ id, descricao, documentos: emPosicoes(documentos, posicaoDoDocumento) })),
         criterios: dados.criterios.map(({ chave: _chave, categorias, peso, pontos_maximos, ...criterio }) => ({
             ...criterio,
             peso: numeroDecimal(peso),
@@ -438,7 +415,6 @@ const ICONES: Record<string, string> = {
     categorias: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
     cotas: 'M12 3v18M5 7h14M5 7l-3 7a4 4 0 0 0 6 0zM19 7l-3 7a4 4 0 0 0 6 0z',
     documentos: 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13l2 2 4-4',
-    homologacao: 'M9 12l2 2 4-4M12 3l7 3v6c0 4.5-3 8-7 9-4-1-7-4.5-7-9V6z',
     avaliacao: 'M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3 6.4 20.2l1.1-6.2L3 9.6l6.2-.9z',
     informacoes: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v5M12 8h.01',
     arquivos: 'M12 16V4M7 9l5-5 5 5M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3',
@@ -759,11 +735,6 @@ const tituloDaPagina = editando ? salvo.titulo || 'Edital sem título' : 'Novo e
                             @limpar-erros="limparErros"
                             @definir-erro="definirErro"
                         />
-
-                        <div v-else-if="aba.id === 'homologacao'" class="flex flex-col gap-5">
-                            <p class="text-[0.9375rem] leading-[1.6] text-tinta-suave">Condições que a inscrição precisa cumprir para ser homologada e, quando houver, os documentos que as comprovam.</p>
-                            <RequisitosEdital v-model="form.requisitos" :erros="erros" :documentos="form.documentos" @limpar-erros="limparErros" />
-                        </div>
 
                         <div v-else-if="aba.id === 'avaliacao'" class="flex flex-col gap-8">
                             <div class="grid gap-x-6 gap-y-5 md:grid-cols-2">

@@ -89,7 +89,6 @@ class EditalDaRespostaTest extends TestCase
         $dados['categorias'][0]['itens'][] = ['nome' => 'Espaço X', 'vagas' => -1];
         $dados['documentos'][] = ['nome' => 'Certidão', 'etapa' => 'assinatura'];
         $dados['documentos'][] = ['nome' => 'Declaração', 'etapa' => 'inscricao', 'modalidade_cota' => 'idosos'];
-        $dados['requisitos'][] = ['descricao' => '   '];
         $dados['avaliacao']['criterios'][] = ['nome' => 'Impacto', 'peso' => -2];
 
         $edital = $this->criar($dados);
@@ -98,7 +97,6 @@ class EditalDaRespostaTest extends TestCase
         $this->assertSame(['Teatro', 'Dança'], $edital->categorias->pluck('nome')->all());
         $this->assertSame(['Teatro Gregório de Mattos'], $edital->categorias->first()->itens->pluck('nome')->all());
         $this->assertSame(['Portfólio', 'Autodeclaração étnico-racial'], $edital->documentos->pluck('nome')->all());
-        $this->assertCount(1, $edital->requisitos);
         $this->assertSame(['Mérito artístico'], $edital->criterios->pluck('nome')->all());
         $this->assertSame([
             'Item "Chamada 3" de "Chamadas" descartado: data de início impossível.',
@@ -108,7 +106,6 @@ class EditalDaRespostaTest extends TestCase
             'Item "Música" de "Categorias" descartado: natureza desconhecida "pessoa_juridica".',
             'Item "Certidão" de "Documentos" descartado: etapa desconhecida.',
             'Item "Declaração" de "Documentos" descartado: modalidade de cota desconhecida.',
-            'Item de "Requisitos" descartado: sem descrição.',
             'Item "Impacto" de "Critérios" descartado: pontuação negativa.',
         ], $this->avisos());
         $this->assertSame('categorias', $this->importacao->atencao[3]['bloco']);
@@ -212,7 +209,6 @@ class EditalDaRespostaTest extends TestCase
         $dados = $this->respostaCompleta();
         $dados['documentos'][0]['categorias'] = ['Literatura'];
         $dados['avaliacao']['criterios'][0]['categorias'] = ['Teatro', 'Artes visuais'];
-        $dados['requisitos'][0]['documentos'] = ['Portfólio', 'Certidão negativa'];
         $dados['categorias'][1]['chamada'] = 'Chamada extra';
 
         $edital = $this->criar($dados);
@@ -223,13 +219,11 @@ class EditalDaRespostaTest extends TestCase
         $criterio = $edital->criterios->sole();
         $this->assertFalse($criterio->todas_categorias);
         $this->assertSame(['Teatro'], $criterio->categorias->pluck('nome')->all());
-        $this->assertSame(['Portfólio'], $edital->requisitos->sole()->documentos->pluck('nome')->all());
         $this->assertNull($edital->categorias[1]->edital_chamada_id);
         $this->assertSame([
             'A categoria "Dança" cita a chamada "Chamada extra", que não está na lista de chamadas; ficou sem chamada.',
             'O documento "Portfólio" cita a categoria "Literatura", que não está na lista de categorias.',
             'O documento "Portfólio" ficou valendo para todas as categorias.',
-            'O requisito "Domicílio em Salvador há pelo menos 2 anos" cita o documento "Certidão negativa", que não está na lista de documentos; ficou sem esse documento.',
             'O critério "Mérito artístico" cita a categoria "Artes visuais", que não está na lista de categorias.',
         ], $this->avisos());
     }
@@ -295,5 +289,19 @@ class EditalDaRespostaTest extends TestCase
         $this->assertSame([
             ['bloco' => null, 'tipo' => 'incerta', 'texto' => 'Valor da categoria ilegível.', 'itens' => ['item 3.2', '7']],
         ], $this->importacao->atencao);
+    }
+
+    public function test_resposta_antiga_com_requisitos_e_bloco_homologacao_ainda_e_aplicada(): void
+    {
+        $dados = $this->respostaCompleta();
+        $dados['requisitos'] = [['descricao' => 'Domicílio em Salvador', 'documentos' => ['Portfólio']]];
+        $dados['confiabilidade']['homologacao'] = ['nota' => 80, 'justificativa' => 'Bloco extinto.'];
+        $dados['atencao'][] = ['bloco' => 'homologacao', 'tipo' => 'incerta', 'texto' => 'Requisito ilegível.', 'itens' => []];
+
+        $edital = $this->criar($dados);
+
+        $this->assertNotNull($edital->id);
+        $this->assertArrayNotHasKey('homologacao', $this->importacao->confiabilidade['blocos']);
+        $this->assertNull(collect($this->importacao->atencao)->firstWhere('texto', 'Requisito ilegível.')['bloco']);
     }
 }

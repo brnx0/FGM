@@ -107,9 +107,6 @@ class EditalEstruturaSalvarTest extends TestCase
                     'modalidade_cota' => 'negros',
                 ],
             ],
-            'requisitos' => [
-                ['descricao' => 'Domicílio em Salvador há 2 anos', 'documentos' => ['0']],
-            ],
             'criterios' => [
                 ['nome' => 'Mérito', 'descricao' => 'Qualidade.', 'peso' => '2', 'pontos_maximos' => '50', 'todas_categorias' => '0', 'categorias' => ['0']],
             ],
@@ -171,7 +168,6 @@ class EditalEstruturaSalvarTest extends TestCase
         $this->assertSame(['Dança'], $declaracao->categorias->pluck('nome')->all());
         $this->assertSame(ModalidadeCota::Negros, $autodeclaracao->modalidade_cota);
         $this->assertFalse($autodeclaracao->obrigatorio);
-        $this->assertSame(['Declaração de endereço'], $edital->requisitos->sole()->documentos->pluck('nome')->all());
         $this->assertSame(['Teatro'], $edital->criterios->sole()->categorias->pluck('nome')->all());
 
         $this->get("/retaguarda/editais/{$edital->slug}/edit")
@@ -187,7 +183,6 @@ class EditalEstruturaSalvarTest extends TestCase
                 ->where('edital.categorias.0.chamada', 1)
                 ->where('edital.categorias.0.itens.0.suplentes', 2)
                 ->where('edital.documentos.0.categorias', [1])
-                ->where('edital.requisitos.0.documentos', [0])
                 ->where('edital.criterios.0.categorias', [0])
                 ->where('edital.informacoes.vedacoes', 'Servidores da FGM.')
                 ->where('edital.informacoes.base_legal', null)
@@ -322,7 +317,6 @@ class EditalEstruturaSalvarTest extends TestCase
             ]],
             'categorias' => [],
             'documentos' => [],
-            'requisitos' => [],
             'criterios' => [],
         ]))->assertSessionHasNoErrors();
 
@@ -412,7 +406,6 @@ class EditalEstruturaSalvarTest extends TestCase
             'chamadas' => [['nome' => '', 'inicio' => '2026-11-30', 'fim' => '2026-11-01']],
             'categorias' => [['nome' => 'Teatro', 'valor' => '0', 'vagas' => '0', 'chamada' => '5', 'naturezas' => ['outra']]],
             'documentos' => [['nome' => 'Doc', 'etapa' => 'qualquer', 'todas_categorias' => '0']],
-            'requisitos' => [['descricao' => 'Req', 'documentos' => ['3']]],
             'criterios' => [['nome' => 'Crit', 'peso' => '-1']],
             'cotas' => ['negros' => ['percentual' => '120']],
             'pontuacao_extra' => ['grupos' => [['grupo' => '']]],
@@ -427,7 +420,6 @@ class EditalEstruturaSalvarTest extends TestCase
             'categorias.0.naturezas.0' => 'Selecione uma opção da lista.',
             'documentos.0.etapa' => 'Selecione uma opção da lista.',
             'documentos.0.categorias' => 'Escolha ao menos uma categoria.',
-            'requisitos.0.documentos.0' => 'Selecione uma opção da lista.',
             'criterios.0.peso' => 'Informe um valor de no mínimo 0.',
             'cotas.negros.percentual' => 'Informe um valor de no máximo 100.',
             'pontuacao_extra.grupos.0.grupo' => 'Este campo é obrigatório.',
@@ -452,10 +444,6 @@ class EditalEstruturaSalvarTest extends TestCase
                 ['nome' => 'Doc 1', 'etapa' => 'inscricao', 'checagem' => 'nenhuma', 'todas_categorias' => '0', 'categorias' => ['0'], 'naturezas' => ['mei']],
                 ['nome' => 'Doc 2', 'etapa' => 'inscricao', 'checagem' => 'nenhuma', 'todas_categorias' => '0', 'categorias' => ['0'], 'naturezas' => ['mei']],
             ],
-            'requisitos' => [
-                ['descricao' => 'Req 1', 'documentos' => ['0']],
-                ['descricao' => 'Req 2', 'documentos' => ['0']],
-            ],
             'criterios' => [
                 ['nome' => 'Crit 1', 'todas_categorias' => '0', 'categorias' => ['1']],
                 ['nome' => 'Crit 2', 'todas_categorias' => '0', 'categorias' => ['1']],
@@ -464,7 +452,6 @@ class EditalEstruturaSalvarTest extends TestCase
 
         $edital = Edital::sole();
         $this->assertSame([['Teatro'], ['Teatro']], $edital->documentos->map(fn ($d) => $d->categorias->pluck('nome')->all())->all());
-        $this->assertSame([['Doc 1'], ['Doc 1']], $edital->requisitos->map(fn ($r) => $r->documentos->pluck('nome')->all())->all());
         $this->assertSame([['Dança'], ['Dança']], $edital->criterios->map(fn ($c) => $c->categorias->pluck('nome')->all())->all());
         $this->assertEquals([[NaturezaProponente::PessoaFisica], [NaturezaProponente::PessoaFisica]], $edital->categorias->map(fn ($c) => $c->naturezas->all())->all());
     }
@@ -497,8 +484,7 @@ class EditalEstruturaSalvarTest extends TestCase
             'com_listas' => '1',
             'titulo' => 'Edital com acentos',
             'objeto' => $acentuado,
-            'requisitos' => [['descricao' => $acentuado]],
-        ])->assertSessionHasErrors(['objeto' => $mensagem, 'requisitos.0.descricao' => $mensagem]);
+        ])->assertSessionHasErrors(['objeto' => $mensagem]);
 
         $this->assertSame(0, Edital::count());
     }
