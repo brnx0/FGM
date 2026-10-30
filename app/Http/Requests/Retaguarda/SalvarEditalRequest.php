@@ -104,7 +104,6 @@ class SalvarEditalRequest extends FormRequest
             'documentos.*.categorias' => ['required_if_declined:documentos.*.todas_categorias', 'nullable', 'array'],
             'documentos.*.categorias.*' => $posicaoDeCategoria,
             'documentos.*.modalidade_cota' => ['nullable', Rule::enum(ModalidadeCota::class)],
-            'documentos.*.anexo_referencia' => ['nullable', 'string', 'max:255', new TamanhoEmBytes(255)],
             'documentos.*.checagem' => ['required', Rule::enum(ChecagemDocumento::class)],
             'documentos.*.instrucao_ia' => ['nullable', 'string', 'max:2000', new TamanhoEmBytes(2000)],
             'documentos.*.modelo' => ['nullable', 'file', 'mimes:pdf,doc,docx,xls,xlsx,odt,ods', 'max:10240'],

@@ -198,7 +198,6 @@ class EditalController extends Controller
                     'todas_categorias' => $documento->todas_categorias,
                     'categorias' => $this->posicoesDe($documento->categorias, $posicaoDaCategoria),
                     'modalidade_cota' => $documento->modalidade_cota?->value,
-                    'anexo_referencia' => $documento->anexo_referencia,
                     'checagem' => $documento->checagem->value,
                     'instrucao_ia' => $documento->instrucao_ia,
                     'modeloUrl' => $documento->modelo ? route('retaguarda.editais.documentos.modelo', [$edital, $documento]) : null,

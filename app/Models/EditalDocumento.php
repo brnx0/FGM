@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 /** Documento exigido numa etapa do edital; naturezas nulas = todas, categorias só contam sem todas_categorias. */
 #[Fillable([
     'nome', 'orientacao', 'etapa', 'obrigatorio', 'naturezas', 'todas_categorias',
-    'modalidade_cota', 'anexo_referencia', 'modelo', 'modelo_nome', 'ordem', 'checagem', 'instrucao_ia',
+    'modalidade_cota', 'modelo', 'modelo_nome', 'ordem', 'checagem', 'instrucao_ia',
 ])]
 class EditalDocumento extends Model
 {

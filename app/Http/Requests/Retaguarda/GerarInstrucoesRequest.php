@@ -41,7 +41,6 @@ class GerarInstrucoesRequest extends FormRequest
             'documentos.*.nome' => ['required', 'string', 'max:255'],
             'documentos.*.orientacao' => ['nullable', 'string', 'max:1000'],
             'documentos.*.etapa' => ['required', Rule::enum(EtapaDocumento::class)],
-            'documentos.*.anexo_referencia' => ['nullable', 'string', 'max:255'],
         ];
     }
 
@@ -59,7 +58,7 @@ class GerarInstrucoesRequest extends FormRequest
     }
 
     /**
-     * @return list<array{nome: string, orientacao: string|null, etapa: string, anexo_referencia: string|null}>
+     * @return list<array{nome: string, orientacao: string|null, etapa: string}>
      */
     public function documentos(): array
     {
@@ -67,7 +66,6 @@ class GerarInstrucoesRequest extends FormRequest
             'nome' => $documento['nome'],
             'orientacao' => $documento['orientacao'] ?? null,
             'etapa' => $documento['etapa'],
-            'anexo_referencia' => $documento['anexo_referencia'] ?? null,
         ], $this->validated('documentos'));
     }
 }

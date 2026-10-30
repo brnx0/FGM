@@ -85,7 +85,6 @@ const documentosSalvos: DocumentoEditavel[] = (salvo?.documentos ?? []).map((doc
     todas_categorias: documento.todas_categorias,
     categorias: chavesNasPosicoes(categoriasSalvas, documento.categorias),
     modalidade_cota: documento.modalidade_cota ?? '',
-    anexo_referencia: documento.anexo_referencia ?? '',
     checagem: documento.checagem,
     instrucao_ia: documento.instrucao_ia ?? '',
     modelo: null,

@@ -678,7 +678,6 @@ export interface DocumentoFormulario {
     /** Posições das categorias. */
     categorias: number[];
     modalidade_cota: string | null;
-    anexo_referencia: string | null;
     checagem: string;
     instrucao_ia: string | null;
     modeloUrl: string | null;
@@ -750,7 +749,6 @@ export interface DocumentoEditavel extends ItemEditavel {
     /** Chaves das categorias. */
     categorias: string[];
     modalidade_cota: string;
-    anexo_referencia: string;
     checagem: string;
     instrucao_ia: string;
     /** Arquivo-modelo novo (só vai quando escolhido). */

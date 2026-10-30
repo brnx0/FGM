@@ -361,7 +361,6 @@ class EditalDaResposta
                 'naturezas' => $naturezas,
                 'categorias' => self::nomes($item['categorias'] ?? null, self::BYTES_NOME_CATEGORIA),
                 'modalidade_cota' => $modalidade?->value,
-                'anexo_referencia' => self::texto($item['anexo_referencia'] ?? null, 255),
             ],
         };
     }
