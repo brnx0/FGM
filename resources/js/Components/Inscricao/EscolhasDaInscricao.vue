@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import type { CadastroDaInscricao, CategoriaDaInscricao, CotaDaInscricao } from '../../types';
 import CampoCadastro from '../CampoCadastro.vue';
 
@@ -23,8 +23,6 @@ const cotasEscolhidas = defineModel<string[]>('cotasEscolhidas', { required: tru
 const emit = defineEmits<{ limparErro: [campo: Campo] }>();
 
 const LIMITE_ATINGIDO = 'Este cadastro já atingiu o limite de inscrições deste edital.';
-
-const raiz = ref<HTMLElement | null>(null);
 
 // Categorias que a natureza do cadastro pode escolher (lista vazia vale para todas).
 const categoriasDaNatureza = (natureza: string | undefined): CategoriaDaInscricao[] =>
@@ -62,27 +60,14 @@ const cotaBloqueada = (valor: string): boolean => {
     return (valor === 'negros' && cotasEscolhidas.value.includes('indigenas')) || (valor === 'indigenas' && cotasEscolhidas.value.includes('negros'));
 };
 
-// Chamado pela tela depois que o servidor recusa as escolhas.
-const focarPrimeiroErro = (): void => {
-    const seletor = props.erros.cadastro
-        ? 'input[name="cadastro"]:not(:disabled)'
-        : props.erros.categoria
-          ? '#inscricao-categoria'
-          : 'input[name="cotas"]:not(:disabled)';
-    raiz.value?.querySelector<HTMLElement>(seletor)?.focus();
-};
-
-defineExpose({ focarPrimeiroErro });
-
-const classeCampo =
-    'h-12 w-full rounded-[12px] border border-tinta-suave/70 bg-superficie px-4 text-base text-home-tinta aria-invalid:border-erro-texto aria-invalid:ring-1 aria-invalid:ring-erro-texto';
+const classeCampo = 'h-12 w-full rounded-[12px] border border-tinta-suave/70 bg-superficie px-4 text-base text-home-tinta';
 const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
 </script>
 
 <template>
-    <div ref="raiz" class="flex flex-col gap-6">
+    <div class="flex flex-col gap-6">
         <fieldset class="flex min-w-0 flex-col gap-3" :aria-describedby="erros.cadastro ? 'inscricao-cadastro-erro' : undefined">
-            <legend class="text-[0.9375rem] font-semibold">Cadastro<span aria-hidden="true" class="ml-0.5 text-erro-texto">*</span></legend>
+            <legend class="text-[0.9375rem] font-semibold">Cadastro<span aria-hidden="true" class="ml-0.5 text-invalido-texto">*</span></legend>
             <label
                 v-for="(item, indice) in cadastros"
                 :key="item.chave"
@@ -94,7 +79,9 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                     name="cadastro"
                     :value="item.chave"
                     :checked="cadastro === item.chave"
+                    required
                     :disabled="motivoIndisponivel(item) !== null"
+                    :aria-invalid="erros.cadastro && motivoIndisponivel(item) === null ? true : undefined"
                     :aria-describedby="`inscricao-cadastro-${indice}-aviso`"
                     :class="classeCaixa"
                     @change="escolherCadastro(item)"
@@ -103,14 +90,14 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                     <span class="block font-semibold break-words">{{ item.nome }}</span>
                     <span class="block text-[0.875rem] text-tinta-suave">{{ item.naturezaRotulo }} · {{ item.documento }}</span>
                     <span :id="`inscricao-cadastro-${indice}-aviso`" class="block">
-                        <span v-if="motivoIndisponivel(item)" class="mt-1 block text-[0.875rem] font-semibold text-erro-texto">{{ motivoIndisponivel(item) }}</span>
+                        <span v-if="motivoIndisponivel(item)" class="mt-1 block text-[0.875rem] font-semibold text-invalido-texto">{{ motivoIndisponivel(item) }}</span>
                         <span v-if="item.inscricaoDeOutro" class="mt-1 block text-[0.875rem] text-tinta-suave">
                             Já existe inscrição deste CNPJ: {{ item.inscricaoDeOutro }}.
                         </span>
                     </span>
                 </span>
             </label>
-            <p v-if="erros.cadastro" id="inscricao-cadastro-erro" role="alert" class="text-[0.875rem] font-semibold text-erro-texto">{{ erros.cadastro }}</p>
+            <p v-if="erros.cadastro" id="inscricao-cadastro-erro" role="alert" class="text-[0.875rem] font-semibold text-invalido-texto">{{ erros.cadastro }}</p>
         </fieldset>
 
         <CampoCadastro
@@ -148,12 +135,13 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                     name="cotas"
                     :value="cota.valor"
                     :disabled="cotaBloqueada(cota.valor)"
+                    :aria-invalid="erros.cotas && !cotaBloqueada(cota.valor) ? true : undefined"
                     :class="classeCaixa"
                     @change="emit('limparErro', 'cotas')"
                 />
                 <span>{{ cota.rotulo }}</span>
             </label>
-            <p v-if="erros.cotas" id="inscricao-cotas-erro" role="alert" class="text-[0.875rem] font-semibold text-erro-texto">{{ erros.cotas }}</p>
+            <p v-if="erros.cotas" id="inscricao-cotas-erro" role="alert" class="text-[0.875rem] font-semibold text-invalido-texto">{{ erros.cotas }}</p>
         </fieldset>
     </div>
 </template>

@@ -11,6 +11,8 @@ import { Table, TableCell, TableHeader, TableRow } from '@tiptap/extension-table
 import Image from '@tiptap/extension-image';
 import Youtube from '@tiptap/extension-youtube';
 import { Placeholder } from '@tiptap/extension-placeholder';
+import AvisoCamposObrigatorios from './AvisoCamposObrigatorios.vue';
+import { focarPrimeiroErro } from './focarPrimeiroErro';
 
 /**
  * Editor de texto rico (Tiptap) com v-model em HTML. O servidor limpa o HTML ao salvar
@@ -32,6 +34,7 @@ const modelo = defineModel<string>({ required: true });
 type Alinhamento = 'left' | 'center' | 'right' | 'justify';
 type NivelTitulo = 2 | 3 | 4;
 type Modo = 'link' | 'imagem' | 'video';
+type CampoDoDialogo = 'endereco' | 'arquivo' | 'alt';
 
 /** Mesma paleta de HtmlSeguro::CORES. */
 const CORES: { valor: string; nome: string }[] = [
@@ -171,14 +174,33 @@ const endereco = ref<string>('');
 const textoAlternativo = ref<string>('');
 const arquivo = ref<File | null>(null);
 const erro = ref<string>('');
+// Campo a que o erro se refere (aria-invalid); falhas gerais, como sessão expirada, não apontam para nenhum.
+const campoComErro = ref<CampoDoDialogo | null>(null);
 const enviando = ref<boolean>(false);
 
 const titulosDoDialogo: Record<Modo, string> = { link: 'Link', imagem: 'Imagem', video: 'Vídeo do YouTube' };
 
+const limparErro = (): void => {
+    erro.value = '';
+    campoComErro.value = null;
+};
+
+const recusar = (campo: CampoDoDialogo | null, mensagem: string): void => {
+    erro.value = mensagem;
+    campoComErro.value = campo;
+    focarPrimeiroErro(`#${props.id}-dialogo`);
+};
+
+const invalidoEm = (campo: CampoDoDialogo): true | undefined => (campoComErro.value === campo ? true : undefined);
+
+/** aria-describedby do campo: a ajuda (se houver) e, quando o erro é dele, a mensagem de erro. */
+const descricaoDoCampo = (campo: CampoDoDialogo, ajuda?: string): string | undefined =>
+    [ajuda, invalidoEm(campo) && `${props.id}-dialogo-erro`].filter(Boolean).join(' ') || undefined;
+
 // O conteúdo do diálogo depende do modo: abre depois de renderizado, para o autofocus valer.
 const abrir = async (novoModo: Modo): Promise<void> => {
     modo.value = novoModo;
-    erro.value = '';
+    limparErro();
     arquivo.value = null;
     textoAlternativo.value = '';
     endereco.value = novoModo === 'link' ? ((editor.value?.getAttributes('link').href as string | undefined) ?? '') : '';
@@ -212,7 +234,7 @@ const confirmarLink = (): void => {
     }
     const href = linkValido(valor);
     if (!href) {
-        erro.value = 'Use um endereço que comece com http://, https:// ou mailto:.';
+        recusar('endereco', 'Use um endereço que comece com http://, https:// ou mailto:.');
         return;
     }
     if (editor.value?.state.selection.empty && !ativo('link')) {
@@ -240,29 +262,29 @@ const mensagemDeFalha = async (resposta: Response): Promise<string> => {
 };
 
 const escolherArquivo = (evento: Event): void => {
-    erro.value = '';
+    limparErro();
     arquivo.value = (evento.target as HTMLInputElement).files?.[0] ?? null;
 };
 
 const confirmarImagem = async (): Promise<void> => {
     const alt = textoAlternativo.value.trim();
     if (!arquivo.value) {
-        erro.value = 'Escolha uma imagem.';
+        recusar('arquivo', 'Escolha uma imagem.');
         return;
     }
     if (arquivo.value.size > LIMITE_IMAGEM) {
-        erro.value = 'A imagem deve ter no máximo 5 MB.';
+        recusar('arquivo', 'A imagem deve ter no máximo 5 MB.');
         return;
     }
     if (alt === '') {
-        erro.value = 'Descreva a imagem no texto alternativo.';
+        recusar('alt', 'Descreva a imagem no texto alternativo.');
         return;
     }
 
     const dados = new FormData();
     dados.append('imagem', arquivo.value);
     enviando.value = true;
-    erro.value = '';
+    limparErro();
     try {
         const resposta = await fetch(props.urlImagem, {
             method: 'POST',
@@ -271,14 +293,15 @@ const confirmarImagem = async (): Promise<void> => {
             headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-XSRF-TOKEN': tokenXsrf() },
         });
         if (!resposta.ok) {
-            erro.value = await mensagemDeFalha(resposta);
+            // 422 e 413 são do arquivo; os demais (limite de envios, sessão) não são de campo nenhum.
+            recusar(resposta.status === 422 || resposta.status === 413 ? 'arquivo' : null, await mensagemDeFalha(resposta));
             return;
         }
         const { url } = (await resposta.json()) as { url: string };
         cadeia().setImage({ src: url, alt }).run();
         fechar();
     } catch {
-        erro.value = 'Não foi possível enviar a imagem. Verifique a conexão e tente novamente.';
+        recusar(null, 'Não foi possível enviar a imagem. Verifique a conexão e tente novamente.');
     } finally {
         enviando.value = false;
     }
@@ -287,7 +310,7 @@ const confirmarImagem = async (): Promise<void> => {
 const confirmarVideo = (): void => {
     const inseriu = editor.value?.chain().focus().setYoutubeVideo({ src: endereco.value.trim() }).run() ?? false;
     if (!inseriu) {
-        erro.value = 'Cole o endereço de um vídeo do YouTube (youtube.com ou youtu.be).';
+        recusar('endereco', 'Cole o endereço de um vídeo do YouTube (youtube.com ou youtu.be).');
         return;
     }
     fechar();
@@ -317,7 +340,7 @@ const classeCampo =
 <template>
     <div
         class="editor-texto-rico overflow-hidden rounded-[12px] border bg-superficie focus-within:ring-2 focus-within:ring-acao"
-        :class="invalido ? 'border-erro-texto ring-1 ring-erro-texto' : 'border-tinta-suave/70'"
+        :class="invalido ? 'campo-invalido' : 'border-tinta-suave/70'"
     >
         <div
             v-if="editor"
@@ -509,6 +532,7 @@ const classeCampo =
         <EditorContent :editor="editor" />
 
         <dialog
+            :id="`${id}-dialogo`"
             ref="dialogo"
             :aria-labelledby="`${id}-dialogo-titulo`"
             class="m-auto w-[min(30rem,calc(100vw-2rem))] rounded-card border border-hairline bg-superficie p-6 text-home-tinta backdrop:bg-noite/60"
@@ -517,17 +541,23 @@ const classeCampo =
             <div v-if="modo" class="flex flex-col gap-4">
                 <h2 :id="`${id}-dialogo-titulo`" class="text-[1.25rem] leading-tight font-bold">{{ titulosDoDialogo[modo] }}</h2>
 
+                <!-- No link não há campo obrigatório (endereço vazio remove o link): o aviso é só da imagem e do vídeo. -->
+                <AvisoCamposObrigatorios v-if="modo !== 'link'" />
+
                 <label v-if="modo !== 'imagem'" class="flex flex-col gap-1.5 text-[0.9375rem] font-semibold">
-                    {{ modo === 'link' ? 'Endereço (https:// ou mailto:)' : 'Endereço do vídeo' }}
+                    <span>
+                        {{ modo === 'link' ? 'Endereço (https:// ou mailto:)' : 'Endereço do vídeo' }}<span v-if="modo === 'video'" aria-hidden="true" class="ml-0.5 text-invalido-texto">*</span>
+                    </span>
                     <input
                         v-model="endereco"
                         type="url"
                         autofocus
+                        :required="modo === 'video'"
                         :placeholder="modo === 'link' ? 'https://' : 'https://www.youtube.com/watch?v=…'"
                         :class="classeCampo"
-                        :aria-invalid="erro ? true : undefined"
-                        :aria-describedby="erro ? `${id}-dialogo-erro` : undefined"
-                        @input="erro = ''"
+                        :aria-invalid="invalidoEm('endereco')"
+                        :aria-describedby="descricaoDoCampo('endereco')"
+                        @input="limparErro"
                         @keydown.enter.prevent="confirmar"
                     />
                 </label>
@@ -535,17 +565,22 @@ const classeCampo =
 
                 <template v-if="modo === 'imagem'">
                     <label class="flex flex-col gap-1.5 text-[0.9375rem] font-semibold">
-                        Arquivo (JPG, PNG ou WEBP, até 5 MB)
+                        <span>Arquivo (JPG, PNG ou WEBP, até 5 MB)<span aria-hidden="true" class="ml-0.5 text-invalido-texto">*</span></span>
+                        <!-- O destaque global não vale para campo de arquivo: com erro, a classe campo-invalido desenha a caixa. -->
                         <input
                             type="file"
                             accept="image/jpeg,image/png,image/webp"
                             autofocus
+                            required
                             class="text-[0.9375rem] font-normal file:mr-3 file:min-h-11 file:rounded-pill file:border file:border-tinta-suave/70 file:bg-superficie file:px-4 file:font-semibold file:text-home-tinta"
+                            :class="invalidoEm('arquivo') && 'campo-invalido rounded-[12px] p-1'"
+                            :aria-invalid="invalidoEm('arquivo')"
+                            :aria-describedby="descricaoDoCampo('arquivo')"
                             @change="escolherArquivo"
                         />
                     </label>
                     <label class="flex flex-col gap-1.5 text-[0.9375rem] font-semibold">
-                        <span>Texto alternativo<span aria-hidden="true" class="ml-0.5 text-erro-texto">*</span></span>
+                        <span>Texto alternativo<span aria-hidden="true" class="ml-0.5 text-invalido-texto">*</span></span>
                         <input
                             v-model="textoAlternativo"
                             type="text"
@@ -553,15 +588,16 @@ const classeCampo =
                             maxlength="250"
                             placeholder="Ex.: Roda de capoeira no Terreiro de Jesus"
                             :class="classeCampo"
-                            :aria-describedby="`${id}-alt-ajuda`"
-                            @input="erro = ''"
+                            :aria-invalid="invalidoEm('alt')"
+                            :aria-describedby="descricaoDoCampo('alt', `${id}-alt-ajuda`)"
+                            @input="limparErro"
                             @keydown.enter.prevent="confirmar"
                         />
                         <span :id="`${id}-alt-ajuda`" class="text-[0.8125rem] font-normal text-tinta-suave">Descreva a imagem para quem usa leitor de tela.</span>
                     </label>
                 </template>
 
-                <p v-if="erro" :id="`${id}-dialogo-erro`" role="alert" class="text-[0.875rem] font-semibold text-erro-texto">{{ erro }}</p>
+                <p v-if="erro" :id="`${id}-dialogo-erro`" role="alert" class="text-[0.875rem] font-semibold text-invalido-texto">{{ erro }}</p>
 
                 <div class="mt-2 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                     <button

@@ -51,7 +51,7 @@ const marcarSemNumero = (): void => {
 };
 
 const classeCampo =
-    'h-12 w-full rounded-[12px] border border-tinta-suave/70 bg-superficie px-4 text-base text-home-tinta placeholder:text-tinta-suave aria-invalid:border-erro-texto aria-invalid:ring-1 aria-invalid:ring-erro-texto disabled:cursor-not-allowed disabled:bg-nevoa disabled:opacity-70';
+    'h-12 w-full rounded-[12px] border border-tinta-suave/70 bg-superficie px-4 text-base text-home-tinta placeholder:text-tinta-suave disabled:cursor-not-allowed disabled:bg-nevoa disabled:opacity-70';
 const classeMarcacao = 'flex min-h-11 cursor-pointer items-start gap-3 py-2 text-[0.9375rem] leading-[1.5]';
 const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
 </script>

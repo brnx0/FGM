@@ -43,6 +43,15 @@
     --color-aviso-fundo: #fef3c7;
     --color-aviso-texto: #78350f;
 
+    /* Campo com erro (padrão dos formulários): borda em degradê vermelho → coral, brilho e fundo rosado.
+       O texto do erro e o asterisco do obrigatório ficam sobre o fundo da página, por isso têm cor própria. */
+    --color-invalido-inicio: #b42318;
+    --color-invalido-meio: #f0624d;
+    --color-invalido-fim: #d92d20;
+    --color-invalido-fundo: #fff7f6;
+    --color-invalido-brilho: rgb(217 45 32 / 0.18);
+    --color-invalido-texto: #8a1c1c;
+
     /* Cores do texto rico (editor da descrição do evento): verde e amarelo escuros, AA sobre branco. */
     --color-texto-verde: #166534;
     --color-texto-amarelo: #805b00;
@@ -102,6 +111,12 @@ html.escuro {
     --color-erro-texto: #ffd6d6;
     --color-aviso-fundo: #3b2f12;
     --color-aviso-texto: #fde68a;
+    --color-invalido-inicio: #ff5c5c;
+    --color-invalido-meio: #ffb4a8;
+    --color-invalido-fim: #ff7a7a;
+    --color-invalido-fundo: #2a1a26;
+    --color-invalido-brilho: rgb(255 92 92 / 0.22);
+    --color-invalido-texto: #ffd6d6;
     --color-texto-verde: #86efac;
     --color-texto-amarelo: #fcd34d;
 }
@@ -116,6 +131,13 @@ html.alto-contraste {
     --color-erro-texto: #8a1c1c;
     --color-aviso-fundo: #fef3c7;
     --color-aviso-texto: #78350f;
+    /* Sem degradê nem brilho: borda sólida e grossa (ver a regra do campo com erro). */
+    --color-invalido-inicio: #ff6b6b;
+    --color-invalido-meio: #ff6b6b;
+    --color-invalido-fim: #ff6b6b;
+    --color-invalido-fundo: #000000;
+    --color-invalido-brilho: transparent;
+    --color-invalido-texto: #ff8a8a;
     --color-fundo: #000000;
     --color-tinta: #ffffff;
     --color-home-tinta: #ffffff;
@@ -170,6 +192,38 @@ html.alto-contraste .barra-institucional {
     .barra-institucional :focus-visible {
         outline-color: #ffffff;
     }
+}
+
+/* Campo com erro (padrão dos formulários, escolhido com o cliente): ao salvar, o servidor devolve os erros e o
+   campo ganha aria-invalid. Fora das camadas de propósito, para vencer as classes de borda e fundo de cada tela.
+   Caixas próprias (envio de arquivo, editor de texto rico) usam a classe campo-invalido. */
+:is(input, select, textarea):not([type='checkbox'], [type='radio'], [type='file'])[aria-invalid='true'],
+.campo-invalido {
+    border-width: 2px;
+    border-style: solid;
+    border-color: transparent;
+    background:
+        linear-gradient(var(--color-invalido-fundo), var(--color-invalido-fundo)) padding-box,
+        linear-gradient(120deg, var(--color-invalido-inicio), var(--color-invalido-meio) 55%, var(--color-invalido-fim)) border-box;
+    box-shadow: 0 0 12px 2px var(--color-invalido-brilho);
+}
+
+/* Marcação (caixa de seleção e opção) não tem borda desenhável: contorno vermelho, menos quando está com o foco. */
+:is(input[type='checkbox'], input[type='radio'])[aria-invalid='true']:not(:focus-visible) {
+    outline: 2px solid var(--color-invalido-inicio);
+    outline-offset: 2px;
+}
+
+/* O foco do editor de texto rico é um anel (box-shadow): com erro, soma o anel ao brilho em vez de perdê-lo. */
+.editor-texto-rico.campo-invalido:focus-within {
+    box-shadow:
+        0 0 0 2px var(--color-acao),
+        0 0 12px 2px var(--color-invalido-brilho);
+}
+
+html.alto-contraste :is(input, select, textarea):not([type='checkbox'], [type='radio'], [type='file'])[aria-invalid='true'],
+html.alto-contraste .campo-invalido {
+    border-width: 3px;
 }
 
 /* Botões e controles: escala .95 ao pressionar (regra Apple). */

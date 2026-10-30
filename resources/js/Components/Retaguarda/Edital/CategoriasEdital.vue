@@ -172,7 +172,7 @@ const novoItem = (): CategoriaItemEditavel => ({ chave: novaChave(), id: null, n
                         {{ natureza.rotulo }}
                     </label>
                 </div>
-                <p v-if="erroDaLista('naturezas')" :id="idCampo('naturezas-erro')" class="mt-1 text-[0.875rem] font-semibold text-erro-texto">{{ erroDaLista('naturezas') }}</p>
+                <p v-if="erroDaLista('naturezas')" :id="idCampo('naturezas-erro')" class="mt-1 text-[0.875rem] font-semibold text-invalido-texto">{{ erroDaLista('naturezas') }}</p>
             </fieldset>
 
             <div class="flex min-w-0 flex-col gap-3 border-t border-hairline pt-5">

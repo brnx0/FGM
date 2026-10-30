@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { nextTick } from 'vue';
 import { Head, useForm } from '@inertiajs/vue3';
+import AvisoCamposObrigatorios from '../../Components/AvisoCamposObrigatorios.vue';
 import EtapasCadastro from '../../Components/EtapasCadastro.vue';
 import FaixaPortal from '../../Components/FaixaPortal.vue';
+import { focarPrimeiroErro } from '../../Components/focarPrimeiroErro';
 import SaudacaoCadastro from '../../Components/SaudacaoCadastro.vue';
 import PortalProponenteLayout from '../../Layouts/PortalProponenteLayout.vue';
 import type { CadastroTipoProps, TipoCadastro } from '../../types';
@@ -25,7 +26,7 @@ const form = useForm<{ tipos_cadastro: TipoCadastro[] }>({ tipos_cadastro: [...p
 const finalizar = (): void => {
     form.post('/cadastro/tipo', {
         preserveScroll: true,
-        onError: () => nextTick(() => document.querySelector<HTMLInputElement>('input[name="tipos_cadastro"]')?.focus()),
+        onError: () => focarPrimeiroErro('#formulario-tipo-cadastro'),
     });
 };
 </script>
@@ -50,12 +51,17 @@ const finalizar = (): void => {
 
         <div class="relative mx-auto -mt-20 max-w-6xl px-4 pb-16 md:-mt-24">
             <form
+                id="formulario-tipo-cadastro"
                 novalidate
                 class="rounded-[24px] border border-hairline bg-superficie p-6 shadow-[0_24px_60px_-34px_rgba(6,36,74,0.45)] md:p-10"
                 @submit.prevent="finalizar"
             >
+                <AvisoCamposObrigatorios class="mb-6" />
+
                 <fieldset :aria-describedby="form.errors.tipos_cadastro ? 'tipo-cadastro-dica tipo-cadastro-erro' : 'tipo-cadastro-dica'">
-                    <legend class="text-[1.25rem] leading-tight font-bold text-home-tinta md:text-[1.375rem]">Qual tipo de cadastro deseja realizar?</legend>
+                    <legend class="text-[1.25rem] leading-tight font-bold text-home-tinta md:text-[1.375rem]">
+                        Qual tipo de cadastro deseja realizar?<span aria-hidden="true" class="ml-0.5 text-invalido-texto">*</span>
+                    </legend>
                     <p id="tipo-cadastro-dica" class="mt-2 text-[0.9375rem] text-tinta-suave">Marque um ou os dois.</p>
 
                     <div class="mt-6 grid gap-4 sm:grid-cols-2">
@@ -70,7 +76,7 @@ const finalizar = (): void => {
                                 name="tipos_cadastro"
                                 :value="opcao.valor"
                                 class="mt-0.5 size-5 shrink-0 cursor-pointer accent-acao focus-visible:outline-none"
-                                :aria-invalid="form.errors.tipos_cadastro ? 'true' : undefined"
+                                :aria-invalid="form.errors.tipos_cadastro ? true : undefined"
                                 @change="form.clearErrors('tipos_cadastro')"
                             />
                             <span class="flex flex-col gap-1">
@@ -80,7 +86,7 @@ const finalizar = (): void => {
                         </label>
                     </div>
 
-                    <p v-if="form.errors.tipos_cadastro" id="tipo-cadastro-erro" class="mt-3 flex items-start gap-1.5 text-[0.875rem] font-semibold text-erro-texto">
+                    <p v-if="form.errors.tipos_cadastro" id="tipo-cadastro-erro" class="mt-3 flex items-start gap-1.5 text-[0.875rem] font-semibold text-invalido-texto">
                         <svg aria-hidden="true" viewBox="0 0 24 24" class="mt-0.5 size-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                             <circle cx="12" cy="12" r="9" />
                             <path d="m15 9-6 6M9 9l6 6" />

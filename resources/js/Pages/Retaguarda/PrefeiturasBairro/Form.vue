@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick } from 'vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import AvisoCamposObrigatorios from '../../../Components/AvisoCamposObrigatorios.vue';
 import CampoCadastro from '../../../Components/CampoCadastro.vue';
+import { focarPrimeiroErro } from '../../../Components/focarPrimeiroErro';
 import SecaoCadastro from '../../../Components/SecaoCadastro.vue';
 import { classeCampo, classeCampoBase, inteiro } from '../../../Components/Retaguarda/listaEditavel';
 import RetaguardaLayout from '../../../Layouts/RetaguardaLayout.vue';
@@ -51,7 +53,7 @@ const removerBairro = (indice: number): void => {
 const salvar = (): void => {
     const opcoes = {
         preserveScroll: true,
-        onError: () => nextTick(() => document.querySelector<HTMLElement>('#formulario-prefeitura [aria-invalid="true"]')?.focus()),
+        onError: () => focarPrimeiroErro('#formulario-prefeitura'),
     };
 
     form.transform((dados) => ({ ...dados, bairros: dados.bairros.map(({ id, nome }) => ({ id, nome })) }));
@@ -85,6 +87,8 @@ const classeBotaoLinha =
         </div>
 
         <form id="formulario-prefeitura" novalidate class="flex flex-col gap-6" @submit.prevent="salvar">
+            <AvisoCamposObrigatorios />
+
             <SecaoCadastro id="secao-prefeitura-dados" :numero="1" titulo="Prefeitura-Bairro">
                 <template #icone>
                     <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -167,6 +171,7 @@ const classeBotaoLinha =
                                     type="text"
                                     maxlength="80"
                                     autocomplete="off"
+                                    required
                                     :class="[classeCampoBase, 'min-w-0 flex-1']"
                                     :aria-invalid="erroDoBairro(indice) ? true : undefined"
                                     :aria-describedby="erroDoBairro(indice) ? `bairro-${bairro.chave}-erro` : undefined"
@@ -179,13 +184,13 @@ const classeBotaoLinha =
                                     <span class="sr-only">Remover {{ bairro.nome || `bairro ${indice + 1}` }}</span>
                                 </button>
                             </div>
-                            <p v-if="erroDoBairro(indice)" :id="`bairro-${bairro.chave}-erro`" class="text-[0.875rem] font-semibold text-erro-texto">
+                            <p v-if="erroDoBairro(indice)" :id="`bairro-${bairro.chave}-erro`" class="text-[0.875rem] font-semibold text-invalido-texto">
                                 {{ erroDoBairro(indice) }}
                             </p>
                         </li>
                     </ul>
 
-                    <p v-if="form.errors.bairros" class="text-[0.875rem] font-semibold text-erro-texto">{{ form.errors.bairros }}</p>
+                    <p v-if="form.errors.bairros" class="text-[0.875rem] font-semibold text-invalido-texto">{{ form.errors.bairros }}</p>
 
                     <div>
                         <button
@@ -218,7 +223,7 @@ const classeBotaoLinha =
                     >
                         {{ form.processing ? 'Salvando…' : 'Salvar Prefeitura-Bairro' }}
                     </button>
-                    <p v-if="form.hasErrors" role="alert" class="text-[0.9375rem] font-semibold text-erro-texto">Confira os campos destacados acima.</p>
+                    <p v-if="form.hasErrors" role="alert" class="text-[0.9375rem] font-semibold text-invalido-texto">Confira os campos destacados acima.</p>
                 </div>
             </div>
         </form>

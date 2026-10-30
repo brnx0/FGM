@@ -73,7 +73,7 @@ const novo = (): RequisitoEditavel => ({ chave: novaChave(), id: null, descricao
                         {{ rotuloDoDocumento(documento, posicao) }}
                     </label>
                 </div>
-                <p v-if="erroDaLista('documentos')" :id="idCampo('documentos-erro')" class="mt-1 text-[0.875rem] font-semibold text-erro-texto">{{ erroDaLista('documentos') }}</p>
+                <p v-if="erroDaLista('documentos')" :id="idCampo('documentos-erro')" class="mt-1 text-[0.875rem] font-semibold text-invalido-texto">{{ erroDaLista('documentos') }}</p>
             </fieldset>
         </template>
     </ListaEditavel>

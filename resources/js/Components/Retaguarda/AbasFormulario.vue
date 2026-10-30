@@ -100,7 +100,7 @@ const classeAba = computed<string>(() =>
                 <span :class="lateral ? 'flex-1' : ''">{{ aba.rotulo }}</span>
                 <span
                     v-if="errosDa(aba) > 0"
-                    class="inline-flex min-w-5 items-center justify-center rounded-pill bg-erro-texto px-1.5 text-[0.6875rem] leading-5 font-bold text-superficie tabular-nums"
+                    class="inline-flex min-w-5 items-center justify-center rounded-pill bg-invalido-texto px-1.5 text-[0.6875rem] leading-5 font-bold text-superficie tabular-nums"
                 >
                     {{ errosDa(aba) }}<span class="sr-only"> {{ errosDa(aba) === 1 ? 'erro' : 'erros' }}</span>
                 </span>

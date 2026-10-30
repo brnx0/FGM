@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed, nextTick } from 'vue';
+import { computed } from 'vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import AvisoCamposObrigatorios from '../../../Components/AvisoCamposObrigatorios.vue';
 import CampoCadastro from '../../../Components/CampoCadastro.vue';
+import { focarPrimeiroErro } from '../../../Components/focarPrimeiroErro';
 import SecaoCadastro from '../../../Components/SecaoCadastro.vue';
 import RetaguardaLayout from '../../../Layouts/RetaguardaLayout.vue';
 import type { RetaguardaUsuariosFormProps } from '../../../types';
@@ -60,7 +62,7 @@ const ajudaCpf = !editando
 const salvar = (): void => {
     const opcoes = {
         preserveScroll: true,
-        onError: () => nextTick(() => document.querySelector<HTMLElement>('#formulario-usuario [aria-invalid="true"]')?.focus()),
+        onError: () => focarPrimeiroErro('#formulario-usuario'),
         onFinish: () => form.reset('senha', 'senha_confirmation'),
     };
 
@@ -72,7 +74,7 @@ const salvar = (): void => {
 };
 
 const classeCampo =
-    'h-12 w-full rounded-[12px] border border-tinta-suave/70 bg-superficie px-4 text-base text-home-tinta placeholder:text-tinta-suave aria-invalid:border-erro-texto aria-invalid:ring-1 aria-invalid:ring-erro-texto';
+    'h-12 w-full rounded-[12px] border border-tinta-suave/70 bg-superficie px-4 text-base text-home-tinta placeholder:text-tinta-suave';
 const classeMarcacao = 'flex min-h-11 cursor-pointer items-start gap-3 py-2 text-[0.9375rem] leading-[1.5]';
 const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
 </script>
@@ -93,6 +95,8 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
         </div>
 
         <form id="formulario-usuario" novalidate class="flex flex-col gap-6" @submit.prevent="salvar">
+            <AvisoCamposObrigatorios />
+
             <SecaoCadastro id="secao-usuario-dados" :numero="1" titulo="Dados do usuário">
                 <template #icone>
                     <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -145,14 +149,17 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                             <input
                                 v-model="form.confirmar_proponente"
                                 type="checkbox"
+                                required
                                 :class="classeCaixa"
                                 :aria-invalid="form.errors.confirmar_proponente ? true : undefined"
                                 :aria-describedby="form.errors.confirmar_proponente ? 'confirmar_proponente-erro' : undefined"
                                 @change="form.clearErrors('confirmar_proponente')"
                             />
-                            Confirmo transformar este proponente em usuário da retaguarda
+                            <span>
+                                Confirmo transformar este proponente em usuário da retaguarda<span aria-hidden="true" class="ml-0.5 text-invalido-texto">*</span>
+                            </span>
                         </label>
-                        <p v-if="form.errors.confirmar_proponente" id="confirmar_proponente-erro" class="text-[0.875rem] font-semibold text-erro-texto">
+                        <p v-if="form.errors.confirmar_proponente" id="confirmar_proponente-erro" class="text-[0.875rem] font-semibold text-invalido-texto">
                             {{ form.errors.confirmar_proponente }}
                         </p>
                     </div>
@@ -217,19 +224,20 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                     </CampoCadastro>
 
                     <fieldset class="md:col-span-2" :aria-describedby="form.errors.papeis ? 'papeis-erro' : undefined">
-                        <legend class="text-[0.9375rem] font-semibold">Papéis<span aria-hidden="true" class="ml-0.5 text-erro-texto">*</span></legend>
+                        <legend class="text-[0.9375rem] font-semibold">Papéis<span aria-hidden="true" class="ml-0.5 text-invalido-texto">*</span></legend>
                         <label v-for="papel in papeisDisponiveis" :key="papel.slug" :class="classeMarcacao">
                             <input
                                 v-model="form.papeis"
                                 type="checkbox"
                                 :value="papel.slug"
+                                :required="form.papeis.length === 0"
                                 :class="classeCaixa"
                                 :aria-invalid="form.errors.papeis ? true : undefined"
                                 @change="form.clearErrors('papeis')"
                             />
                             {{ papel.nome }}
                         </label>
-                        <p v-if="form.errors.papeis" id="papeis-erro" class="text-[0.875rem] font-semibold text-erro-texto">{{ form.errors.papeis }}</p>
+                        <p v-if="form.errors.papeis" id="papeis-erro" class="text-[0.875rem] font-semibold text-invalido-texto">{{ form.errors.papeis }}</p>
                     </fieldset>
                 </div>
             </SecaoCadastro>
@@ -250,7 +258,7 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                     >
                         {{ form.processing ? 'Salvando…' : 'Salvar usuário' }}
                     </button>
-                    <p v-if="form.hasErrors" role="alert" class="text-[0.9375rem] font-semibold text-erro-texto">Confira os campos destacados acima.</p>
+                    <p v-if="form.hasErrors" role="alert" class="text-[0.9375rem] font-semibold text-invalido-texto">Confira os campos destacados acima.</p>
                 </div>
             </div>
         </form>

@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import AvisoCamposObrigatorios from '../../Components/AvisoCamposObrigatorios.vue';
 import FaixaPortal from '../../Components/FaixaPortal.vue';
+import { focarPrimeiroErro } from '../../Components/focarPrimeiroErro';
 import DocumentoExigido from '../../Components/Inscricao/DocumentoExigido.vue';
 import EscolhasDaInscricao from '../../Components/Inscricao/EscolhasDaInscricao.vue';
 import SecaoCadastro from '../../Components/SecaoCadastro.vue';
@@ -51,13 +53,12 @@ const formulario = useForm<{ cadastro: string; categoria: number | null; cotas: 
     categoria: props.inscricao.categoriaId,
     cotas: [...props.inscricao.cotas],
 });
-const escolhas = ref<InstanceType<typeof EscolhasDaInscricao> | null>(null);
 
 const salvarEscolhas = (): void => {
     formulario.put(BASE, {
         preserveScroll: true,
         onSuccess: () => formulario.defaults(),
-        onError: () => nextTick(() => escolhas.value?.focarPrimeiroErro()),
+        onError: () => focarPrimeiroErro('#formulario-escolhas'),
     });
 };
 
@@ -248,11 +249,11 @@ const classeSecundario = `${classeBotao} border border-tinta-suave/70 bg-superfi
                 </template>
 
                 <form v-if="podeEditar" id="formulario-escolhas" novalidate class="flex flex-col gap-6" @submit.prevent="salvarEscolhas">
+                    <AvisoCamposObrigatorios />
                     <p class="max-w-2xl text-[0.875rem] leading-[1.5] text-tinta-suave">
                         Trocar o cadastro, a categoria ou as cotas pode mudar os documentos exigidos. Os arquivos dos documentos que deixarem de ser exigidos são apagados.
                     </p>
                     <EscolhasDaInscricao
-                        ref="escolhas"
                         v-model:cadastro="formulario.cadastro"
                         v-model:categoria="formulario.categoria"
                         v-model:cotas-escolhidas="formulario.cotas"
@@ -343,7 +344,7 @@ const classeSecundario = `${classeBotao} border border-tinta-suave/70 bg-superfi
                     <div id="pendencias-finalizar" aria-live="polite">
                         <template v-if="pendencias.length > 0">
                             <p class="font-semibold">Para finalizar, resolva:</p>
-                            <ul class="mt-2 list-disc space-y-1 pl-6 text-erro-texto">
+                            <ul class="mt-2 list-disc space-y-1 pl-6 text-invalido-texto">
                                 <li v-for="pendencia in pendencias" :key="pendencia">{{ pendencia }}</li>
                             </ul>
                         </template>

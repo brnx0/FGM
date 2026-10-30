@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import AvisoCamposObrigatorios from '../../Components/AvisoCamposObrigatorios.vue';
 import CampoCadastro from '../../Components/CampoCadastro.vue';
 import FlashMessage from '../../Components/FlashMessage.vue';
+import { focarPrimeiroErro } from '../../Components/focarPrimeiroErro';
 import GovBrButton from '../../Components/GovBrButton.vue';
 import InstitutionalBar from '../../Components/InstitutionalBar.vue';
 import VidroLiquido from '../../Components/VidroLiquido.vue';
@@ -12,17 +13,16 @@ import HomeLayout from '../../Layouts/HomeLayout.vue';
 defineOptions({ layout: HomeLayout });
 
 const form = useForm({ email: '', senha: '' });
-const campoEmail = ref<HTMLInputElement | null>(null);
 
 const classeCampo =
-    'h-12 w-full rounded-[12px] border border-tinta-suave/70 bg-superficie px-4 text-base text-home-tinta placeholder:text-tinta-suave aria-invalid:border-erro-texto aria-invalid:ring-1 aria-invalid:ring-erro-texto';
+    'h-12 w-full rounded-[12px] border border-tinta-suave/70 bg-superficie px-4 text-base text-home-tinta placeholder:text-tinta-suave';
 
 // Recusado, ou barrado pelo limite de tentativas (que o servidor devolve como erro do e-mail):
-// a senha é apagada e o foco volta ao e-mail, onde aparece o erro.
+// a senha é apagada e o foco vai ao primeiro campo com erro (o e-mail, onde o servidor mostra a recusa).
 const entrar = (): void => {
     form.post('/retaguarda/login', {
         onFinish: () => form.reset('senha'),
-        onError: () => campoEmail.value?.focus(),
+        onError: () => focarPrimeiroErro('#formulario-login'),
     });
 };
 </script>
@@ -54,11 +54,12 @@ const entrar = (): void => {
                 <h1 id="titulo-login" class="mt-1 text-[1.625rem] leading-tight font-bold">Entrar</h1>
                 <p class="mt-2 text-[0.9375rem] text-tinta-suave">Acesso restrito aos usuários da retaguarda do portal da FGM.</p>
 
-                <form class="mt-6 flex flex-col gap-5" novalidate @submit.prevent="entrar">
-                    <CampoCadastro id="email" rotulo="E-mail" :erro="form.errors.email" v-slot="{ descricao, invalido }">
+                <form id="formulario-login" class="mt-6 flex flex-col gap-5" novalidate @submit.prevent="entrar">
+                    <AvisoCamposObrigatorios />
+
+                    <CampoCadastro id="email" rotulo="E-mail" obrigatorio :erro="form.errors.email" v-slot="{ descricao, invalido }">
                         <input
                             id="email"
-                            ref="campoEmail"
                             v-model="form.email"
                             type="email"
                             autocomplete="username"
@@ -69,7 +70,7 @@ const entrar = (): void => {
                         />
                     </CampoCadastro>
 
-                    <CampoCadastro id="senha" rotulo="Senha" :erro="form.errors.senha" v-slot="{ descricao, invalido }">
+                    <CampoCadastro id="senha" rotulo="Senha" obrigatorio :erro="form.errors.senha" v-slot="{ descricao, invalido }">
                         <input
                             id="senha"
                             v-model="form.senha"

@@ -81,7 +81,7 @@ export const OPCOES_SIM_NAO: { valor: boolean | null; rotulo: string }[] = [
 
 // Sem largura: campos de largura fixa a acrescentam; os demais ocupam a linha (classeCampo).
 export const classeCampoBase =
-    'h-12 rounded-[12px] border border-tinta-suave/70 bg-superficie px-4 text-base text-home-tinta placeholder:text-tinta-suave aria-invalid:border-erro-texto aria-invalid:ring-1 aria-invalid:ring-erro-texto';
+    'h-12 rounded-[12px] border border-tinta-suave/70 bg-superficie px-4 text-base text-home-tinta placeholder:text-tinta-suave';
 export const classeCampo = `${classeCampoBase} w-full`;
 export const classeTexto = `${classeCampo} h-auto py-3 leading-[1.6]`;
 export const classeMarcacao = 'flex min-h-11 cursor-pointer items-start gap-3 py-2 text-[0.9375rem] leading-[1.5]';

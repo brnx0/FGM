@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useForm } from '@inertiajs/vue3';
+import AvisoCamposObrigatorios from '../../AvisoCamposObrigatorios.vue';
 import CampoArquivo from '../../CampoArquivo.vue';
 import CampoCadastro from '../../CampoCadastro.vue';
+import { focarPrimeiroErro } from '../../focarPrimeiroErro';
 
 const props = defineProps<{
     /** Tamanho máximo do PDF (Integração com IA). */
@@ -12,6 +14,7 @@ const props = defineProps<{
 }>();
 
 const URL_IMPORTACOES = '/retaguarda/editais/importacoes';
+const FORMULARIO = '#formulario-importar-edital';
 // Mesmo texto da recusa do servidor (AnaliseComRedundancia::INDISPONIVEL).
 const SEM_CONFIGURACAO = 'Serviço de IA indisponível no momento. Caso persista, contate o administrador.';
 
@@ -50,6 +53,7 @@ const escolher = (arquivo: File | null): void => {
 const enviar = (): void => {
     if (!form.pdf) {
         form.setError('pdf', 'Este campo é obrigatório.');
+        focarPrimeiroErro(FORMULARIO);
         return;
     }
 
@@ -59,6 +63,7 @@ const enviar = (): void => {
         onSuccess: () => fechar(),
         onError: (erros) => {
             recusa.value = erros.configuracao ?? '';
+            focarPrimeiroErro(FORMULARIO);
         },
     });
 };
@@ -89,7 +94,7 @@ const textoBotao = computed(() => {
             class="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-card border border-hairline bg-superficie p-6 text-home-tinta backdrop:bg-noite/60"
             @close="aoFechar"
         >
-            <form novalidate class="flex flex-col gap-5" @submit.prevent="enviar">
+            <form id="formulario-importar-edital" novalidate class="flex flex-col gap-5" @submit.prevent="enviar">
                 <div>
                     <h2 id="importar-edital-titulo" class="text-[1.25rem] leading-tight font-bold">Importar edital com IA</h2>
                     <p id="importar-edital-descricao" class="mt-2 text-[0.9375rem] text-tinta-suave">
@@ -97,6 +102,8 @@ const textoBotao = computed(() => {
                         minutos; você pode continuar usando o sistema.
                     </p>
                 </div>
+
+                <AvisoCamposObrigatorios v-if="!semConfiguracao" />
 
                 <div v-if="semConfiguracao" id="importar-edital-recusa" role="alert" class="flex items-start gap-2 rounded-[12px] bg-nevoa px-4 py-3 font-semibold text-acao">
                     <svg aria-hidden="true" viewBox="0 0 24 24" class="mt-0.5 size-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">

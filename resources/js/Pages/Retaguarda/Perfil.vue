@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed, nextTick } from 'vue';
+import { computed } from 'vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import AvisoCamposObrigatorios from '../../Components/AvisoCamposObrigatorios.vue';
 import CampoCadastro from '../../Components/CampoCadastro.vue';
+import { focarPrimeiroErro } from '../../Components/focarPrimeiroErro';
 import SecaoCadastro from '../../Components/SecaoCadastro.vue';
 import RetaguardaLayout from '../../Layouts/RetaguardaLayout.vue';
 import type { RetaguardaPerfilProps } from '../../types';
@@ -44,14 +46,14 @@ const mascararTelefone = (evento: Event): void => {
 const salvar = (): void => {
     form.put(URL_PERFIL, {
         preserveScroll: true,
-        onError: () => nextTick(() => document.querySelector<HTMLElement>('#formulario-perfil [aria-invalid="true"]')?.focus()),
+        onError: () => focarPrimeiroErro('#formulario-perfil'),
         onSuccess: () => form.defaults({ name: form.name, email: form.email.trim().toLowerCase(), telefone: form.telefone, senha_atual: '' }),
         onFinish: () => form.reset('senha_atual'),
     });
 };
 
 const classeCampo =
-    'h-12 w-full rounded-[12px] border border-tinta-suave/70 bg-superficie px-4 text-base text-home-tinta placeholder:text-tinta-suave aria-invalid:border-erro-texto aria-invalid:ring-1 aria-invalid:ring-erro-texto';
+    'h-12 w-full rounded-[12px] border border-tinta-suave/70 bg-superficie px-4 text-base text-home-tinta placeholder:text-tinta-suave';
 const classeLeitura = 'flex min-h-12 items-center rounded-[12px] border border-hairline bg-nevoa px-4 text-base text-home-tinta';
 </script>
 
@@ -66,6 +68,8 @@ const classeLeitura = 'flex min-h-12 items-center rounded-[12px] border border-h
         </div>
 
         <form id="formulario-perfil" novalidate class="flex flex-col gap-6" @submit.prevent="salvar">
+            <AvisoCamposObrigatorios />
+
             <SecaoCadastro id="secao-dados" :numero="1" titulo="Seus dados">
                 <template #icone>
                     <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -175,7 +179,7 @@ const classeLeitura = 'flex min-h-12 items-center rounded-[12px] border border-h
                 >
                     {{ form.processing ? 'Salvando…' : 'Salvar perfil' }}
                 </button>
-                <p v-if="form.hasErrors" role="alert" class="text-[0.9375rem] font-semibold text-erro-texto">Confira os campos destacados acima.</p>
+                <p v-if="form.hasErrors" role="alert" class="text-[0.9375rem] font-semibold text-invalido-texto">Confira os campos destacados acima.</p>
             </div>
         </form>
     </div>
