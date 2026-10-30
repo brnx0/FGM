@@ -92,6 +92,12 @@ class Inscricao extends Model
         return $this->hasMany(InscricaoDocumento::class);
     }
 
+    /** @return HasMany<InscricaoResposta, $this> */
+    public function respostas(): HasMany
+    {
+        return $this->hasMany(InscricaoResposta::class);
+    }
+
     /**
      * Documentos do edital que esta inscrição precisa enviar (de todas as etapas), na ordem do edital:
      * os da natureza do cadastro, da categoria escolhida e das cotas marcadas.

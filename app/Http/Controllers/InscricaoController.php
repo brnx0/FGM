@@ -13,6 +13,7 @@ use App\Models\Inscricao;
 use App\Models\InscricaoDocumento;
 use App\Support\ArquivoArmazenado;
 use App\Support\Inscricao\PropsDaInscricao;
+use App\Support\Inscricao\QuestionarioDaInscricao;
 use App\Support\Inscricao\RegrasDaInscricao;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
@@ -156,6 +157,7 @@ class InscricaoController extends Controller
                 $this->recusarSeLimiteAtingido($travada);
             }
             $travada->save();
+            (new QuestionarioDaInscricao($travada))->descartarRespostasQueNaoValem();
 
             return $this->descartarDocumentosForaDaLista($travada);
         });

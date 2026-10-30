@@ -12,6 +12,7 @@ use App\Http\Controllers\EventoController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\InscricaoController;
 use App\Http\Controllers\InscricaoDocumentoController;
+use App\Http\Controllers\InscricaoRespostaController;
 use App\Http\Controllers\OrganizacaoController;
 use App\Http\Controllers\PaginaController;
 use App\Http\Controllers\PortalController;
@@ -72,6 +73,9 @@ Route::middleware(['auth', 'nao-gestor', 'cadastro-completo', 'inertia.encrypt',
         Route::get('/portal/inscricoes/{inscricao}/documentos/{documento}/arquivo', 'arquivo')->whereNumber(['inscricao', 'documento'])->name('portal.inscricoes.documentos.arquivo');
         Route::post('/portal/inscricoes/{inscricao}/documentos/{documento}/conferir', 'conferir')->middleware('throttle:10,1,conferir-documento')->whereNumber(['inscricao', 'documento'])->name('portal.inscricoes.documentos.conferir');
     });
+
+    // {secao} é uma seção do questionário do edital da inscrição; de outro edital, 404.
+    Route::put('/portal/inscricoes/{inscricao}/secoes/{secao}', [InscricaoRespostaController::class, 'update'])->whereNumber(['inscricao', 'secao'])->name('portal.inscricoes.secoes.update');
 });
 
 Route::middleware(['auth', 'nao-gestor', 'cadastro-completo', 'inertia.encrypt'])->controller(OrganizacaoController::class)->group(function () {
