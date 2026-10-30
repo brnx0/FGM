@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Retaguarda\AreaAtuacaoController;
+use App\Http\Controllers\Retaguarda\AvaliadorController;
 use App\Http\Controllers\Retaguarda\ConexaoIaController;
 use App\Http\Controllers\Retaguarda\EditalController;
 use App\Http\Controllers\Retaguarda\EventoController;
@@ -110,6 +111,17 @@ Route::prefix('retaguarda')->name('retaguarda.')->group(function () {
                 ->whereIn('campo', PessoaFisica::ARQUIVOS)
                 ->name('proponentes.anexo');
         });
+
+        // Cadastro. Avaliador não se exclui, só se desativa. As telas ficam cifradas no histórico (CPF e data de nascimento).
+        Route::middleware('inertia.encrypt')->group(function () {
+            Route::resource('avaliadores', AvaliadorController::class)
+                ->only(['index', 'create', 'store', 'edit', 'update'])
+                ->parameters(['avaliadores' => 'avaliador'])
+                ->where(['avaliador' => '[0-9]+']);
+        });
+        Route::patch('/avaliadores/{avaliador}/ativo', [AvaliadorController::class, 'ativo'])
+            ->whereNumber('avaliador')
+            ->name('avaliadores.ativo');
 
         // Parametrização. Prefeitura-Bairro não se exclui, só se desativa (o cadastro do proponente guarda o código dela).
         Route::resource('prefeituras-bairro', PrefeituraBairroController::class)
