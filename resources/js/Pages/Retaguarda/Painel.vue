@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
+import AbasPainel from '../../Components/Retaguarda/Painel/AbasPainel.vue';
 import EsqueletoPainel from '../../Components/Retaguarda/Painel/EsqueletoPainel.vue';
 import Capacidade from '../../Components/Retaguarda/Painel/Secoes/Capacidade.vue';
 import Editais from '../../Components/Retaguarda/Painel/Secoes/Editais.vue';
 import Evolucao from '../../Components/Retaguarda/Painel/Secoes/Evolucao.vue';
 import Inscricoes from '../../Components/Retaguarda/Painel/Secoes/Inscricoes.vue';
 import Organizacoes from '../../Components/Retaguarda/Painel/Secoes/Organizacoes.vue';
+import PerfilDosTerritorios from '../../Components/Retaguarda/Painel/Secoes/PerfilDosTerritorios.vue';
 import Pessoas from '../../Components/Retaguarda/Painel/Secoes/Pessoas.vue';
 import Territorio from '../../Components/Retaguarda/Painel/Secoes/Territorio.vue';
 import VisaoGeral from '../../Components/Retaguarda/Painel/Secoes/VisaoGeral.vue';
@@ -64,6 +66,19 @@ const editais = computed(() => props.editais ?? anteriores.editais);
 const capacidade = computed(() => props.capacidade ?? anteriores.capacidade);
 const inscricoes = computed(() => props.inscricoes ?? anteriores.inscricoes);
 const evolucao = computed(() => props.evolucao ?? anteriores.evolucao);
+
+// Uma aba por assunto, para a tela não virar uma rolagem só. Trocar o filtro mantém a aba (a visita preserva o estado);
+// "?aba=" abre o painel direto numa delas.
+const ABAS = [
+    { id: 'visao', rotulo: 'Visão geral' },
+    { id: 'territorio', rotulo: 'Território' },
+    { id: 'pessoas', rotulo: 'Pessoas e organizações' },
+    { id: 'editais', rotulo: 'Editais e inscrições' },
+    { id: 'evolucao', rotulo: 'Evolução' },
+    { id: 'avaliadores', rotulo: 'Avaliadores e eventos' },
+];
+const abaDaUrl = new URLSearchParams(window.location.search).get('aba');
+const abaAtiva = ref<string>(ABAS.some((aba) => aba.id === abaDaUrl) ? (abaDaUrl as string) : 'visao');
 </script>
 
 <template>
@@ -116,29 +131,47 @@ const evolucao = computed(() => props.evolucao ?? anteriores.evolucao);
             </div>
         </form>
 
-        <VisaoGeral v-if="visao" :dados="visao" :atualizando="atualizando('visao')" />
-        <EsqueletoPainel v-else secao="a visão geral" forma="cartoes" />
+        <AbasPainel v-model="abaAtiva" :abas="ABAS">
+            <template #visao>
+                <VisaoGeral v-if="visao" :dados="visao" :atualizando="atualizando('visao')" />
+                <EsqueletoPainel v-else secao="a visão geral" forma="cartoes" />
+            </template>
 
-        <Territorio v-if="territorio" :dados="territorio" :atualizando="atualizando('territorio')" />
-        <EsqueletoPainel v-else secao="o território" forma="mapa" />
+            <template #territorio>
+                <Territorio v-if="territorio" :dados="territorio" :atualizando="atualizando('territorio')" />
+                <EsqueletoPainel v-else secao="o território" forma="mapa" />
 
-        <Pessoas v-if="pessoas" :dados="pessoas" :atualizando="atualizando('pessoas')" />
-        <EsqueletoPainel v-else secao="o perfil das pessoas" />
+                <!-- O perfil de cada Prefeitura-Bairro chega com a evolução, mas o assunto é o território. -->
+                <PerfilDosTerritorios v-if="evolucao" :dados="evolucao.territorios" :base-minima="baseMinima" :atualizando="atualizando('evolucao')" />
+                <EsqueletoPainel v-else secao="o perfil dos territórios" />
+            </template>
 
-        <Organizacoes v-if="organizacoes" :dados="organizacoes" :atualizando="atualizando('organizacoes')" />
-        <EsqueletoPainel v-else secao="as organizações" />
+            <template #pessoas>
+                <Pessoas v-if="pessoas" :dados="pessoas" :atualizando="atualizando('pessoas')" />
+                <EsqueletoPainel v-else secao="o perfil das pessoas" />
 
-        <Editais v-if="editais" :dados="editais" :atualizando="atualizando('editais')" />
-        <EsqueletoPainel v-else secao="os editais" forma="cartoes" />
+                <Organizacoes v-if="organizacoes" :dados="organizacoes" :atualizando="atualizando('organizacoes')" />
+                <EsqueletoPainel v-else secao="as organizações" />
+            </template>
 
-        <Inscricoes v-if="inscricoes" :dados="inscricoes" :atualizando="atualizando('inscricoes')" />
-        <EsqueletoPainel v-else secao="as inscrições" forma="cartoes" />
+            <template #editais>
+                <Editais v-if="editais" :dados="editais" :atualizando="atualizando('editais')" />
+                <EsqueletoPainel v-else secao="os editais" forma="cartoes" />
 
-        <Evolucao v-if="evolucao" :dados="evolucao" :base-minima="baseMinima" :atualizando="atualizando('evolucao')" />
-        <EsqueletoPainel v-else secao="a evolução" />
+                <Inscricoes v-if="inscricoes" :dados="inscricoes" :atualizando="atualizando('inscricoes')" />
+                <EsqueletoPainel v-else secao="as inscrições" forma="cartoes" />
+            </template>
 
-        <Capacidade v-if="capacidade" :dados="capacidade" :atualizando="atualizando('capacidade')" />
-        <EsqueletoPainel v-else secao="avaliadores e eventos" />
+            <template #evolucao>
+                <Evolucao v-if="evolucao" :dados="evolucao" :atualizando="atualizando('evolucao')" />
+                <EsqueletoPainel v-else secao="a evolução" />
+            </template>
+
+            <template #avaliadores>
+                <Capacidade v-if="capacidade" :dados="capacidade" :atualizando="atualizando('capacidade')" />
+                <EsqueletoPainel v-else secao="avaliadores e eventos" />
+            </template>
+        </AbasPainel>
 
         <p class="text-center text-[0.75rem] text-tinta-suave">
             O painel mostra só totais e percentuais, nunca uma pessoa.

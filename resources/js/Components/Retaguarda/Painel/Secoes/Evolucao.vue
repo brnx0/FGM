@@ -5,12 +5,9 @@ import EvolucaoMensal from '../EvolucaoMensal.vue';
 import { dataCurta, numero } from '../formatos';
 import QuadroPainel from '../QuadroPainel.vue';
 import SecaoPainel from '../SecaoPainel.vue';
-import TabelaDeCalor from '../TabelaDeCalor.vue';
 
 defineProps<{
     dados: PainelEvolucao;
-    /** Mínimo de pessoas para um território mostrar percentuais. */
-    baseMinima: number;
     atualizando?: boolean;
 }>();
 </script>
@@ -18,8 +15,8 @@ defineProps<{
 <template>
     <SecaoPainel
         id="evolucao"
-        titulo="Evolução e território"
-        descricao="Como os cadastros crescem, o ritmo das inscrições e o perfil de cada Prefeitura-Bairro"
+        titulo="Evolução"
+        descricao="Como os cadastros crescem e o ritmo das inscrições"
         icone="M4 6h16v14H4zM4 10h16M9 3v5M15 3v5"
         :atualizando="atualizando"
     >
@@ -37,18 +34,6 @@ defineProps<{
                 :dias="dados.ritmo.dias"
                 :maximo="dados.ritmo.maximo"
                 legenda="Inscrições enviadas por mês"
-            />
-        </QuadroPainel>
-
-        <QuadroPainel
-            titulo="Perfil por Prefeitura-Bairro"
-            :descricao="`Percentual das pessoas de cada território em cada grupo; o tom mais forte é o maior da coluna. Com menos de ${baseMinima} pessoas, o percentual não aparece.`"
-        >
-            <TabelaDeCalor
-                :colunas="dados.territorios.colunas"
-                :linhas="dados.territorios.linhas"
-                :base-minima="baseMinima"
-                legenda="Perfil das pessoas por Prefeitura-Bairro"
             />
         </QuadroPainel>
     </SecaoPainel>
