@@ -648,13 +648,14 @@ html.alto-contraste .campo-invalido {
         stroke: none;
     }
 
-    /* Íris do anexo: ao ir para o login, um círculo azul abre a partir do clique e cobre a tela;
-       na página seguinte ele se desfaz e o conteúdo sobe. data-fase vem de TransicaoIris.vue. */
+    /* Íris do anexo: ao ir para o login (e ao sair, com a despedida), um círculo azul abre a partir do clique e
+       cobre a tela; na página seguinte ele se desfaz e o conteúdo sobe. data-fase vem de TransicaoIris.vue. */
     .iris {
         position: fixed;
         inset: 0;
         z-index: 90;
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
         pointer-events: none;
@@ -718,6 +719,60 @@ html.alto-contraste .campo-invalido {
     .iris[data-fase='saindo'] .iris-logo {
         opacity: 0;
         transform: translateY(-10px) scale(1.02);
+        transition:
+            opacity 0.4s ease,
+            transform 0.7s ease;
+    }
+
+    /* Despedida do Sair: entra logo depois da logo e continua na home, até a íris se desfazer. */
+    .iris-despedida {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        max-width: 36rem;
+        margin-top: 32px;
+        padding: 0 24px;
+        color: #fff;
+        text-align: center;
+        opacity: 0;
+        transform: translateY(14px);
+        filter: blur(4px);
+    }
+
+    .iris-despedida-titulo {
+        font-family: var(--font-barlow);
+        font-size: clamp(2.25rem, 7vw, 3.5rem);
+        font-weight: 800;
+        line-height: 1;
+        letter-spacing: 0.01em;
+        text-transform: uppercase;
+    }
+
+    .iris-despedida-texto {
+        font-family: var(--font-montserrat);
+        font-size: 1.0625rem;
+        line-height: 1.5;
+        color: rgba(255, 255, 255, 0.85);
+    }
+
+    .iris:is([data-fase='entrando'], [data-fase='coberta']) .iris-despedida {
+        opacity: 1;
+        transform: none;
+        filter: none;
+    }
+
+    .iris[data-fase='entrando'] .iris-despedida {
+        transition:
+            opacity 0.6s ease 0.7s,
+            transform 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) 0.7s,
+            filter 0.6s ease 0.7s;
+    }
+
+    .iris[data-fase='saindo'] .iris-despedida {
+        opacity: 0;
+        transform: translateY(-10px);
         transition:
             opacity 0.4s ease,
             transform 0.7s ease;
@@ -800,6 +855,10 @@ html.alto-contraste .botao-claro {
 
 html.alto-contraste .iris {
     background: var(--color-fundo);
+}
+
+html.alto-contraste .iris-despedida-texto {
+    color: #fff;
 }
 
 /* Texto corrido das páginas institucionais. */

@@ -66,7 +66,7 @@ onUnmounted(pararDeOuvir);
                 <template v-if="usuario">
                     <!-- Abaixo de 2xl a linha não comporta o nome: ele aparece no menu. -->
                     <span class="hidden max-w-48 truncate text-[0.9375rem] font-semibold 2xl:inline">{{ usuario.nome }}</span>
-                    <form method="post" action="/logout">
+                    <form method="post" action="/logout" data-iris>
                         <input type="hidden" name="_token" :value="csrf" />
                         <button
                             type="submit"

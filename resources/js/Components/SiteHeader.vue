@@ -48,7 +48,7 @@ onUnmounted(pararDeOuvir);
             <div class="hidden items-center gap-3 nav:flex">
                 <template v-if="usuario">
                     <span class="max-w-48 truncate text-[0.9375rem] font-semibold">{{ usuario.nome }}</span>
-                    <form method="post" action="/logout">
+                    <form method="post" action="/logout" data-iris>
                         <input type="hidden" name="_token" :value="csrf" />
                         <button type="submit" class="pressionavel inline-flex min-h-11 items-center rounded-pill border border-acao px-4 text-[0.9375rem] font-semibold text-acao hover:bg-nevoa">
                             Sair
@@ -92,7 +92,7 @@ onUnmounted(pararDeOuvir);
             <div class="mt-4">
                 <div v-if="usuario" class="flex items-center justify-between gap-3">
                     <span class="truncate font-semibold">{{ usuario.nome }}</span>
-                    <form method="post" action="/logout">
+                    <form method="post" action="/logout" data-iris>
                         <input type="hidden" name="_token" :value="csrf" />
                         <button type="submit" class="pressionavel inline-flex min-h-11 items-center rounded-pill border border-acao px-5 font-semibold text-acao">
                             Sair
