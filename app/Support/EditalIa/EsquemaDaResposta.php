@@ -107,7 +107,6 @@ final class EsquemaDaResposta
                 'naturezas' => self::lista(self::enum(NaturezaProponente::class), 'Naturezas a que se aplica; vazia = todas.'),
                 'categorias' => $nomesDeCategorias,
                 'modalidade_cota' => self::enum(ModalidadeCota::class, 'Só nos documentos da validação de cotas.'),
-                'anexo_referencia' => self::texto('Anexo do edital que serve de modelo, ex.: Anexo IV — Declaração de endereço.'),
             ], ['nome', 'etapa'])),
             'requisitos' => self::lista(self::objeto([
                 'descricao' => self::texto('Condição que a inscrição precisa cumprir para ser homologada.'),

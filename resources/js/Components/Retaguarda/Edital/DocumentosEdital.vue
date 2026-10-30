@@ -33,7 +33,7 @@ const ACEITOS_MODELO =
     '.pdf,.doc,.docx,.xls,.xlsx,.odt,.ods,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.oasis.opendocument.text,application/vnd.oasis.opendocument.spreadsheet';
 
 /** Campos que aparecem no cartão: só os erros deles contam no selo (id e remover_modelo não mostram mensagem). */
-const CAMPOS_VISIVEIS = /^(nome|orientacao|etapa|obrigatorio|naturezas|todas_categorias|categorias|modalidade_cota|anexo_referencia|checagem|instrucao_ia|modelo)(\.|$)/;
+const CAMPOS_VISIVEIS = /^(nome|orientacao|etapa|obrigatorio|naturezas|todas_categorias|categorias|modalidade_cota|checagem|instrucao_ia|modelo)(\.|$)/;
 
 const rotulo = (opcoes: OpcaoFormulario[], valor: string): string | undefined => opcoes.find((opcao) => opcao.valor === valor)?.rotulo;
 
@@ -72,7 +72,6 @@ const novo = (): DocumentoEditavel => ({
     todas_categorias: true,
     categorias: [],
     modalidade_cota: '',
-    anexo_referencia: '',
     checagem: 'aceita_sem_validar',
     instrucao_ia: '',
     modelo: null,
@@ -139,7 +138,6 @@ const pedirInstrucoes = async (lista: DocumentoEditavel[]): Promise<RespostaInst
                     nome: documento.nome.trim(),
                     orientacao: documento.orientacao,
                     etapa: documento.etapa,
-                    anexo_referencia: documento.anexo_referencia,
                 })),
             }),
         });
@@ -401,25 +399,6 @@ const classeBotaoIa =
                     </div>
                     <p v-if="erroDaLista('categorias')" :id="idCampo('categorias-erro')" class="mt-1 text-[0.875rem] font-semibold text-invalido-texto">{{ erroDaLista('categorias') }}</p>
                 </fieldset>
-
-                <CampoCadastro
-                    :id="idCampo('anexo_referencia')"
-                    rotulo="Anexo do edital que serve de modelo"
-                    :erro="erro('anexo_referencia')"
-                    v-slot="{ descricao, invalido }"
-                >
-                    <input
-                        :id="idCampo('anexo_referencia')"
-                        v-model="documento.anexo_referencia"
-                        type="text"
-                        maxlength="255"
-                        placeholder="Ex.: Anexo IV — Declaração de endereço"
-                        :class="classeCampo"
-                        :aria-invalid="invalido || undefined"
-                        :aria-describedby="descricao"
-                        @input="limpar('anexo_referencia')"
-                    />
-                </CampoCadastro>
 
                 <CampoCadastro :id="idCampo('checagem')" rotulo="Checagem pela IA" obrigatorio :erro="erro('checagem')" v-slot="{ descricao, invalido }">
                     <select

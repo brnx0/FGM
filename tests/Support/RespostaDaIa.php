@@ -57,11 +57,11 @@ trait RespostaDaIa
             'documentos' => [
                 [
                     'nome' => 'Portfólio', 'orientacao' => 'Até 10 páginas.', 'etapa' => 'inscricao', 'obrigatorio' => true,
-                    'naturezas' => null, 'categorias' => ['dança'], 'modalidade_cota' => null, 'anexo_referencia' => null,
+                    'naturezas' => null, 'categorias' => ['dança'], 'modalidade_cota' => null,
                 ],
                 [
                     'nome' => 'Autodeclaração étnico-racial', 'orientacao' => null, 'etapa' => 'validacao_cotas', 'obrigatorio' => true,
-                    'naturezas' => ['pessoa_fisica'], 'categorias' => [], 'modalidade_cota' => 'negros', 'anexo_referencia' => 'Anexo IV — Autodeclaração',
+                    'naturezas' => ['pessoa_fisica'], 'categorias' => [], 'modalidade_cota' => 'negros',
                 ],
             ],
             'requisitos' => [

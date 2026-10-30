@@ -44,7 +44,7 @@ class InstrucoesDocumentoTest extends TestCase
     }
 
     /**
-     * @return list<array{nome: string, orientacao: string|null, etapa: string, anexo_referencia: string|null}>
+     * @return list<array{nome: string, orientacao: string|null, etapa: string}>
      */
     private static function documentos(int $quantidade): array
     {
@@ -52,7 +52,6 @@ class InstrucoesDocumentoTest extends TestCase
             'nome' => "Documento {$numero}",
             'orientacao' => null,
             'etapa' => 'inscricao',
-            'anexo_referencia' => null,
         ], range(1, $quantidade));
     }
 
@@ -97,17 +96,17 @@ class InstrucoesDocumentoTest extends TestCase
     {
         Http::fake([self::URL_OPENAI => Http::response(self::corpoDaOpenAi([
             'Confira se é um documento de identidade com foto, legível e em nome do proponente.',
-            'Confira se é a declaração do Anexo IV, assinada e com endereço em Salvador.',
+            'Confira se é a declaração de residência, assinada e com endereço em Salvador.',
         ]))]);
 
         $resposta = $this->gerar([
-            ['nome' => 'Documento de identidade', 'orientacao' => 'RG ou CNH, frente e verso.', 'etapa' => 'inscricao', 'anexo_referencia' => null],
-            ['nome' => 'Declaração de residência', 'orientacao' => null, 'etapa' => 'habilitacao', 'anexo_referencia' => 'Anexo IV — Declaração de endereço'],
+            ['nome' => 'Documento de identidade', 'orientacao' => 'RG ou CNH, frente e verso.', 'etapa' => 'inscricao'],
+            ['nome' => 'Declaração de residência', 'orientacao' => null, 'etapa' => 'habilitacao'],
         ]);
 
         $resposta->assertOk()->assertExactJson(['instrucoes' => [
             'Confira se é um documento de identidade com foto, legível e em nome do proponente.',
-            'Confira se é a declaração do Anexo IV, assinada e com endereço em Salvador.',
+            'Confira se é a declaração de residência, assinada e com endereço em Salvador.',
         ]]);
         Http::assertSentCount(1);
         Http::assertSent(function (Request $pedido): bool {
@@ -123,7 +122,6 @@ class InstrucoesDocumentoTest extends TestCase
                 && str_contains($prompt, 'Música, Teatro')
                 && str_contains($prompt, 'RG ou CNH, frente e verso.')
                 && str_contains($prompt, 'Habilitação')
-                && str_contains($prompt, 'Anexo IV — Declaração de endereço')
                 && strpos($prompt, 'Documento de identidade') < strpos($prompt, 'Declaração de residência');
         });
     }

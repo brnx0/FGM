@@ -96,7 +96,6 @@ class EditalEstruturaSalvarTest extends TestCase
                     'naturezas' => ['mei'],
                     'todas_categorias' => '0',
                     'categorias' => ['1'],
-                    'anexo_referencia' => 'Anexo IV — Declaração de endereço',
                 ],
                 [
                     'nome' => 'Autodeclaração racial',

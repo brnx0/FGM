@@ -52,7 +52,7 @@ class GeradorDeInstrucoes
 
     /**
      * @param  array{titulo: string|null, objeto: string|null, naturezas: list<string>, categorias: list<string>}  $edital  Naturezas pelo valor do enum.
-     * @param  list<array{nome: string, orientacao: string|null, etapa: string, anexo_referencia: string|null}>  $documentos  Etapa pelo valor do enum.
+     * @param  list<array{nome: string, orientacao: string|null, etapa: string}>  $documentos  Etapa pelo valor do enum.
      * @return list<string> Uma instrução por documento, na ordem recebida.
      *
      * @throws FalhaNaIa sem provedores configurados ou quando nenhum responde no formato esperado
@@ -98,9 +98,9 @@ class GeradorDeInstrucoes
     }
 
     /**
-     * Os documentos numerados, com a etapa e, quando houver, a orientação e o anexo de referência.
+     * Os documentos numerados, com a etapa e, quando houver, a orientação.
      *
-     * @param  list<array{nome: string, orientacao: string|null, etapa: string, anexo_referencia: string|null}>  $lote
+     * @param  list<array{nome: string, orientacao: string|null, etapa: string}>  $lote
      */
     private static function listaDeDocumentos(array $lote): string
     {
@@ -111,9 +111,6 @@ class GeradorDeInstrucoes
             $linhas[] = '   Etapa: '.EtapaDocumento::from($documento['etapa'])->rotulo();
             if (filled($documento['orientacao'])) {
                 $linhas[] = '   Orientação: '.$documento['orientacao'];
-            }
-            if (filled($documento['anexo_referencia'])) {
-                $linhas[] = '   Anexo do edital que serve de modelo: '.$documento['anexo_referencia'];
             }
         }
 

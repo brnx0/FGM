@@ -31,7 +31,7 @@ use Illuminate\Http\UploadedFile;
  * Formato de entrada (chaves opcionais podem faltar):
  *  - chamadas: list<{id?, nome, inicio?: Y-m-d, fim?: Y-m-d}>
  *  - categorias: list<{id?, nome, descricao?, valor?, vagas?, naturezas?: list<string>, chamada?: posição, itens?: list<{id?, nome, valor?, vagas?, suplentes?}>}>
- *  - documentos: list<{id?, nome, orientacao?, etapa, obrigatorio?, naturezas?, todas_categorias?, categorias?: list<posição>, modalidade_cota?, anexo_referencia?, checagem?, instrucao_ia?, modelo?: UploadedFile, remover_modelo?}>
+ *  - documentos: list<{id?, nome, orientacao?, etapa, obrigatorio?, naturezas?, todas_categorias?, categorias?: list<posição>, modalidade_cota?, checagem?, instrucao_ia?, modelo?: UploadedFile, remover_modelo?}>
  *  - requisitos: list<{id?, descricao, documentos?: list<posição>}>
  *  - criterios: list<{id?, nome, descricao?, peso?, pontos_maximos?, todas_categorias?, categorias?: list<posição>}>
  */
@@ -101,7 +101,6 @@ class SincronizadorDoEdital
                     'naturezas' => self::naturezas($item['naturezas'] ?? null),
                     'todas_categorias' => self::categoriasEscolhidas($item, $categorias) === null,
                     'modalidade_cota' => $item['modalidade_cota'] ?? null,
-                    'anexo_referencia' => $item['anexo_referencia'] ?? null,
                 ]);
                 // Sem a chave (documentos da importação por IA), vale o padrão da coluna.
                 if (isset($item['checagem'])) {
