@@ -260,6 +260,9 @@ const abas = computed<AbaFormulario[]>(() => {
     }));
 });
 // "?aba=" abre o formulário numa aba (usado ao recarregar depois de importar o questionário).
+// Uma importação do questionário concluiu com esta página aberta: o questionário do formulário está velho.
+const questionarioImportado = ref<boolean>(false);
+
 const abaDaUrl = new URLSearchParams(window.location.search).get('aba');
 const abaAtiva = ref<string>(DEFINICAO_ABAS.some((aba) => aba.id === abaDaUrl) ? (abaDaUrl as string) : 'identificacao');
 
@@ -508,8 +511,11 @@ const paraEnvio = (dados: DadosDoFormulario): Record<string, unknown> => {
             conta_para_corte: dados.pontuacao_extra.conta_para_corte,
         },
         informacoes: dados.informacoes,
-        // Travado, o questionário nem vai: o servidor recusaria o envio inteiro.
-        ...(props.questionarioTravado ? {} : { com_questionario: true, questionario: questionarioParaEnvio(dados.questionario.secoes, posicaoDaCategoria) }),
+        // Travado, ou já substituído por uma importação concluída com a página aberta, o questionário nem vai: o servidor
+        // recusaria (trava) ou o formulário velho apagaria o importado. A versão dá ao servidor como conferir.
+        ...(props.questionarioTravado || questionarioImportado.value
+            ? {}
+            : { com_questionario: true, questionario_versao: props.questionarioVersao ?? '', questionario: questionarioParaEnvio(dados.questionario.secoes, posicaoDaCategoria) }),
     };
 };
 
@@ -899,6 +905,7 @@ const tituloDaPagina = editando ? salvo.titulo || 'Edital sem título' : 'Novo e
                                     :configurada="importacaoQuestionarioConfigurada"
                                     :tamanho-maximo-mb="tamanhoMaximoArquivoMb"
                                     :importacao="importacaoQuestionario"
+                                    @concluida="questionarioImportado = true"
                                 />
                             </template>
                         </QuestionarioEdital>

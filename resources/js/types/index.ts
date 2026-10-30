@@ -941,6 +941,8 @@ export interface RetaguardaEditaisFormProps {
     importacaoQuestionario: ImportacaoDoQuestionario | null;
     /** Quadro "Importado pela IA" da aba Questionário, enquanto a última importação concluída não foi conferida. */
     quadroQuestionario: ImportacaoDoEdital | null;
+    /** Id da última importação concluída do questionário (versão que a página abriu); o envio devolve para o servidor conferir. */
+    questionarioVersao: number | null;
     importacaoQuestionarioConfigurada: boolean;
     tamanhoMaximoArquivoMb: number;
     naturezas: OpcaoFormulario[];

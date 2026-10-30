@@ -10,6 +10,7 @@ use App\Enums\ModalidadeCota;
 use App\Enums\NaturezaProponente;
 use App\Enums\TipoEdital;
 use App\Models\Edital;
+use App\Models\ImportacaoQuestionario;
 use App\Rules\TamanhoEmBytes;
 use App\Support\Edital\SincronizadorDoEdital;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -63,6 +64,7 @@ class SalvarEditalRequest extends FormRequest
         return [
             'com_listas' => ['boolean'],
             'com_questionario' => ['boolean'],
+            'questionario_versao' => ['nullable', 'integer'],
 
             'titulo' => ['required_if_accepted:publicado', 'nullable', 'string', 'max:255', new TamanhoEmBytes(255)],
             'resumo' => ['required_if_accepted:publicado', 'nullable', 'string'],
@@ -326,6 +328,13 @@ class SalvarEditalRequest extends FormRequest
                 $edital = $this->route('edital');
                 if ($edital instanceof Edital && $edital->questionarioTravado()) {
                     $validator->errors()->add('questionario', Edital::AVISO_QUESTIONARIO_TRAVADO);
+
+                    return;
+                }
+
+                $versao = $this->input('questionario_versao');
+                if ($edital instanceof Edital && ImportacaoQuestionario::versaoDoQuestionario($edital) !== ($versao === null || $versao === '' ? null : (int) $versao)) {
+                    $validator->errors()->add('questionario', ImportacaoQuestionario::ERRO_VERSAO);
 
                     return;
                 }

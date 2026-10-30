@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import AvisoCamposObrigatorios from '../../AvisoCamposObrigatorios.vue';
 import CampoArquivo from '../../CampoArquivo.vue';
@@ -54,7 +54,10 @@ watch(
 const analisando = computed<boolean>(() => atual.value?.situacao === 'analisando');
 // Só a conclusão vista nesta tela oferece "Ver o questionário importado"; ao abrir a página, a concluída já está carregada.
 const concluidaAgora = ref<boolean>(false);
-const anuncio = ref<string>('');
+const consultaInterrompida = ref<boolean>(false);
+const areaDeSituacao = ref<HTMLElement | null>(null);
+
+const emit = defineEmits<{ concluida: [] }>();
 
 const motivoDoBloqueio = computed<string | null>(() => {
     if (props.editalSlug === null) return MOTIVO_SEM_SALVAR;
@@ -110,7 +113,10 @@ const enviar = (): void => {
         forceFormData: true,
         preserveScroll: true,
         preserveState: true,
-        onSuccess: () => fechar(),
+        onSuccess: () => {
+            fechar();
+            void nextTick(() => areaDeSituacao.value?.focus());
+        },
         onError: (erros) => {
             recusa.value = erros.configuracao ?? '';
             focarPrimeiroErro(FORMULARIO);
@@ -135,6 +141,12 @@ const consultar = async (): Promise<void> => {
             credentials: 'same-origin',
             headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
         });
+        // Erro do cliente (sessão expirada, importação inexistente): repetir não adianta.
+        if (resposta.status >= 400 && resposta.status < 500) {
+            consultaInterrompida.value = true;
+            pararConsulta();
+            return;
+        }
         if (!resposta.ok) return;
 
         const situacao = (await resposta.json()) as SituacaoConsultada;
@@ -142,7 +154,7 @@ const consultar = async (): Promise<void> => {
 
         atual.value = { ...importacao, situacao: situacao.situacao, erro: situacao.erro };
         concluidaAgora.value = situacao.situacao === 'concluida';
-        anuncio.value = concluidaAgora.value ? 'Questionário importado.' : `A importação do questionário deu erro: ${situacao.erro ?? ''}`;
+        if (concluidaAgora.value) emit('concluida');
     } catch {
         // Sem conexão: tenta de novo na próxima rodada.
     }
@@ -168,6 +180,8 @@ onBeforeUnmount(pararConsulta);
 
 // Recarrega a página já na aba Questionário (?aba=), com o formulário refeito a partir do que o servidor gravou.
 const verQuestionario = (): void => {
+    if (props.alteracoesNaoSalvas && !window.confirm('Há alterações não salvas neste formulário. Ao recarregar, elas serão perdidas. Continuar?')) return;
+
     router.visit(`${window.location.pathname}?aba=questionario`, { preserveState: false, preserveScroll: true });
 };
 </script>
@@ -189,11 +203,12 @@ const verQuestionario = (): void => {
 
         <p v-if="motivoDoBloqueio !== null" id="importar-questionario-motivo" class="text-[0.8125rem] leading-[1.5] text-tinta-suave">{{ motivoDoBloqueio }}</p>
 
-        <div role="status" class="flex flex-col items-start gap-1 text-[0.8125rem] leading-[1.5]">
+        <div ref="areaDeSituacao" tabindex="-1" role="status" class="flex flex-col items-start gap-1 text-[0.8125rem] leading-[1.5] outline-offset-4">
             <template v-if="atual">
                 <p v-if="analisando" class="text-tinta-suave">Analisando “{{ atual.arquivoNome }}”, enviado em {{ atual.enviadaEm }}. Você pode continuar usando o sistema.</p>
+                <p v-if="analisando && consultaInterrompida" class="font-semibold text-aviso-texto">Não foi possível acompanhar a análise. Recarregue a página para ver a situação.</p>
                 <template v-else-if="atual.situacao === 'concluida'">
-                    <p v-if="concluidaAgora" class="font-semibold text-texto-verde">Questionário importado.</p>
+                    <p v-if="concluidaAgora" class="font-semibold text-texto-verde">Questionário importado. Recarregue para ver e editar.</p>
                     <p v-else class="text-tinta-suave">Última importação: “{{ atual.arquivoNome }}”, concluída (enviada em {{ atual.enviadaEm }}).</p>
                     <button
                         v-if="concluidaAgora"
@@ -206,9 +221,9 @@ const verQuestionario = (): void => {
                 </template>
                 <p v-else class="font-semibold text-erro-texto">Erro na importação de “{{ atual.arquivoNome }}”: {{ atual.erro }}</p>
             </template>
-            <span class="sr-only">{{ anuncio }}</span>
         </div>
 
+        <Teleport to="body">
         <dialog
             ref="dialogo"
             aria-labelledby="importar-questionario-titulo"
@@ -216,7 +231,7 @@ const verQuestionario = (): void => {
             class="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-card border border-hairline bg-superficie p-6 text-home-tinta backdrop:bg-noite/60"
             @close="aoFechar"
         >
-            <form id="formulario-importar-questionario" novalidate class="flex flex-col gap-5" @submit.prevent="enviar">
+            <form id="formulario-importar-questionario" novalidate class="flex flex-col gap-5" @submit.prevent.stop="enviar">
                 <div>
                     <h2 id="importar-questionario-titulo" class="text-[1.25rem] leading-tight font-bold">Importar questionário com IA</h2>
                     <p id="importar-questionario-descricao" class="mt-2 text-[0.9375rem] text-tinta-suave">
@@ -280,5 +295,6 @@ const verQuestionario = (): void => {
                 </div>
             </form>
         </dialog>
+        </Teleport>
     </div>
 </template>

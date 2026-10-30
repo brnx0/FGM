@@ -31,6 +31,17 @@ class ImportacaoQuestionario extends Model
 
     public const string PASTA = 'editais/questionarios';
 
+    /** Aviso quando o questionário mudou por uma importação depois que a página foi aberta. */
+    public const string ERRO_VERSAO = 'O questionário foi substituído por uma importação depois que esta página foi aberta. Recarregue a página para ver o questionário atual.';
+
+    /** Versão do questionário do edital: o id da última importação concluída, ou null. */
+    public static function versaoDoQuestionario(Edital $edital): ?int
+    {
+        $id = static::query()->where('edital_id', $edital->getKey())->where('situacao', SituacaoImportacao::Concluida->value)->max('id');
+
+        return $id === null ? null : (int) $id;
+    }
+
     protected $table = 'importacoes_questionario';
 
     protected $fillable = [

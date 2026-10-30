@@ -8,6 +8,7 @@ use App\Models\Edital;
 use App\Models\EditalCategoria;
 use App\Models\EditalPergunta;
 use App\Models\EditalQuestionarioSecao;
+use App\Models\ImportacaoQuestionario;
 use App\Models\Inscricao;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -111,6 +112,25 @@ class QuestionarioDoEditalTest extends TestCase
             ->select('edital_perguntas.*')
             ->get()
             ->all();
+    }
+
+    public function test_questionario_de_pagina_antiga_nao_sobrescreve_o_importado(): void
+    {
+        $secao = fn (string $titulo): array => ['secoes' => [$this->secao([$this->pergunta()], $titulo)]];
+
+        $this->enviar($this->edital, $secao('Antes'))->assertSessionHasNoErrors();
+
+        $importacao = ImportacaoQuestionario::factory()->concluida()->create(['edital_id' => $this->edital->id]);
+        $this->edital->secoesDoQuestionario()->update(['titulo' => 'Importada']);
+
+        $this->enviar($this->edital, $secao('Velha'))
+            ->assertSessionHasErrors(['questionario' => ImportacaoQuestionario::ERRO_VERSAO]);
+        $this->enviar($this->edital, $secao('Velha'), ['questionario_versao' => (string) ($importacao->id - 1)])
+            ->assertSessionHasErrors(['questionario' => ImportacaoQuestionario::ERRO_VERSAO]);
+        $this->assertSame(['Importada'], $this->edital->secoesDoQuestionario()->pluck('titulo')->all());
+
+        $this->enviar($this->edital, $secao('Nova'), ['questionario_versao' => (string) $importacao->id])->assertSessionHasNoErrors();
+        $this->assertSame(['Nova'], $this->edital->secoesDoQuestionario()->pluck('titulo')->all());
     }
 
     public function test_salva_secoes_e_perguntas_de_todos_os_tipos_na_ordem(): void

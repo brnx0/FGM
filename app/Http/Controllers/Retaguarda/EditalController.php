@@ -123,6 +123,7 @@ class EditalController extends Controller
             'importacao' => null,
             'importacaoQuestionario' => null,
             'quadroQuestionario' => null,
+            'questionarioVersao' => null,
             ...$this->dadosDaImportacaoDoQuestionario(),
             ...$this->opcoesDoFormulario(),
         ]);
@@ -235,6 +236,7 @@ class EditalController extends Controller
             'importacao' => $this->importacaoNaoConferida($edital),
             'importacaoQuestionario' => $this->ultimaImportacaoDoQuestionario($edital),
             'quadroQuestionario' => $this->quadroDoQuestionario($edital),
+            'questionarioVersao' => ImportacaoQuestionario::versaoDoQuestionario($edital),
             ...$this->dadosDaImportacaoDoQuestionario(),
             ...$this->opcoesDoFormulario(),
         ]);
@@ -494,14 +496,23 @@ class EditalController extends Controller
      */
     private function quadroDoQuestionario(Edital $edital): ?array
     {
-        $importacao = ImportacaoQuestionario::query()
-            ->select(['id', 'confiabilidade', 'atencao', 'conferida_em', 'modelo', 'tokens_total', 'updated_at'])
+        $ultima = ImportacaoQuestionario::query()
+            ->select(['id', 'conferida_em'])
             ->where('edital_id', $edital->getKey())
             ->where('situacao', SituacaoImportacao::Concluida->value)
             ->latest('id')
             ->first();
 
-        if ($importacao === null || $importacao->conferida_em !== null) {
+        if ($ultima === null || $ultima->conferida_em !== null) {
+            return null;
+        }
+
+        $importacao = ImportacaoQuestionario::query()
+            ->select(['id', 'confiabilidade', 'atencao', 'conferida_em', 'modelo', 'tokens_total', 'updated_at'])
+            ->whereNull('conferida_em')
+            ->find($ultima->getKey());
+
+        if ($importacao === null) {
             return null;
         }
 
