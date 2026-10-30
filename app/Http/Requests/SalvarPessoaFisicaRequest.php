@@ -2,10 +2,15 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\Escolaridade;
+use App\Enums\FaixaDeRenda;
 use App\Enums\IdentidadeGenero;
+use App\Enums\PovoTradicional;
 use App\Enums\RacaCor;
+use App\Enums\TipoDeficiencia;
 use App\Models\PessoaFisica;
 use App\Models\PrefeituraBairro;
+use App\Rules\TamanhoEmBytes;
 use App\Support\Estados;
 use App\Support\Paises;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -68,6 +73,17 @@ class SalvarPessoaFisicaRequest extends FormRequest
             'identidade_genero' => ['required', Rule::enum(IdentidadeGenero::class)],
             'raca_cor' => ['required', Rule::enum(RacaCor::class)],
             'pcd' => ['boolean'],
+            // Sem PcD o tipo e o "qual" nem são lidos: o controller os descarta.
+            'deficiencia' => $this->boolean('pcd')
+                ? ['required', Rule::enum(TipoDeficiencia::class)]
+                : ['nullable'],
+            'deficiencia_outra' => $this->boolean('pcd') && $this->input('deficiencia') === TipoDeficiencia::Outra->value
+                ? ['required', 'string', 'max:255', new TamanhoEmBytes(255)]
+                : ['nullable'],
+            'escolaridade' => ['required', Rule::enum(Escolaridade::class)],
+            'renda' => ['required', Rule::enum(FaixaDeRenda::class)],
+            'povo_tradicional' => ['required', Rule::enum(PovoTradicional::class)],
+            'anos_atuacao' => ['required', 'integer', 'min:0', 'max:100'],
 
             'cep' => ['required', 'digits:8'],
             'logradouro' => ['required', 'string', 'max:255'],
@@ -96,6 +112,10 @@ class SalvarPessoaFisicaRequest extends FormRequest
             'in' => 'Selecione uma opção da lista.',
             Enum::class => 'Selecione uma opção da lista.',
             'boolean' => 'Valor inválido.',
+            'deficiencia_outra.required' => 'Diga qual é a deficiência.',
+            'anos_atuacao.integer' => 'Informe um número inteiro.',
+            'anos_atuacao.min' => 'Informe 0 ou mais.',
+            'anos_atuacao.max' => 'Informe no máximo 100.',
             'email' => 'Digite um e-mail válido.',
             'telefone.digits_between' => 'Digite o telefone com DDD.',
             'telefone_adicional.digits_between' => 'Digite o telefone com DDD.',

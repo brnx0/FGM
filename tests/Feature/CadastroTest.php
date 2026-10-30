@@ -2,9 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Enums\Escolaridade;
+use App\Enums\FaixaDeRenda;
 use App\Enums\IdentidadeGenero;
+use App\Enums\PovoTradicional;
 use App\Enums\RacaCor;
 use App\Enums\TipoCadastro;
+use App\Enums\TipoDeficiencia;
 use App\Models\Organizacao;
 use App\Models\PessoaFisica;
 use App\Models\PrefeituraBairro;
@@ -118,6 +122,7 @@ class CadastroTest extends TestCase
             'nome_artistico' => 'Maria do Samba',
             'telefone_adicional' => '(71) 3333-4444',
             'pcd' => true,
+            'deficiencia' => 'auditiva',
         ]))->assertRedirect(route('cadastro.organizacao'))->assertSessionHas('sucesso');
 
         $cadastro = $user->pessoaFisica()->sole();
@@ -248,6 +253,10 @@ class CadastroTest extends TestCase
             'documento_rg' => UploadedFile::fake()->create('rg.jpg', 100, 'image/jpeg'),
             'identidade_genero' => IdentidadeGenero::MulherCis->value,
             'raca_cor' => RacaCor::Preta->value,
+            'escolaridade' => 'medio_completo',
+            'renda' => 'de_1_a_3',
+            'povo_tradicional' => 'nao_pertence',
+            'anos_atuacao' => 12,
             'cep' => '40020-000',
             'logradouro' => 'Rua Chile',
             'numero' => '10',
@@ -257,6 +266,132 @@ class CadastroTest extends TestCase
             'territorio' => 'centro_brotas',
             ...$alteracoes,
         ];
+    }
+
+    public function test_salva_o_perfil_da_pessoa_fisica(): void
+    {
+        Storage::fake('local');
+        $user = User::factory()->create(['email' => 'maria@example.com', 'phone' => '71998765432']);
+
+        $this->actingAs($user)->post('/cadastro', $this->dadosValidos([
+            'povo_tradicional' => 'quilombolas',
+        ]))->assertSessionHasNoErrors();
+
+        $cadastro = $user->pessoaFisica()->sole();
+        $this->assertSame(Escolaridade::MedioCompleto, $cadastro->escolaridade);
+        $this->assertSame(FaixaDeRenda::DeUmATres, $cadastro->renda);
+        $this->assertSame(PovoTradicional::Quilombolas, $cadastro->povo_tradicional);
+        $this->assertSame(12, $cadastro->anos_atuacao);
+    }
+
+    public function test_perfil_e_obrigatorio(): void
+    {
+        $dados = $this->dadosValidos();
+        unset($dados['escolaridade'], $dados['renda'], $dados['povo_tradicional'], $dados['anos_atuacao']);
+
+        $this->actingAs(User::factory()->create())->post('/cadastro', $dados)->assertSessionHasErrors([
+            'escolaridade' => 'Este campo é obrigatório.',
+            'renda' => 'Este campo é obrigatório.',
+            'povo_tradicional' => 'Este campo é obrigatório.',
+            'anos_atuacao' => 'Este campo é obrigatório.',
+        ]);
+    }
+
+    public function test_pcd_exige_o_tipo_e_outra_exige_qual(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->post('/cadastro', $this->dadosValidos(['pcd' => 1]))
+            ->assertSessionHasErrors(['deficiencia' => 'Este campo é obrigatório.']);
+
+        $this->actingAs($user)->post('/cadastro', $this->dadosValidos(['pcd' => 1, 'deficiencia' => 'outra']))
+            ->assertSessionHasErrors(['deficiencia_outra' => 'Diga qual é a deficiência.']);
+    }
+
+    public function test_sem_pcd_o_tipo_de_deficiencia_nao_fica_gravado(): void
+    {
+        Storage::fake('local');
+        $user = User::factory()->create(['email' => 'maria@example.com', 'phone' => '71998765432']);
+
+        $this->actingAs($user)->post('/cadastro', $this->dadosValidos([
+            'pcd' => 0, 'deficiencia' => 'visual', 'deficiencia_outra' => 'x',
+        ]))->assertSessionHasNoErrors();
+
+        $cadastro = $user->pessoaFisica()->sole();
+        $this->assertNull($cadastro->deficiencia);
+        $this->assertNull($cadastro->deficiencia_outra);
+
+        $this->actingAs($user->fresh())->post('/cadastro', $this->dadosValidos([
+            'pcd' => 1, 'deficiencia' => 'visual', 'deficiencia_outra' => 'x',
+        ]))->assertSessionHasNoErrors();
+
+        $cadastro = $user->pessoaFisica()->sole();
+        $this->assertSame(TipoDeficiencia::Visual, $cadastro->deficiencia);
+        $this->assertNull($cadastro->deficiencia_outra);
+    }
+
+    public function test_deficiencia_outra_escondida_sem_pcd_nao_barra_o_salvamento(): void
+    {
+        Storage::fake('local');
+        $user = User::factory()->create(['email' => 'maria@example.com', 'phone' => '71998765432']);
+
+        $this->actingAs($user)->post('/cadastro', $this->dadosValidos([
+            'pcd' => 0, 'deficiencia' => 'outra', 'deficiencia_outra' => '',
+        ]))->assertSessionHasNoErrors();
+
+        $cadastro = $user->pessoaFisica()->sole();
+        $this->assertNull($cadastro->deficiencia);
+        $this->assertNull($cadastro->deficiencia_outra);
+    }
+
+    public function test_retrato_do_perfil_traz_os_campos_com_enums_como_valor(): void
+    {
+        $cadastro = PessoaFisica::factory()->create([
+            'identidade_genero' => IdentidadeGenero::MulherCis, 'escolaridade' => Escolaridade::MedioCompleto,
+            'pcd' => true, 'deficiencia' => TipoDeficiencia::Outra, 'deficiencia_outra' => 'Rara', 'anos_atuacao' => 7,
+        ]);
+
+        $retrato = $cadastro->fresh()->retratoDoPerfil();
+
+        $this->assertSame(PessoaFisica::CAMPOS_DO_PERFIL, array_keys($retrato));
+        $this->assertSame(IdentidadeGenero::MulherCis->value, $retrato['identidade_genero']);
+        $this->assertSame('medio_completo', $retrato['escolaridade']);
+        $this->assertSame('outra', $retrato['deficiencia']);
+        $this->assertSame('Rara', $retrato['deficiencia_outra']);
+        $this->assertTrue($retrato['pcd']);
+        $this->assertSame(7, $retrato['anos_atuacao']);
+    }
+
+    public function test_anos_de_atuacao_inteiro_de_zero_a_cem(): void
+    {
+        Storage::fake('local');
+        $user = User::factory()->create(['email' => 'maria@example.com', 'phone' => '71998765432']);
+
+        foreach ([-1, 101, 2.5] as $invalido) {
+            $this->actingAs($user)->post('/cadastro', $this->dadosValidos(['anos_atuacao' => $invalido]))
+                ->assertSessionHasErrors('anos_atuacao');
+        }
+
+        $this->actingAs($user)->post('/cadastro', $this->dadosValidos(['anos_atuacao' => 0]))
+            ->assertSessionHasNoErrors();
+        $this->assertSame(0, $user->pessoaFisica()->sole()->anos_atuacao);
+    }
+
+    public function test_cadastro_antigo_fica_com_perfil_incompleto(): void
+    {
+        $this->assertFalse(PessoaFisica::factory()->perfilIncompleto()->create()->perfilCompleto());
+        $this->assertTrue(PessoaFisica::factory()->create()->perfilCompleto());
+        $this->assertFalse(PessoaFisica::factory()->create(['pcd' => true])->perfilCompleto());
+    }
+
+    public function test_formulario_traz_as_opcoes_do_perfil(): void
+    {
+        $this->actingAs(User::factory()->create())->get('/cadastro')->assertInertia(fn (Assert $page) => $page
+            ->has('opcoes.povosTradicionais', 30)
+            ->where('opcoes.povosTradicionais.0.valor', 'nao_pertence')
+            ->has('opcoes.tiposDeficiencia', 7)
+            ->has('opcoes.escolaridades', 11)
+            ->has('opcoes.faixasDeRenda', 7));
     }
 
     public function test_tipos_de_cadastro_exigem_login(): void

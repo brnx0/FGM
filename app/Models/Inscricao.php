@@ -8,6 +8,7 @@ use App\Enums\NaturezaProponente;
 use App\Enums\SituacaoConferencia;
 use App\Enums\SituacaoEdital;
 use App\Enums\SituacaoInscricao;
+use App\Support\Inscricao\QuestionarioDaInscricao;
 use App\Support\Inscricao\RegrasDaInscricao;
 use Carbon\CarbonInterface;
 use Database\Factories\InscricaoFactory;
@@ -22,6 +23,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * Inscrição de um proponente (CPF ou CNPJ, só dígitos em documento_cadastro) num edital.
  * cotas: lista de ModalidadeCota escolhidas na inscrição.
+ * perfil: retrato do perfil da pessoa física dona (PessoaFisica::retratoDoPerfil), refeito a cada finalização.
  */
 class Inscricao extends Model
 {
@@ -40,7 +42,7 @@ class Inscricao extends Model
 
     protected $fillable = [
         'edital_id', 'edital_chamada_id', 'user_id', 'organizacao_id', 'documento_cadastro', 'natureza',
-        'edital_categoria_id', 'cotas', 'situacao', 'numero', 'finalizada_em',
+        'edital_categoria_id', 'cotas', 'situacao', 'numero', 'finalizada_em', 'perfil',
     ];
 
     /**
@@ -53,6 +55,7 @@ class Inscricao extends Model
             'cotas' => AsEnumCollection::of(ModalidadeCota::class),
             'situacao' => SituacaoInscricao::class,
             'finalizada_em' => 'datetime',
+            'perfil' => 'array',
         ];
     }
 
@@ -92,6 +95,12 @@ class Inscricao extends Model
         return $this->hasMany(InscricaoDocumento::class);
     }
 
+    /** @return HasMany<InscricaoResposta, $this> */
+    public function respostas(): HasMany
+    {
+        return $this->hasMany(InscricaoResposta::class);
+    }
+
     /**
      * Documentos do edital que esta inscrição precisa enviar (de todas as etapas), na ordem do edital:
      * os da natureza do cadastro, da categoria escolhida e das cotas marcadas.
@@ -120,11 +129,12 @@ class Inscricao extends Model
      * O que impede de finalizar, na ordem dos documentos do edital: obrigatório sem arquivo, documento ainda sendo
      * conferido (a conferência parada há mais de 5 minutos já conta como não conferida) e documento em "Rigorosa"
      * (obrigatório ou opcional anexado) que não foi aprovado. Reprovado ou não conferido em "Aceita sem validar" não impede,
-     * nem "Rigorosa" com a validação por IA desligada (o documento segue como enviado).
+     * nem "Rigorosa" com a validação por IA desligada (o documento segue como enviado). Depois dos documentos, uma linha
+     * por seção visível do questionário com pergunta obrigatória sem resposta.
      *
      * @return list<string>
      */
-    public function pendenciasParaFinalizar(?CarbonInterface $agora = null): array
+    public function pendenciasParaFinalizar(?CarbonInterface $agora = null, ?QuestionarioDaInscricao $questionario = null): array
     {
         $enviados = $this->documentos()->get()->keyBy(fn (InscricaoDocumento $enviado): int => (int) $enviado->edital_documento_id);
         $pendencias = [];
@@ -141,6 +151,16 @@ class Inscricao extends Model
                 $pendencias[] = "Aguarde a conferência de \"{$exigido->nome}\".";
             } elseif ($exigido->checagemNaInscricao($validacaoLigada) === ChecagemDocumento::Rigorosa && $situacao !== SituacaoConferencia::Aprovado) {
                 $pendencias[] = "\"{$exigido->nome}\" precisa ser aprovado na conferência.";
+            }
+        }
+
+        $questionario ??= new QuestionarioDaInscricao($this);
+        $respostas = $questionario->respostasSalvas();
+
+        foreach ($questionario->secoesVisiveis($respostas) as $secao) {
+            /** @var EditalQuestionarioSecao $secao */
+            if ($questionario->faltando($respostas, (int) $secao->id) !== []) {
+                $pendencias[] = "Responda as perguntas obrigatórias de \"{$secao->titulo}\".";
             }
         }
 

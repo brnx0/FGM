@@ -9,6 +9,8 @@ const props = defineProps<{
     govbr?: boolean;
     ajuda?: string;
     erro?: string;
+    /** Grupo de opções (rádios, interruptores): vira um fieldset com o rótulo na legend, que descreve o grupo. */
+    grupo?: boolean;
 }>();
 
 const idAjuda = computed(() => `${props.id}-ajuda`);
@@ -20,8 +22,14 @@ const descricao = computed(() => [textoAjuda.value && idAjuda.value, props.erro 
 </script>
 
 <template>
-    <div class="flex min-w-0 flex-col gap-1.5">
-        <label :for="id" class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.9375rem] font-semibold">
+    <component :is="grupo ? 'fieldset' : 'div'" class="flex min-w-0 flex-col gap-1.5" :aria-describedby="grupo ? descricao : undefined">
+        <!-- A legend não entra no gap do fieldset: o espaço vem da margem. -->
+        <component
+            :is="grupo ? 'legend' : 'label'"
+            :for="grupo ? undefined : id"
+            class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.9375rem] font-semibold"
+            :class="{ 'mb-1.5': grupo }"
+        >
             <span>
                 {{ rotulo }}<span v-if="obrigatorio" aria-hidden="true" class="ml-0.5 text-invalido-texto">*</span>
             </span>
@@ -32,7 +40,7 @@ const descricao = computed(() => [textoAjuda.value && idAjuda.value, props.erro 
                 </svg>
                 gov.br
             </span>
-        </label>
+        </component>
 
         <slot :descricao="descricao" :invalido="Boolean(erro)" />
 
@@ -44,5 +52,5 @@ const descricao = computed(() => [textoAjuda.value && idAjuda.value, props.erro 
             </svg>
             {{ erro }}
         </p>
-    </div>
+    </component>
 </template>

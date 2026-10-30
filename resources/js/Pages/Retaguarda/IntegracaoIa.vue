@@ -3,6 +3,7 @@ import { computed, reactive, watch } from 'vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import { focarPrimeiroErro } from '../../Components/focarPrimeiroErro';
 import CamposProvedorIa from '../../Components/Retaguarda/CamposProvedorIa.vue';
+import Interruptor from '../../Components/Interruptor.vue';
 import SecaoCadastro from '../../Components/SecaoCadastro.vue';
 import RetaguardaLayout from '../../Layouts/RetaguardaLayout.vue';
 import type { ProvedorIa, ProvedorIaRetaguarda, RetaguardaIntegracaoIaProps } from '../../types';
@@ -131,38 +132,14 @@ const classeEtiqueta = 'shrink-0 rounded-pill bg-nevoa px-2.5 py-0.5 text-[0.75r
                         {{ avisoDeTroca }}
                     </p>
 
-                    <label
-                        class="flex min-h-12 cursor-pointer items-center justify-between gap-4 rounded-[12px] border border-hairline px-4 py-3"
-                        :class="{ 'campo-invalido': formPrincipal.errors.ativo }"
-                    >
-                        <span class="flex flex-col">
-                            <span id="ia-ativo-rotulo" class="font-semibold">Ativar validação por IA</span>
-                            <span id="ia-ativo-ajuda" class="text-[0.8125rem] text-tinta-suave">
-                                Ligada, as validações automáticas usam este provedor (e a redundância, quando ele falhar).
-                            </span>
-                        </span>
-                        <input
-                            v-model="formPrincipal.ativo"
-                            type="checkbox"
-                            role="switch"
-                            class="peer sr-only"
-                            aria-labelledby="ia-ativo-rotulo"
-                            :aria-invalid="formPrincipal.errors.ativo ? true : undefined"
-                            :aria-describedby="formPrincipal.errors.ativo ? 'ia-ativo-ajuda ia-ativo-erro' : 'ia-ativo-ajuda'"
-                            @change="formPrincipal.clearErrors('ativo')"
-                        />
-                        <span
-                            aria-hidden="true"
-                            class="relative inline-flex h-6 w-10 shrink-0 rounded-pill transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-acao motion-reduce:transition-none"
-                            :class="formPrincipal.ativo ? 'bg-acao' : 'bg-hairline'"
-                        >
-                            <span
-                                class="absolute top-0.5 left-0.5 size-5 rounded-full border border-hairline bg-superficie transition-transform motion-reduce:transition-none"
-                                :class="{ 'translate-x-4': formPrincipal.ativo }"
-                            ></span>
-                        </span>
-                    </label>
-                    <p v-if="formPrincipal.errors.ativo" id="ia-ativo-erro" class="text-[0.875rem] font-semibold text-invalido-texto">{{ formPrincipal.errors.ativo }}</p>
+                    <Interruptor
+                        id="ia-ativo"
+                        v-model="formPrincipal.ativo"
+                        rotulo="Ativar validação por IA"
+                        ajuda="Ligada, as validações automáticas usam este provedor (e a redundância, quando ele falhar)."
+                        :erro="formPrincipal.errors.ativo"
+                        @change="formPrincipal.clearErrors('ativo')"
+                    />
 
                     <template #acoes>
                         <button type="submit" :disabled="formPrincipal.processing" :class="classeBotaoSalvar">

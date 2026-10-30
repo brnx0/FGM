@@ -7,6 +7,7 @@ import CampoCadastro from '../../Components/CampoCadastro.vue';
 import EtapasCadastro from '../../Components/EtapasCadastro.vue';
 import FaixaPortal from '../../Components/FaixaPortal.vue';
 import { focarPrimeiroErro } from '../../Components/focarPrimeiroErro';
+import Interruptor from '../../Components/Interruptor.vue';
 import SaudacaoCadastro from '../../Components/SaudacaoCadastro.vue';
 import SecaoCadastro from '../../Components/SecaoCadastro.vue';
 import PortalProponenteLayout from '../../Layouts/PortalProponenteLayout.vue';
@@ -62,6 +63,12 @@ const form = useForm({
     identidade_genero: salvo?.identidade_genero ?? '',
     raca_cor: salvo?.raca_cor ?? '',
     pcd: salvo?.pcd ?? false,
+    deficiencia: salvo?.deficiencia ?? '',
+    deficiencia_outra: salvo?.deficiencia_outra ?? '',
+    escolaridade: salvo?.escolaridade ?? '',
+    renda: salvo?.renda ?? '',
+    povo_tradicional: salvo?.povo_tradicional ?? '',
+    anos_atuacao: salvo?.anos_atuacao !== null && salvo?.anos_atuacao !== undefined ? String(salvo.anos_atuacao) : '',
 
     cep: formatarCep(salvo?.cep ?? ''),
     logradouro: salvo?.logradouro ?? '',
@@ -118,8 +125,6 @@ const classeCampo =
 // Campos do gov.br: classes próprias, e não somadas às de classeCampo, para a cor de fundo e a borda não disputarem.
 const classeSomenteLeitura =
     'h-12 w-full cursor-default rounded-[12px] border border-hairline bg-nevoa px-4 text-base font-semibold text-home-tinta tabular-nums';
-const classeMarcacao = 'flex min-h-11 cursor-pointer items-start gap-3 py-2 text-[0.9375rem] leading-[1.5]';
-const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
 </script>
 
 <template>
@@ -346,22 +351,10 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                     <fieldset class="md:col-span-2">
                         <legend class="text-[0.9375rem] font-semibold">Marque o que se aplica a você</legend>
                         <div class="mt-1 grid gap-x-6 md:grid-cols-2">
-                            <label :class="classeMarcacao">
-                                <input v-model="form.cultura_principal_renda" type="checkbox" :class="classeCaixa" />
-                                A atividade cultural é minha principal fonte de renda
-                            </label>
-                            <label :class="classeMarcacao">
-                                <input v-model="form.ja_foi_avaliador" type="checkbox" :class="classeCaixa" />
-                                Já atuei como avaliador(a) em editais culturais
-                            </label>
-                            <label :class="classeMarcacao">
-                                <input v-model="form.interesse_avaliador" type="checkbox" :class="classeCaixa" />
-                                Tenho interesse em ser avaliador(a)
-                            </label>
-                            <label :class="classeMarcacao">
-                                <input v-model="form.representa_coletivo" type="checkbox" :class="classeCaixa" />
-                                Sou representante de grupo ou coletivo cultural
-                            </label>
+                            <Interruptor id="cultura_principal_renda" v-model="form.cultura_principal_renda" rotulo="A atividade cultural é minha principal fonte de renda" variante="linha" />
+                            <Interruptor id="ja_foi_avaliador" v-model="form.ja_foi_avaliador" rotulo="Já atuei como avaliador(a) em editais culturais" variante="linha" />
+                            <Interruptor id="interesse_avaliador" v-model="form.interesse_avaliador" rotulo="Tenho interesse em ser avaliador(a)" variante="linha" />
+                            <Interruptor id="representa_coletivo" v-model="form.representa_coletivo" rotulo="Sou representante de grupo ou coletivo cultural" variante="linha" />
                         </div>
                     </fieldset>
                 </div>
@@ -446,7 +439,7 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                 </div>
             </SecaoCadastro>
 
-            <SecaoCadastro id="secao-identidade" :numero="5" titulo="Identidade de gênero, raça/cor e PcD">
+            <SecaoCadastro id="secao-identidade" :numero="5" titulo="Identidade e perfil">
                 <template #icone>
                     <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="9" cy="8" r="3.5" />
@@ -485,10 +478,107 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                         </select>
                     </CampoCadastro>
 
-                    <label :class="[classeMarcacao, 'md:col-span-2']">
-                        <input v-model="form.pcd" type="checkbox" :class="classeCaixa" />
-                        Sou uma pessoa com deficiência (PcD)
-                    </label>
+                    <CampoCadastro id="escolaridade" rotulo="Escolaridade" obrigatorio :erro="form.errors.escolaridade" v-slot="{ descricao, invalido }">
+                        <select
+                            id="escolaridade"
+                            v-model="form.escolaridade"
+                            required
+                            :class="classeCampo"
+                            :aria-invalid="invalido || undefined"
+                            :aria-describedby="descricao"
+                            @change="form.clearErrors('escolaridade')"
+                        >
+                            <option value="" disabled>Selecione…</option>
+                            <option v-for="opcao in opcoes.escolaridades" :key="opcao.valor" :value="opcao.valor">{{ opcao.rotulo }}</option>
+                        </select>
+                    </CampoCadastro>
+
+                    <CampoCadastro id="renda" rotulo="Renda mensal" obrigatorio :erro="form.errors.renda" v-slot="{ descricao, invalido }">
+                        <select
+                            id="renda"
+                            v-model="form.renda"
+                            required
+                            :class="classeCampo"
+                            :aria-invalid="invalido || undefined"
+                            :aria-describedby="descricao"
+                            @change="form.clearErrors('renda')"
+                        >
+                            <option value="" disabled>Selecione…</option>
+                            <option v-for="opcao in opcoes.faixasDeRenda" :key="opcao.valor" :value="opcao.valor">{{ opcao.rotulo }}</option>
+                        </select>
+                    </CampoCadastro>
+
+                    <CampoCadastro id="povo_tradicional" rotulo="Povo ou comunidade tradicional" obrigatorio :erro="form.errors.povo_tradicional" v-slot="{ descricao, invalido }">
+                        <select
+                            id="povo_tradicional"
+                            v-model="form.povo_tradicional"
+                            required
+                            :class="classeCampo"
+                            :aria-invalid="invalido || undefined"
+                            :aria-describedby="descricao"
+                            @change="form.clearErrors('povo_tradicional')"
+                        >
+                            <option value="" disabled>Selecione…</option>
+                            <option v-for="opcao in opcoes.povosTradicionais" :key="opcao.valor" :value="opcao.valor">{{ opcao.rotulo }}</option>
+                        </select>
+                    </CampoCadastro>
+
+                    <CampoCadastro id="anos_atuacao" rotulo="Anos de atuação na área cultural" obrigatorio :erro="form.errors.anos_atuacao" v-slot="{ descricao, invalido }">
+                        <input
+                            id="anos_atuacao"
+                            v-model="form.anos_atuacao"
+                            type="text"
+                            inputmode="numeric"
+                            maxlength="3"
+                            required
+                            placeholder="0"
+                            :class="[classeCampo, 'tabular-nums']"
+                            :aria-invalid="invalido || undefined"
+                            :aria-describedby="descricao"
+                            @input="form.clearErrors('anos_atuacao')"
+                        />
+                    </CampoCadastro>
+
+                    <div class="md:col-span-2">
+                        <Interruptor id="pcd" v-model="form.pcd" rotulo="Sou uma pessoa com deficiência (PcD)" :erro="form.errors.pcd" />
+                    </div>
+
+                    <CampoCadastro v-if="form.pcd" id="deficiencia" rotulo="Tipo de deficiência" obrigatorio :erro="form.errors.deficiencia" v-slot="{ descricao, invalido }">
+                        <select
+                            id="deficiencia"
+                            v-model="form.deficiencia"
+                            required
+                            :class="classeCampo"
+                            :aria-invalid="invalido || undefined"
+                            :aria-describedby="descricao"
+                            @change="form.clearErrors('deficiencia')"
+                        >
+                            <option value="" disabled>Selecione…</option>
+                            <option v-for="opcao in opcoes.tiposDeficiencia" :key="opcao.valor" :value="opcao.valor">{{ opcao.rotulo }}</option>
+                        </select>
+                    </CampoCadastro>
+
+                    <CampoCadastro
+                        v-if="form.pcd && form.deficiencia === 'outra'"
+                        id="deficiencia_outra"
+                        rotulo="Qual?"
+                        obrigatorio
+                        :erro="form.errors.deficiencia_outra"
+                        v-slot="{ descricao, invalido }"
+                    >
+                        <input
+                            id="deficiencia_outra"
+                            v-model="form.deficiencia_outra"
+                            type="text"
+                            maxlength="255"
+                            required
+                            placeholder="Diga qual é a deficiência"
+                            :class="classeCampo"
+                            :aria-invalid="invalido || undefined"
+                            :aria-describedby="descricao"
+                            @input="form.clearErrors('deficiencia_outra')"
+                        />
+                    </CampoCadastro>
                 </div>
             </SecaoCadastro>
 

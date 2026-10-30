@@ -12,6 +12,8 @@ import CriteriosEdital from '../../../Components/Retaguarda/Edital/CriteriosEdit
 import DocumentosEdital from '../../../Components/Retaguarda/Edital/DocumentosEdital.vue';
 import InformacoesEdital from '../../../Components/Retaguarda/Edital/InformacoesEdital.vue';
 import QuadroImportacao from '../../../Components/Retaguarda/Edital/QuadroImportacao.vue';
+import ImportarQuestionario from '../../../Components/Retaguarda/Edital/ImportarQuestionario.vue';
+import QuestionarioEdital from '../../../Components/Retaguarda/Edital/QuestionarioEdital.vue';
 import {
     OPCOES_SIM_NAO,
     classeCaixa,
@@ -25,6 +27,7 @@ import {
     numeroDecimal,
     textoDecimal,
 } from '../../../Components/Retaguarda/listaEditavel';
+import { nomeDaPergunta, perguntasEmOrdem, regraDoTipo, respostasDaOrigem, semVinculo } from '../../../Components/Retaguarda/questionario';
 import SecaoCadastro from '../../../Components/SecaoCadastro.vue';
 import { focarPrimeiroErro } from '../../../Components/focarPrimeiroErro';
 import RetaguardaLayout from '../../../Layouts/RetaguardaLayout.vue';
@@ -37,7 +40,9 @@ import type {
     CriterioEditavel,
     DocumentoEditavel,
     ItemEditavel,
+    PerguntaEditavel,
     RetaguardaEditaisFormProps,
+    SecaoQuestionarioEditavel,
 } from '../../../types';
 
 defineOptions({ layout: RetaguardaLayout });
@@ -108,6 +113,37 @@ const criteriosSalvos: CriterioEditavel[] = (salvo?.criterios ?? []).map((criter
     categorias: chavesNasPosicoes(categoriasSalvas, criterio.categorias),
 }));
 
+// Questionário: categorias por posição viram chaves; a origem da condição vem pela posição global (ordem do questionário).
+const secoesDoServidor = salvo?.questionario?.secoes ?? [];
+const secoesSalvas: SecaoQuestionarioEditavel[] = secoesDoServidor.map((secao) => ({
+    chave: novaChave(),
+    id: secao.id,
+    titulo: secao.titulo,
+    descricao: secao.descricao ?? '',
+    perguntas: secao.perguntas.map((pergunta) => ({
+        chave: novaChave(),
+        id: pergunta.id,
+        enunciado: pergunta.enunciado,
+        ajuda: pergunta.ajuda ?? '',
+        tipo: pergunta.tipo,
+        obrigatoria: pergunta.obrigatoria,
+        limite_caracteres: pergunta.limite_caracteres,
+        opcoes: pergunta.opcoes.map((opcao) => ({ chave: opcao.chave, texto: opcao.texto, outro: Boolean(opcao.outro) })),
+        todas_categorias: pergunta.todas_categorias,
+        categorias: chavesNasPosicoes(categoriasSalvas, pergunta.categorias),
+        naturezas: [...pergunta.naturezas],
+        condicao_pergunta: null,
+        condicao_opcoes: [...pergunta.condicao_opcoes],
+    })),
+}));
+const perguntasSalvas = perguntasEmOrdem(secoesSalvas);
+secoesDoServidor
+    .flatMap((secao) => secao.perguntas)
+    .forEach((pergunta, posicao) => {
+        const editavel = perguntasSalvas[posicao];
+        if (editavel) editavel.condicao_pergunta = chaveNaPosicao(perguntasSalvas, pergunta.condicao_pergunta);
+    });
+
 const cotasSalvas = salvo?.cotas ?? null;
 const cotaSalva = (modalidade: string): CotaModalidadeFormulario | undefined =>
     (cotasSalvas as unknown as Record<string, CotaModalidadeFormulario | undefined> | null)?.[modalidade];
@@ -159,6 +195,7 @@ const form = useForm({
         teto: textoDecimal(salvo?.pontuacao_extra?.teto),
         conta_para_corte: salvo?.pontuacao_extra?.conta_para_corte ?? null,
     },
+    questionario: { secoes: secoesSalvas },
     informacoes: Object.fromEntries(props.secoesInformativas.map((secao) => [secao.valor, salvo?.informacoes[secao.valor] ?? ''])) as Record<string, string>,
     publicado: salvo?.publicado ?? false,
     pdf: null as File | null,
@@ -203,6 +240,7 @@ const DEFINICAO_ABAS: AbaFormulario[] = [
     { id: 'categorias', rotulo: 'Categorias', campos: ['categorias', 'categorias.*'] },
     { id: 'cotas', rotulo: 'Cotas', campos: ['cotas', 'cotas.*'] },
     { id: 'documentos', rotulo: 'Documentos', campos: ['documentos', 'documentos.*'] },
+    { id: 'questionario', rotulo: 'Questionário', campos: ['questionario', 'questionario.*'] },
     { id: 'avaliacao', rotulo: 'Avaliação', campos: ['nota_maxima', 'nota_corte', 'criterios', 'criterios.*', 'pontuacao_extra', 'pontuacao_extra.*'] },
     { id: 'informacoes', rotulo: 'Informações', campos: ['informacoes', 'informacoes.*'] },
     { id: 'arquivos', rotulo: 'Arquivos', campos: ['pdf', 'imagem', 'remover_imagem'] },
@@ -210,15 +248,23 @@ const DEFINICAO_ABAS: AbaFormulario[] = [
 ];
 
 // AbasFormulario conta os erros pelos campos da aba: aqui eles são as chaves com erro que caem na aba.
+// Perguntas sem vínculo contam como pendência da aba Questionário (impedem a publicação); travado, não há o que fazer.
 const abas = computed<AbaFormulario[]>(() => {
     const comErro = Object.keys(erros.value).filter((chave) => Boolean(erros.value[chave]));
+    const semVinculoNoQuestionario = props.questionarioTravado ? 0 : perguntasEmOrdem(form.questionario.secoes).filter(semVinculo).length;
 
     return DEFINICAO_ABAS.map((aba) => ({
         ...aba,
         campos: comErro.filter((chave) => aba.campos.some((campo) => (campo.endsWith('.*') ? chave.startsWith(campo.slice(0, -1)) : chave === campo))),
+        ...(aba.id === 'questionario' ? { pendencias: semVinculoNoQuestionario } : {}),
     }));
 });
-const abaAtiva = ref<string>('identificacao');
+// "?aba=" abre o formulário numa aba (usado ao recarregar depois de importar o questionário).
+// Uma importação do questionário concluiu com esta página aberta: o questionário do formulário está velho.
+const questionarioImportado = ref<boolean>(false);
+
+const abaDaUrl = new URLSearchParams(window.location.search).get('aba');
+const abaAtiva = ref<string>(DEFINICAO_ABAS.some((aba) => aba.id === abaDaUrl) ? (abaDaUrl as string) : 'identificacao');
 
 // Do quadro "Importado pela IA": abre a aba do bloco e leva o foco (e a rolagem) até ela.
 const irParaAba = async (aba: string): Promise<void> => {
@@ -261,11 +307,66 @@ vigiarReferencias(
 vigiarReferencias(
     () => form.categorias.map((categoria) => categoria.chave),
     (existentes) => {
-        for (const item of [...form.documentos, ...form.criterios]) {
+        for (const item of [...form.documentos, ...form.criterios, ...perguntasEmOrdem(form.questionario.secoes)]) {
             if (item.categorias.some((chave) => !existentes.has(chave))) item.categorias = item.categorias.filter((chave) => existentes.has(chave));
         }
     },
-    /^(documentos|criterios)\.\d+\.categorias(\.\d+)?$/,
+    /^((documentos|criterios)\.\d+|questionario\.secoes\.\d+\.perguntas\.\d+)\.categorias(\.\d+)?$/,
+);
+
+// Condição cuja origem sumiu (apagada, mudou de tipo) ou perdeu todas as respostas escolhidas sai, com aviso na aba.
+// Resposta tirada da origem (opção removida) sai da condição.
+const avisosDoQuestionario = ref<{ id: number; texto: string }[]>([]);
+let proximoAviso = 0;
+
+const removerCondicao = (pergunta: PerguntaEditavel): void => {
+    pergunta.condicao_pergunta = null;
+    pergunta.condicao_opcoes = [];
+};
+
+watch(
+    () =>
+        perguntasEmOrdem(form.questionario.secoes)
+            .map((pergunta) => `${pergunta.chave}:${pergunta.tipo}:${pergunta.opcoes.map((opcao) => opcao.chave).join(',')}`)
+            .join('|'),
+    () => {
+        const perguntas = perguntasEmOrdem(form.questionario.secoes);
+        const porChave = new Map(perguntas.map((pergunta) => [pergunta.chave, pergunta]));
+        const avisos: { id: number; texto: string }[] = [];
+        const avisar = (texto: string): void => {
+            avisos.push({ id: ++proximoAviso, texto });
+        };
+
+        for (const pergunta of perguntas) {
+            if (pergunta.condicao_pergunta === null) continue;
+            const origem = porChave.get(pergunta.condicao_pergunta);
+            const nome = nomeDaPergunta(pergunta);
+
+            if (!origem) {
+                removerCondicao(pergunta);
+                avisar(`A condição de "${nome}" foi removida porque a pergunta de origem foi apagada.`);
+                continue;
+            }
+            if (!regraDoTipo(origem.tipo).podeSerOrigem) {
+                removerCondicao(pergunta);
+                avisar(`A condição de "${nome}" foi removida porque a pergunta de origem mudou de tipo.`);
+                continue;
+            }
+
+            const validas = new Set(respostasDaOrigem(origem).map((resposta) => resposta.chave));
+            const restantes = pergunta.condicao_opcoes.filter((chave) => validas.has(chave));
+            if (restantes.length === pergunta.condicao_opcoes.length) continue;
+
+            if (restantes.length === 0) {
+                removerCondicao(pergunta);
+                avisar(`A condição de "${nome}" foi removida porque as respostas escolhidas saíram da pergunta de origem.`);
+            } else {
+                pergunta.condicao_opcoes = restantes;
+            }
+        }
+
+        if (avisos.length > 0) avisosDoQuestionario.value = avisos;
+    },
 );
 
 /** Período do edital como o servidor calcula: menor início e maior fim das chamadas com as duas datas. */
@@ -295,6 +396,41 @@ const cotasPreenchidas = (dados: CotasEditavel): boolean =>
     dados.alcance !== '' ||
     dados.veda_negro_indigena !== null ||
     dados.heteroidentificacao !== null;
+
+/**
+ * Questionário no contrato de RegrasDoQuestionario: categorias por posição, origem da condição por posição global;
+ * opções só nos tipos de escolha e limite só nos textos (o servidor confere as opções de todo tipo).
+ */
+const questionarioParaEnvio = (secoes: SecaoQuestionarioEditavel[], posicaoDaCategoria: Map<string, number>): string => {
+    const posicaoGlobal = posicoes(perguntasEmOrdem(secoes));
+
+    return JSON.stringify({
+        secoes: secoes.map((secao) => ({
+            id: secao.id,
+            titulo: secao.titulo,
+            descricao: secao.descricao || null,
+            perguntas: secao.perguntas.map((pergunta) => {
+                const regra = regraDoTipo(pergunta.tipo);
+                const condicao = pergunta.condicao_pergunta === null ? null : (posicaoGlobal.get(pergunta.condicao_pergunta) ?? null);
+
+                return {
+                    id: pergunta.id,
+                    enunciado: pergunta.enunciado,
+                    ajuda: pergunta.ajuda || null,
+                    tipo: pergunta.tipo,
+                    obrigatoria: pergunta.obrigatoria,
+                    limite_caracteres: regra.temLimite ? pergunta.limite_caracteres : null,
+                    opcoes: regra.temOpcoes ? pergunta.opcoes.map(({ chave, texto, outro }) => ({ chave, texto, outro })) : [],
+                    todas_categorias: pergunta.todas_categorias,
+                    categorias: pergunta.todas_categorias ? [] : emPosicoes(pergunta.categorias, posicaoDaCategoria),
+                    naturezas: pergunta.naturezas,
+                    condicao_pergunta: condicao,
+                    condicao_opcoes: condicao === null ? [] : pergunta.condicao_opcoes,
+                };
+            }),
+        })),
+    });
+};
 
 // Envio no contrato do SalvarEditalRequest: com o marcador, as listas vão inteiras (ausente = nenhuma);
 // sem as chaves da tela; referências entre listas viram posições na lista enviada; decimais viram números.
@@ -375,12 +511,18 @@ const paraEnvio = (dados: DadosDoFormulario): Record<string, unknown> => {
             conta_para_corte: dados.pontuacao_extra.conta_para_corte,
         },
         informacoes: dados.informacoes,
+        // Travado, ou já substituído por uma importação concluída com a página aberta, o questionário nem vai: o servidor
+        // recusaria (trava) ou o formulário velho apagaria o importado. A versão dá ao servidor como conferir.
+        ...(props.questionarioTravado || questionarioImportado.value
+            ? {}
+            : { com_questionario: true, questionario_versao: props.questionarioVersao ?? '', questionario: questionarioParaEnvio(dados.questionario.secoes, posicaoDaCategoria) }),
     };
 };
 
 // Edição vai como POST com _method=put: PUT com multipart não chega ao PHP.
 // "indices" monta chamadas[0][nome]; o padrão ("brackets") viraria chamadas[][nome] e quebraria as listas.
 const salvar = (): void => {
+    avisosDoQuestionario.value = [];
     const opcoes = {
         forceFormData: true,
         queryStringArrayFormat: 'indices' as const,
@@ -415,6 +557,7 @@ const ICONES: Record<string, string> = {
     categorias: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
     cotas: 'M12 3v18M5 7h14M5 7l-3 7a4 4 0 0 0 6 0zM19 7l-3 7a4 4 0 0 0 6 0z',
     documentos: 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13l2 2 4-4',
+    questionario: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17h.01',
     avaliacao: 'M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3 6.4 20.2l1.1-6.2L3 9.6l6.2-.9z',
     informacoes: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v5M12 8h.01',
     arquivos: 'M12 16V4M7 9l5-5 5 5M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3',
@@ -735,6 +878,37 @@ const tituloDaPagina = editando ? salvo.titulo || 'Edital sem título' : 'Novo e
                             @limpar-erros="limparErros"
                             @definir-erro="definirErro"
                         />
+
+                        <QuestionarioEdital
+                            v-else-if="aba.id === 'questionario'"
+                            v-model="form.questionario.secoes"
+                            :erros="erros"
+                            :categorias="form.categorias"
+                            :naturezas-do-edital="form.naturezas"
+                            :naturezas="naturezas"
+                            :tipos-pergunta="tiposPergunta"
+                            :travado="questionarioTravado"
+                            :aviso-travado="avisoQuestionarioTravado"
+                            :avisos="avisosDoQuestionario"
+                            :quadro="quadroQuestionario"
+                            :url-conferida="salvo ? `${BASE}/${salvo.slug}/questionario/importacao/conferida` : null"
+                            @limpar-erros="limparErros"
+                        >
+                            <template #importar>
+                                <ImportarQuestionario
+                                    :edital-slug="salvo?.slug ?? null"
+                                    :tem-categoria-salva="(salvo?.categorias.length ?? 0) > 0"
+                                    :tem-secoes="form.questionario.secoes.length > 0"
+                                    :travado="questionarioTravado"
+                                    :aviso-travado="avisoQuestionarioTravado"
+                                    :alteracoes-nao-salvas="form.isDirty"
+                                    :configurada="importacaoQuestionarioConfigurada"
+                                    :tamanho-maximo-mb="tamanhoMaximoArquivoMb"
+                                    :importacao="importacaoQuestionario"
+                                    @concluida="questionarioImportado = true"
+                                />
+                            </template>
+                        </QuestionarioEdital>
 
                         <div v-else-if="aba.id === 'avaliacao'" class="flex flex-col gap-8">
                             <div class="grid gap-x-6 gap-y-5 md:grid-cols-2">

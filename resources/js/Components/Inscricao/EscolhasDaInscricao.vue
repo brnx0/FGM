@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import type { CadastroDaInscricao, CategoriaDaInscricao, CotaDaInscricao } from '../../types';
 import CampoCadastro from '../CampoCadastro.vue';
+import Interruptor from '../Interruptor.vue';
 
 type Campo = 'cadastro' | 'categoria' | 'cotas';
 
@@ -58,6 +59,12 @@ const cotaBloqueada = (valor: string): boolean => {
         return false;
     }
     return (valor === 'negros' && cotasEscolhidas.value.includes('indigenas')) || (valor === 'indigenas' && cotasEscolhidas.value.includes('negros'));
+};
+
+const alternarCota = (valor: string, ligado: boolean): void => {
+    const outras = cotasEscolhidas.value.filter((cota) => cota !== valor);
+    cotasEscolhidas.value = ligado ? [...outras, valor] : outras;
+    emit('limparErro', 'cotas');
 };
 
 const classeCampo = 'h-12 w-full rounded-[12px] border border-tinta-suave/70 bg-superficie px-4 text-base text-home-tinta';
@@ -128,19 +135,20 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                 Marque só se for concorrer por cota; ela pode pedir documentos a mais.
                 <template v-if="vedaNegroIndigena">O edital não permite marcar pessoas negras e indígenas ao mesmo tempo.</template>
             </p>
-            <label v-for="cota in cotas" :key="cota.valor" class="flex items-start gap-3" :class="cotaBloqueada(cota.valor) ? 'opacity-70' : 'cursor-pointer'">
-                <input
-                    v-model="cotasEscolhidas"
-                    type="checkbox"
-                    name="cotas"
-                    :value="cota.valor"
-                    :disabled="cotaBloqueada(cota.valor)"
-                    :aria-invalid="erros.cotas && !cotaBloqueada(cota.valor) ? true : undefined"
-                    :class="classeCaixa"
-                    @change="emit('limparErro', 'cotas')"
+            <div class="flex flex-col gap-1 rounded-[12px] border border-hairline px-4 py-2">
+                <Interruptor
+                    v-for="cota in cotas"
+                    :id="`inscricao-cota-${cota.valor}`"
+                    :key="cota.valor"
+                    :model-value="cotasEscolhidas.includes(cota.valor)"
+                    :rotulo="cota.rotulo"
+                    variante="linha"
+                    :desabilitado="cotaBloqueada(cota.valor)"
+                    :invalido="Boolean(erros.cotas) && !cotaBloqueada(cota.valor)"
+                    :descricao="erros.cotas ? 'inscricao-cotas-erro' : undefined"
+                    @update:model-value="(ligado: boolean) => alternarCota(cota.valor, ligado)"
                 />
-                <span>{{ cota.rotulo }}</span>
-            </label>
+            </div>
             <p v-if="erros.cotas" id="inscricao-cotas-erro" role="alert" class="text-[0.875rem] font-semibold text-invalido-texto">{{ erros.cotas }}</p>
         </fieldset>
     </div>

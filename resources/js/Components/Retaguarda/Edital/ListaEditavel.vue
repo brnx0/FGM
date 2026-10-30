@@ -34,8 +34,10 @@ const props = withDefaults(
         contaNoSelo?: (campo: string) => boolean;
         /** Nível do título do cartão (as listas dentro de um cartão usam 4). */
         nivel?: 3 | 4;
+        /** Só leitura: sem adicionar, mover e remover; abrir e recolher os cartões continua valendo. */
+        somenteLeitura?: boolean;
     }>(),
-    { feminino: false, resumo: undefined, contaNoSelo: undefined, nivel: 3 },
+    { feminino: false, resumo: undefined, contaNoSelo: undefined, nivel: 3, somenteLeitura: false },
 );
 
 const emit = defineEmits<{
@@ -55,6 +57,8 @@ defineSlots<{
         limpar: (...campos: string[]) => void;
         limparLista: (campo: string) => void;
     }): unknown;
+    /** Selo destacado no cabeçalho do cartão (ex.: pendência do item). */
+    selo?(escopo: { item: T }): unknown;
 }>();
 
 const idCampo = (item: T, campo: string): string => `${props.id}-${item.chave}-${campo}`;
@@ -152,13 +156,14 @@ const tituloDoCartao = computed<string>(() => `h${props.nivel}`);
                                     <span class="truncate">{{ Singular }} {{ indice + 1 }}<span class="font-semibold"> · {{ nome(item).trim() || 'Sem nome' }}</span></span>
                                     <span v-if="resumo" class="truncate text-[0.875rem] font-normal text-tinta-suave tabular-nums">{{ resumo(item) }}</span>
                                 </span>
+                                <slot name="selo" :item="item" />
                                 <span v-if="quantidadeDeErros(indice) > 0" class="ml-auto shrink-0 rounded-pill bg-erro-fundo px-2.5 py-0.5 text-[0.8125rem] font-bold text-erro-texto">
                                     {{ quantidadeDeErros(indice) }}<span class="sr-only">{{ ` ${quantidadeDeErros(indice) === 1 ? 'erro' : 'erros'} ${feminino ? 'nesta' : 'neste'} ${singular}` }}</span>
                                 </span>
                             </button>
                         </component>
 
-                        <div class="-mx-3 flex flex-wrap items-center">
+                        <div v-if="!somenteLeitura" class="-mx-3 flex flex-wrap items-center">
                             <button :id="idCampo(item, 'subir')" type="button" :disabled="indice === 0" :class="classeBotaoCartao" @click="mover(indice, -1, 'subir')">
                                 <svg aria-hidden="true" viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M12 19V5M6 11l6-6 6 6" />
@@ -200,7 +205,7 @@ const tituloDoCartao = computed<string>(() => `h${props.nivel}`);
             </li>
         </ol>
 
-        <div class="flex flex-col items-start gap-2">
+        <div v-if="!somenteLeitura" class="flex flex-col items-start gap-2">
             <button
                 ref="botaoAdicionar"
                 type="button"

@@ -74,6 +74,12 @@ class User extends Authenticatable
         return $this->tipos_cadastro->first()->rotaInicial();
     }
 
+    /** O cadastro da pessoa física tem o perfil que os editais pedem. */
+    public function perfilCompleto(): bool
+    {
+        return $this->pessoaFisica?->perfilCompleto() ?? false;
+    }
+
     /** @return HasOne<PessoaFisica, $this> */
     public function pessoaFisica(): HasOne
     {

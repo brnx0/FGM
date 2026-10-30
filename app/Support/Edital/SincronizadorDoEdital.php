@@ -49,8 +49,9 @@ class SincronizadorDoEdital
 
     /**
      * @param  array{chamadas?: list<array<string, mixed>>, categorias?: list<array<string, mixed>>, documentos?: list<array<string, mixed>>, criterios?: list<array<string, mixed>>}  $listas
+     * @param  array<string, mixed>|null  $questionario  Formato de SincronizadorDoQuestionario; nulo não toca no questionário.
      */
-    public function sincronizar(Edital $edital, array $listas): void
+    public function sincronizar(Edital $edital, array $listas, ?array $questionario = null): void
     {
         $listas = array_map(
             fn (string $chave): array => array_values($listas[$chave] ?? []),
@@ -135,6 +136,10 @@ class SincronizadorDoEdital
         foreach ($criterios as $posicao => $criterio) {
             $item = $listas['criterios'][$posicao];
             $criterio->categorias()->sync(self::categoriasEscolhidas($item, $categorias) ?? []);
+        }
+
+        if ($questionario !== null) {
+            (new SincronizadorDoQuestionario)->sincronizar($edital, $questionario, $categorias);
         }
 
         $this->derivarPeriodo($edital);

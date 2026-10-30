@@ -65,6 +65,7 @@ class PortalController extends Controller
         return Inertia::render('Portal/Inscricao', [
             'edital' => PropsDaInscricao::edital($edital),
             'inscricoes' => PropsDaInscricao::minhasInscricoes($request->user(), $edital),
+            'perfilIncompleto' => ! $request->user()->perfilCompleto(),
             ...PropsDaInscricao::opcoes($request->user(), $edital),
         ]);
     }

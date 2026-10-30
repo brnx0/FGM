@@ -200,6 +200,12 @@ export interface CadastroPessoaFisica {
     identidade_genero: string;
     raca_cor: string;
     pcd: boolean;
+    deficiencia: string | null;
+    deficiencia_outra: string | null;
+    escolaridade: string | null;
+    renda: string | null;
+    povo_tradicional: string | null;
+    anos_atuacao: number | null;
     cep: string;
     logradouro: string;
     numero: string | null;
@@ -220,6 +226,10 @@ export interface CadastroCompletarProps {
         estados: OpcaoCadastro[];
         identidadesGenero: OpcaoCadastro[];
         racasCores: OpcaoCadastro[];
+        tiposDeficiencia: OpcaoCadastro[];
+        escolaridades: OpcaoCadastro[];
+        faixasDeRenda: OpcaoCadastro[];
+        povosTradicionais: OpcaoCadastro[];
         territorios: OpcaoCadastro[];
     };
 }
@@ -489,6 +499,8 @@ export interface PortalInscricaoProps extends OpcoesDaInscricao {
     /** `periodo` nulo quando o edital ficou sem chamadas com datas. */
     edital: Pick<EditalPortal, 'slug' | 'titulo' | 'categoria' | 'pdf'> & { periodo: string | null };
     inscricoes: InscricaoResumo[];
+    /** O perfil de Pessoa Física do usuário ainda não está completo: não dá para criar a inscrição. */
+    perfilIncompleto: boolean;
 }
 
 /** AppEnumsChecagemDocumento. */
@@ -525,8 +537,50 @@ export interface DocumentoDaInscricao {
     enviado: ArquivoEnviado | null;
 }
 
-/** Tela da inscrição com a lista de documentos (InscricaoController@show). */
-export interface PortalInscricaoDocumentosProps extends OpcoesDaInscricao {
+/** Um passo da inscrição (App\Support\Inscricao\PassosDaInscricao): "escolhas", "secao-{id}", "documentos" ou "revisao". */
+export interface PassoDaInscricao {
+    id: string;
+    rotulo: string;
+    /** O que o passo pede está respondido; a revisão nunca está completa. */
+    completo: boolean;
+}
+
+/** Valor de App\Enums\TipoPergunta. */
+export type TipoPergunta = 'texto_curto' | 'texto_longo' | 'escolha_unica' | 'multipla_escolha' | 'sim_nao' | 'data' | 'numero' | 'declaracao';
+
+/** Pergunta do questionário como a inscrição a mostra (InscricaoController::perguntaParaATela). */
+export interface PerguntaDaInscricao {
+    id: number;
+    enunciado: string;
+    ajuda: string | null;
+    tipo: TipoPergunta;
+    obrigatoria: boolean;
+    /** Limite de caracteres dos textos; nulo nos outros tipos. */
+    limite: number | null;
+    /** Só nas de escolha; sim/não e declaração usam as chaves fixas ("sim", "nao", "declaro"). */
+    opcoes: OpcaoDaPergunta[];
+    /** A pergunta só aparece se a origem está visível e a resposta dela tem alguma destas opções. */
+    condicao: { pergunta: number; opcoes: string[] } | null;
+}
+
+/** Seção do questionário com as perguntas que valem para a inscrição (visíveis ou não). */
+export interface SecaoDaInscricao {
+    id: number;
+    titulo: string;
+    descricao: string | null;
+    perguntas: PerguntaDaInscricao[];
+}
+
+/** Resposta gravada (QuestionarioDaInscricao::normalizar): texto nos tipos de texto, data e número; opções nos outros. */
+export interface RespostaDaInscricao {
+    texto: string | null;
+    opcoes: string[];
+    /** O "Qual?" da opção "Outro". */
+    outro: string | null;
+}
+
+/** Tela da inscrição em passos (InscricaoController@show). */
+export interface PortalInscricaoPassosProps extends OpcoesDaInscricao {
     /** `periodo` nulo quando o edital ficou sem chamadas com datas. */
     edital: Pick<EditalPortal, 'slug' | 'titulo' | 'categoria' | 'pdf'> & { periodo: string | null };
     inscricao: InscricaoResumo & {
@@ -548,6 +602,15 @@ export interface PortalInscricaoDocumentosProps extends OpcoesDaInscricao {
     pendencias: string[];
     /** Os exigidos para as escolhas da inscrição, de todas as etapas, na ordem do edital. */
     documentos: DocumentoDaInscricao[];
+    passos: PassoDaInscricao[];
+    /** Id do passo aberto; finalizada ou fora do período, sempre "revisao". */
+    passoAtual: string;
+    /** As seções com pergunta que vale para a inscrição, na ordem. */
+    secoes: SecaoDaInscricao[];
+    /** Respostas gravadas, pelo id da pergunta. */
+    respostas: Record<number, RespostaDaInscricao>;
+    /** O perfil de Pessoa Física do dono ainda não está completo: não dá para finalizar. */
+    perfilIncompleto: boolean;
 }
 
 /** Consulta periódica enquanto há documento conferindo (InscricaoController@situacao). */
@@ -606,6 +669,16 @@ export interface ImportacaoDoEdital {
     tokensTotal: number | null;
     /** dd/mm/aaaa hh:mm */
     importadaEm: string;
+}
+
+/** Última importação do questionário do edital (aba Questionário), sem o conteúdo analisado. */
+export interface ImportacaoDoQuestionario {
+    id: number;
+    situacao: 'analisando' | 'concluida' | 'erro';
+    erro: string | null;
+    arquivoNome: string;
+    /** dd/mm/aaaa hh:mm */
+    enviadaEm: string;
 }
 
 /** Opção de um campo de escolha (valor do enum e rótulo). */
@@ -701,6 +774,46 @@ export interface CriterioFormulario {
     categorias: number[];
 }
 
+/** Opção de uma pergunta de escolha; `chave` é estável (as condições e as respostas a usam). */
+export interface OpcaoDaPergunta {
+    chave: string;
+    texto: string;
+    /** A opção "Outro", que abre um campo "Qual?". */
+    outro: boolean;
+}
+
+/** Pergunta do questionário como o servidor manda (posições como em RegrasDoQuestionario). */
+export interface PerguntaFormulario {
+    id: number;
+    enunciado: string;
+    ajuda: string | null;
+    /** Valor de TipoPergunta. */
+    tipo: string;
+    obrigatoria: boolean;
+    limite_caracteres: number | null;
+    /** Vazia nos tipos sem opções. */
+    opcoes: OpcaoDaPergunta[];
+    todas_categorias: boolean;
+    /** Posições das categorias. */
+    categorias: number[];
+    /** Vazia = todas as naturezas oferecidas. */
+    naturezas: string[];
+    /** Posição global (índice na ordem do questionário) da pergunta de origem. */
+    condicao_pergunta: number | null;
+    condicao_opcoes: string[];
+}
+
+export interface SecaoQuestionarioFormulario {
+    id: number;
+    titulo: string;
+    descricao: string | null;
+    perguntas: PerguntaFormulario[];
+}
+
+export interface QuestionarioFormulario {
+    secoes: SecaoQuestionarioFormulario[];
+}
+
 /**
  * Listas no formulário do edital (Retaguarda/Editais/Form): cada item tem uma `chave` estável, só da tela, e as
  * referências entre listas guardam a chave do item referido; as posições são calculadas no envio. Decimais ficam
@@ -759,6 +872,36 @@ export interface DocumentoEditavel extends ItemEditavel {
     remover_modelo: boolean;
     modeloUrl: string | null;
     modeloNome: string | null;
+}
+
+/** Para quais categorias e naturezas a pergunta vale (sem "todas" e sem categoria = sem vínculo). */
+export interface VinculoEditavel {
+    todas_categorias: boolean;
+    /** Chaves das categorias. */
+    categorias: string[];
+    /** Vazia = todas as naturezas oferecidas. */
+    naturezas: string[];
+}
+
+export interface PerguntaEditavel extends ItemEditavel, VinculoEditavel {
+    id: number | null;
+    enunciado: string;
+    ajuda: string;
+    tipo: string;
+    obrigatoria: boolean;
+    limite_caracteres: number | null;
+    opcoes: OpcaoDaPergunta[];
+    /** Chave da pergunta de origem da condição. */
+    condicao_pergunta: string | null;
+    /** Chaves das respostas da origem que mostram a pergunta. */
+    condicao_opcoes: string[];
+}
+
+export interface SecaoQuestionarioEditavel extends ItemEditavel {
+    id: number | null;
+    titulo: string;
+    descricao: string;
+    perguntas: PerguntaEditavel[];
 }
 
 export interface CriterioEditavel extends ItemEditavel {
@@ -833,14 +976,28 @@ export interface EditalFormulario {
     categorias: CategoriaFormulario[];
     documentos: DocumentoFormulario[];
     criterios: CriterioFormulario[];
+    questionario: QuestionarioFormulario;
 }
 
 export interface RetaguardaEditaisFormProps {
     edital: EditalFormulario | null;
     /** O que falta para publicar (vazia na criação). */
     pendencias: string[];
+    /** O edital já tem inscrição finalizada: o questionário não muda mais. */
+    questionarioTravado: boolean;
+    /** Motivo da trava, mostrado na aba Questionário. */
+    avisoQuestionarioTravado: string;
+    tiposPergunta: OpcaoFormulario[];
     /** Importação por IA que gerou o edital, enquanto não foi conferida. */
     importacao: ImportacaoDoEdital | null;
+    /** Última importação do questionário por IA (a mais recente do edital). */
+    importacaoQuestionario: ImportacaoDoQuestionario | null;
+    /** Quadro "Importado pela IA" da aba Questionário, enquanto a última importação concluída não foi conferida. */
+    quadroQuestionario: ImportacaoDoEdital | null;
+    /** Id da última importação concluída do questionário (versão que a página abriu); o envio devolve para o servidor conferir. */
+    questionarioVersao: number | null;
+    importacaoQuestionarioConfigurada: boolean;
+    tamanhoMaximoArquivoMb: number;
     naturezas: OpcaoFormulario[];
     etapas: OpcaoFormulario[];
     modalidadesCota: OpcaoFormulario[];
@@ -1045,6 +1202,8 @@ export interface AbaFormulario {
     rotulo: string;
     /** Campos do formulário desta aba: os erros deles contam no marcador da aba. */
     campos: string[];
+    /** Pendências da aba (ex.: perguntas sem vínculo), somadas aos erros no marcador. */
+    pendencias?: number;
 }
 
 export interface RetaguardaMinhaSenhaProps {

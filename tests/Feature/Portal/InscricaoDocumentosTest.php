@@ -77,7 +77,7 @@ class InscricaoDocumentosTest extends TestCase
 
     public function test_anexa_pdf_e_lanca_a_conferencia(): void
     {
-        $user = User::factory()->proponente()->create(['cpf' => self::CPF]);
+        $user = User::factory()->proponente()->comPerfil()->create(['cpf' => self::CPF]);
         $edital = $this->editalAberto();
         $exigido = $this->documentoExigido($edital, ChecagemDocumento::Rigorosa);
         $inscricao = $this->rascunho($edital, $user);
@@ -102,7 +102,7 @@ class InscricaoDocumentosTest extends TestCase
 
     public function test_anexa_imagem_jpg_ou_png_e_lanca_a_conferencia(): void
     {
-        $user = User::factory()->proponente()->create(['cpf' => self::CPF]);
+        $user = User::factory()->proponente()->comPerfil()->create(['cpf' => self::CPF]);
         $edital = $this->editalAberto();
         $identidade = $this->documentoExigido($edital, ChecagemDocumento::Rigorosa);
         $comprovante = $this->documentoExigido($edital, ChecagemDocumento::AceitaSemValidar);
@@ -130,7 +130,7 @@ class InscricaoDocumentosTest extends TestCase
     public function test_com_a_validacao_por_ia_desligada_o_documento_fica_enviado_sem_lancar(): void
     {
         ConfiguracaoIa::query()->update(['ativo' => false]);
-        $user = User::factory()->proponente()->create(['cpf' => self::CPF]);
+        $user = User::factory()->proponente()->comPerfil()->create(['cpf' => self::CPF]);
         $edital = $this->editalAberto();
         $exigido = $this->documentoExigido($edital, ChecagemDocumento::Rigorosa);
         $inscricao = $this->rascunho($edital, $user);
@@ -149,7 +149,7 @@ class InscricaoDocumentosTest extends TestCase
 
     public function test_documento_sem_checagem_fica_enviado_sem_lancar(): void
     {
-        $user = User::factory()->proponente()->create(['cpf' => self::CPF]);
+        $user = User::factory()->proponente()->comPerfil()->create(['cpf' => self::CPF]);
         $edital = $this->editalAberto();
         $exigido = $this->documentoExigido($edital, ChecagemDocumento::Nenhuma);
         $inscricao = $this->rascunho($edital, $user);
@@ -167,7 +167,7 @@ class InscricaoDocumentosTest extends TestCase
 
     public function test_anexar_de_novo_substitui_o_arquivo_e_reconfere(): void
     {
-        $user = User::factory()->proponente()->create(['cpf' => self::CPF]);
+        $user = User::factory()->proponente()->comPerfil()->create(['cpf' => self::CPF]);
         $edital = $this->editalAberto();
         $exigido = $this->documentoExigido($edital, ChecagemDocumento::Rigorosa);
         $inscricao = $this->rascunho($edital, $user);
@@ -206,7 +206,7 @@ class InscricaoDocumentosTest extends TestCase
 
     public function test_arquivo_que_nao_e_pdf_nem_imagem_jpg_ou_png_ou_acima_de_10mb_e_recusado(): void
     {
-        $user = User::factory()->proponente()->create(['cpf' => self::CPF]);
+        $user = User::factory()->proponente()->comPerfil()->create(['cpf' => self::CPF]);
         $edital = $this->editalAberto();
         $exigido = $this->documentoExigido($edital, ChecagemDocumento::Rigorosa);
         $inscricao = $this->rascunho($edital, $user);
@@ -227,7 +227,7 @@ class InscricaoDocumentosTest extends TestCase
 
     public function test_documento_fora_da_lista_da_404(): void
     {
-        $user = User::factory()->proponente()->create(['cpf' => self::CPF]);
+        $user = User::factory()->proponente()->comPerfil()->create(['cpf' => self::CPF]);
         $edital = $this->editalAberto();
         $categoria = EditalCategoria::factory()->for($edital)->create();
         $inscricao = $this->rascunho($edital, $user);
@@ -253,7 +253,7 @@ class InscricaoDocumentosTest extends TestCase
 
     public function test_obrigatorio_nao_pode_ser_removido_e_opcional_pode(): void
     {
-        $user = User::factory()->proponente()->create(['cpf' => self::CPF]);
+        $user = User::factory()->proponente()->comPerfil()->create(['cpf' => self::CPF]);
         $edital = $this->editalAberto();
         $obrigatorio = $this->documentoExigido($edital, ChecagemDocumento::Rigorosa, ['obrigatorio' => true]);
         $opcional = $this->documentoExigido($edital, ChecagemDocumento::Rigorosa, ['obrigatorio' => false]);
@@ -284,7 +284,7 @@ class InscricaoDocumentosTest extends TestCase
 
     public function test_dono_baixa_o_arquivo_com_o_nome_original(): void
     {
-        $user = User::factory()->proponente()->create(['cpf' => self::CPF]);
+        $user = User::factory()->proponente()->comPerfil()->create(['cpf' => self::CPF]);
         $edital = $this->editalAberto();
         $exigido = $this->documentoExigido($edital, ChecagemDocumento::Rigorosa);
         $inscricao = $this->rascunho($edital, $user);
@@ -299,8 +299,8 @@ class InscricaoDocumentosTest extends TestCase
 
     public function test_outro_usuario_nao_baixa_o_arquivo(): void
     {
-        $dono = User::factory()->proponente()->create(['cpf' => self::CPF]);
-        $outro = User::factory()->proponente()->create();
+        $dono = User::factory()->proponente()->comPerfil()->create(['cpf' => self::CPF]);
+        $outro = User::factory()->proponente()->comPerfil()->create();
         $edital = $this->editalAberto();
         $exigido = $this->documentoExigido($edital, ChecagemDocumento::Rigorosa);
         $inscricao = $this->rascunho($edital, $dono);
@@ -312,8 +312,8 @@ class InscricaoDocumentosTest extends TestCase
 
     public function test_so_o_dono_anexa_e_remove(): void
     {
-        $dono = User::factory()->proponente()->create(['cpf' => self::CPF]);
-        $outro = User::factory()->proponente()->create();
+        $dono = User::factory()->proponente()->comPerfil()->create(['cpf' => self::CPF]);
+        $outro = User::factory()->proponente()->comPerfil()->create();
         $edital = $this->editalAberto();
         $exigido = $this->documentoExigido($edital, ChecagemDocumento::Rigorosa, ['obrigatorio' => false]);
         $inscricao = $this->rascunho($edital, $dono);
@@ -332,7 +332,7 @@ class InscricaoDocumentosTest extends TestCase
 
     public function test_inscricao_finalizada_nao_recebe_nem_perde_documento(): void
     {
-        $user = User::factory()->proponente()->create(['cpf' => self::CPF]);
+        $user = User::factory()->proponente()->comPerfil()->create(['cpf' => self::CPF]);
         $edital = $this->editalAberto();
         $exigido = $this->documentoExigido($edital, ChecagemDocumento::Rigorosa, ['obrigatorio' => false]);
         $inscricao = $this->rascunho($edital, $user, ['situacao' => SituacaoInscricao::Finalizada]);
@@ -355,7 +355,7 @@ class InscricaoDocumentosTest extends TestCase
 
     public function test_fora_do_periodo_nao_recebe_nem_perde_documento(): void
     {
-        $user = User::factory()->proponente()->create(['cpf' => self::CPF]);
+        $user = User::factory()->proponente()->comPerfil()->create(['cpf' => self::CPF]);
         $encerrado = $this->editalAberto(['slug' => 'encerrado'], '2026-10-01', '2026-11-09');
         $exigido = $this->documentoExigido($encerrado, ChecagemDocumento::Rigorosa, ['obrigatorio' => false]);
         $inscricao = $this->rascunho($encerrado, $user);
@@ -378,7 +378,7 @@ class InscricaoDocumentosTest extends TestCase
 
     public function test_falha_ao_lancar_deixa_o_documento_nao_conferido_sem_detalhe_tecnico(): void
     {
-        $user = User::factory()->proponente()->create(['cpf' => self::CPF]);
+        $user = User::factory()->proponente()->comPerfil()->create(['cpf' => self::CPF]);
         $edital = $this->editalAberto();
         $exigido = $this->documentoExigido($edital, ChecagemDocumento::Rigorosa);
         $inscricao = $this->rascunho($edital, $user);

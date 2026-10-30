@@ -53,6 +53,15 @@ const criar = (): void => {
         </FaixaPortal>
 
         <div class="relative mx-auto -mt-20 flex max-w-6xl flex-col gap-6 px-4 pb-16 md:-mt-24">
+            <div
+                v-if="perfilIncompleto"
+                class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-[16px] border border-aviso-texto/40 bg-aviso-fundo px-5 py-4 text-aviso-texto"
+            >
+                <p class="font-semibold">Complete o seu perfil no cadastro de Pessoa Física para se inscrever.</p>
+                <!-- Caminho da rota cadastro (o front não tem helper de rotas nomeadas). -->
+                <Link href="/cadastro" class="inline-flex min-h-11 items-center font-bold text-aviso-texto underline">Ir para o cadastro</Link>
+            </div>
+
             <section
                 v-if="inscricoes.length > 0"
                 aria-labelledby="inscricoes-titulo"
