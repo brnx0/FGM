@@ -152,22 +152,29 @@ class FinalizarInscricaoTest extends TestCase
 
     public function test_numero_e_mantido_ao_reabrir_e_finalizar_de_novo(): void
     {
-        $outra = $this->rascunho($this->edital, $this->user);
-        $this->actingAs($this->user)->post(route('portal.inscricoes.finalizar', $this->inscricao));
-        $numero = $this->inscricao->fresh()->numero;
-        $this->assertSame('2026'.str_pad((string) $this->inscricao->id, 6, '0', STR_PAD_LEFT), $numero);
+        // A chamada atravessa a virada do ano: um número refeito na segunda finalização sairia com 2027.
+        $edital = $this->editalAberto(['slug' => 'virada'], '2026-12-20', '2027-01-10');
+        $inscricao = $this->rascunho($edital, $this->user);
+        $outra = $this->rascunho($edital, $this->user);
 
-        $this->travelTo(Carbon::parse('2026-11-12 15:30', 'America/Bahia'));
-        $this->post(route('portal.inscricoes.reabrir', $this->inscricao));
-        $this->post(route('portal.inscricoes.finalizar', $this->inscricao))->assertSessionHas('sucesso');
+        $this->travelTo(Carbon::parse('2026-12-30 10:00', 'America/Bahia'));
+        $this->actingAs($this->user)->post(route('portal.inscricoes.finalizar', $inscricao))->assertSessionHas('sucesso');
+        $numero = $inscricao->fresh()->numero;
+        $this->assertSame('2026'.str_pad((string) $inscricao->id, 6, '0', STR_PAD_LEFT), $numero);
 
-        $refeita = $this->inscricao->fresh();
+        $this->travelTo(Carbon::parse('2027-01-05 15:30', 'America/Bahia'));
+        $this->post(route('portal.inscricoes.reabrir', $inscricao))->assertSessionHas('sucesso');
+        $this->post(route('portal.inscricoes.finalizar', $inscricao))->assertSessionHas('sucesso');
+
+        $refeita = $inscricao->fresh();
         $this->assertSame(SituacaoInscricao::Finalizada, $refeita->situacao);
         $this->assertSame($numero, $refeita->numero);
+        $this->assertStringStartsNotWith('2027', $refeita->numero);
         $this->assertTrue(now()->equalTo($refeita->finalizada_em));
 
-        $this->post(route('portal.inscricoes.finalizar', $outra));
-        $this->assertNotSame($numero, $outra->fresh()->numero);
+        // Uma inscrição finalizada pela primeira vez já em 2027 recebe número de 2027.
+        $this->post(route('portal.inscricoes.finalizar', $outra))->assertSessionHas('sucesso');
+        $this->assertSame('2027'.str_pad((string) $outra->id, 6, '0', STR_PAD_LEFT), $outra->fresh()->numero);
     }
 
     public function test_finalizar_uma_inscricao_ja_finalizada_nao_muda_nada(): void
