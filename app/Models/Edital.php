@@ -29,6 +29,8 @@ class Edital extends Model
     use SoftDeletes;
     use UsaDiaCivil;
 
+    public const string AVISO_QUESTIONARIO_TRAVADO = 'O questionário está travado porque o edital já tem inscrição finalizada: mudar as perguntas deixaria respostas enviadas sem pergunta.';
+
     /** Seções de texto informativas (coluna `informacoes`), na ordem de exibição: chave => rótulo. */
     public const array SECOES_INFORMATIVAS = [
         'recursos_pagamento' => 'Recursos e pagamento',
@@ -119,6 +121,49 @@ class Edital extends Model
         return $this->hasMany(EditalCriterio::class)->orderBy('ordem')->orderBy('id');
     }
 
+    /** @return HasMany<EditalQuestionarioSecao, $this> */
+    public function secoesDoQuestionario(): HasMany
+    {
+        return $this->hasMany(EditalQuestionarioSecao::class)->orderBy('ordem')->orderBy('id');
+    }
+
+    /** @return HasMany<EditalPergunta, $this> */
+    public function perguntas(): HasMany
+    {
+        return $this->hasMany(EditalPergunta::class);
+    }
+
+    /** @return HasMany<Inscricao, $this> */
+    public function inscricoes(): HasMany
+    {
+        return $this->hasMany(Inscricao::class);
+    }
+
+    /** O número nasce na primeira finalização e fica ao reabrir (finalizada_em é zerado), então é ele que marca a trava. */
+    public function questionarioTravado(): bool
+    {
+        return $this->inscricoes()->whereNotNull('numero')->exists();
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function pendenciasDoQuestionario(): array
+    {
+        $semVinculo = $this->perguntas()
+            ->where('todas_categorias', false)
+            ->whereDoesntHave('categorias')
+            ->count();
+
+        if ($semVinculo === 0) {
+            return [];
+        }
+
+        return [$semVinculo === 1
+            ? 'Vincule às categorias 1 pergunta do questionário.'
+            : "Vincule às categorias {$semVinculo} perguntas do questionário."];
+    }
+
     /** Nula enquanto o edital não tem as duas datas de inscrição (rascunho). */
     public function situacao(?CarbonInterface $agora = null): ?SituacaoEdital
     {
@@ -165,7 +210,7 @@ class Edital extends Model
             $pendencias[] = 'Cadastre ao menos uma categoria.';
         }
 
-        return $pendencias;
+        return [...$pendencias, ...$this->pendenciasDoQuestionario()];
     }
 
     /** URL da rota que entrega o PDF; nula enquanto o edital não tem arquivo. */
