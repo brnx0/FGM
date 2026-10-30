@@ -312,6 +312,14 @@ class EditalController extends Controller
 
                 $questionario = $request->questionarioDoEdital();
 
+                // Uma inscrição pode ter sido finalizada depois da validação do envio: confere de novo, com o edital travado.
+                if ($questionario !== null) {
+                    Edital::query()->whereKey($edital->getKey())->lockForUpdate()->first();
+                    if ($edital->questionarioTravado()) {
+                        throw ValidationException::withMessages(['questionario' => Edital::AVISO_QUESTIONARIO_TRAVADO]);
+                    }
+                }
+
                 if ($request->comListas()) {
                     $sincronizador->sincronizar($edital, $request->listasDoEdital(), $questionario);
                 } elseif ($questionario !== null) {

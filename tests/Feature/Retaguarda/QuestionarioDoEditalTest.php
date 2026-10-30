@@ -349,6 +349,52 @@ class QuestionarioDoEditalTest extends TestCase
         $this->assertSame(['Antes'], EditalPergunta::query()->pluck('enunciado')->all());
     }
 
+    public function test_inscricao_finalizada_durante_o_salvamento_trava_e_nada_muda(): void
+    {
+        $secao = EditalQuestionarioSecao::factory()->create(['edital_id' => $this->edital->id]);
+        EditalPergunta::factory()->create(['edital_id' => $this->edital->id, 'edital_questionario_secao_id' => $secao->id, 'enunciado' => 'Antes']);
+
+        $ativo = true;
+        Edital::saving(function (Edital $edital) use (&$ativo): void {
+            if ($ativo && $edital->exists) {
+                $ativo = false;
+                Inscricao::factory()->finalizada()->create(['edital_id' => $edital->id]);
+            }
+        });
+
+        $this->enviar($this->edital, ['secoes' => [
+            $this->secao([$this->pergunta(['enunciado' => 'Depois'])]),
+        ]])->assertSessionHasErrors(['questionario' => Edital::AVISO_QUESTIONARIO_TRAVADO]);
+
+        $this->assertFalse($ativo);
+        $this->assertSame(['Antes'], EditalPergunta::query()->pluck('enunciado')->all());
+        $this->assertSame(1, EditalQuestionarioSecao::query()->count());
+    }
+
+    public function test_id_de_outro_edital_e_ignorado(): void
+    {
+        $outro = Edital::factory()->create(['publicado' => false]);
+        $secaoDoOutro = EditalQuestionarioSecao::factory()->create(['edital_id' => $outro->id, 'titulo' => 'Do outro']);
+        $perguntaDoOutro = EditalPergunta::factory()->create([
+            'edital_id' => $outro->id, 'edital_questionario_secao_id' => $secaoDoOutro->id, 'enunciado' => 'Do outro',
+        ]);
+
+        $this->enviar($this->edital, ['secoes' => [
+            ['id' => $secaoDoOutro->id, 'titulo' => 'Minha', 'perguntas' => [
+                $this->pergunta(['id' => $perguntaDoOutro->id, 'enunciado' => 'Minha']),
+            ]],
+        ]])->assertSessionHasNoErrors();
+
+        $minha = $this->perguntasGravadas();
+        $this->assertCount(1, $minha);
+        $this->assertNotSame($perguntaDoOutro->id, (int) $minha[0]->id);
+        $this->assertSame('Minha', $minha[0]->enunciado);
+        $this->assertSame('Do outro', $perguntaDoOutro->fresh()->enunciado);
+        $this->assertSame($secaoDoOutro->id, (int) $perguntaDoOutro->fresh()->edital_questionario_secao_id);
+        $this->assertSame('Do outro', $secaoDoOutro->fresh()->titulo);
+        $this->assertSame(1, EditalQuestionarioSecao::query()->where('edital_id', $this->edital->id)->count());
+    }
+
     public function test_edital_publicado_nao_salva_com_pergunta_sem_vinculo(): void
     {
         $publicado = Edital::factory()->create(['publicado' => true]);

@@ -49,6 +49,9 @@ class SincronizadorDoQuestionario
                 $idDaPergunta = $this->idDe($item);
                 $pergunta = ($idDaPergunta !== null ? $perguntasExistentes->pull($idDaPergunta) : null) ?? new EditalPergunta;
                 $pergunta->fill($this->atributosDaPergunta($item));
+                if (! $pergunta->exists) {
+                    $pergunta->forceFill(['condicao_pergunta_id' => null, 'condicao_opcoes' => null]);
+                }
                 $pergunta->forceFill([
                     'edital_id' => $edital->getKey(),
                     'edital_questionario_secao_id' => $secao->getKey(),
@@ -107,7 +110,9 @@ class SincronizadorDoQuestionario
                 'condicao_pergunta_id' => $origem?->getKey(),
                 'condicao_opcoes' => $origem !== null ? $respostas : null,
             ]);
-            $pergunta->save();
+            if ($pergunta->isDirty()) {
+                $pergunta->save();
+            }
 
             $pergunta->categorias()->sync($this->idsDasCategorias($item, $pergunta, $categorias));
         }
