@@ -115,6 +115,7 @@ class EditalController extends Controller
             'edital' => null,
             'pendencias' => [],
             'questionarioTravado' => false,
+            'avisoQuestionarioTravado' => Edital::AVISO_QUESTIONARIO_TRAVADO,
             'importacao' => null,
             ...$this->opcoesDoFormulario(),
         ]);
@@ -223,6 +224,7 @@ class EditalController extends Controller
             ],
             'pendencias' => $edital->pendenciasParaPublicar(),
             'questionarioTravado' => $edital->questionarioTravado(),
+            'avisoQuestionarioTravado' => Edital::AVISO_QUESTIONARIO_TRAVADO,
             'importacao' => $this->importacaoNaoConferida($edital),
             ...$this->opcoesDoFormulario(),
         ]);

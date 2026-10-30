@@ -55,6 +55,8 @@ defineSlots<{
         limpar: (...campos: string[]) => void;
         limparLista: (campo: string) => void;
     }): unknown;
+    /** Selo destacado no cabeçalho do cartão (ex.: pendência do item). */
+    selo?(escopo: { item: T }): unknown;
 }>();
 
 const idCampo = (item: T, campo: string): string => `${props.id}-${item.chave}-${campo}`;
@@ -152,6 +154,7 @@ const tituloDoCartao = computed<string>(() => `h${props.nivel}`);
                                     <span class="truncate">{{ Singular }} {{ indice + 1 }}<span class="font-semibold"> · {{ nome(item).trim() || 'Sem nome' }}</span></span>
                                     <span v-if="resumo" class="truncate text-[0.875rem] font-normal text-tinta-suave tabular-nums">{{ resumo(item) }}</span>
                                 </span>
+                                <slot name="selo" :item="item" />
                                 <span v-if="quantidadeDeErros(indice) > 0" class="ml-auto shrink-0 rounded-pill bg-erro-fundo px-2.5 py-0.5 text-[0.8125rem] font-bold text-erro-texto">
                                     {{ quantidadeDeErros(indice) }}<span class="sr-only">{{ ` ${quantidadeDeErros(indice) === 1 ? 'erro' : 'erros'} ${feminino ? 'nesta' : 'neste'} ${singular}` }}</span>
                                 </span>

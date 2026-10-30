@@ -711,6 +711,46 @@ export interface CriterioFormulario {
     categorias: number[];
 }
 
+/** Opção de uma pergunta de escolha; `chave` é estável (as condições e as respostas a usam). */
+export interface OpcaoDaPergunta {
+    chave: string;
+    texto: string;
+    /** A opção "Outro", que abre um campo "Qual?". */
+    outro: boolean;
+}
+
+/** Pergunta do questionário como o servidor manda (posições como em RegrasDoQuestionario). */
+export interface PerguntaFormulario {
+    id: number;
+    enunciado: string;
+    ajuda: string | null;
+    /** Valor de TipoPergunta. */
+    tipo: string;
+    obrigatoria: boolean;
+    limite_caracteres: number | null;
+    /** Vazia nos tipos sem opções. */
+    opcoes: OpcaoDaPergunta[];
+    todas_categorias: boolean;
+    /** Posições das categorias. */
+    categorias: number[];
+    /** Vazia = todas as naturezas oferecidas. */
+    naturezas: string[];
+    /** Posição global (índice na ordem do questionário) da pergunta de origem. */
+    condicao_pergunta: number | null;
+    condicao_opcoes: string[];
+}
+
+export interface SecaoQuestionarioFormulario {
+    id: number;
+    titulo: string;
+    descricao: string | null;
+    perguntas: PerguntaFormulario[];
+}
+
+export interface QuestionarioFormulario {
+    secoes: SecaoQuestionarioFormulario[];
+}
+
 /**
  * Listas no formulário do edital (Retaguarda/Editais/Form): cada item tem uma `chave` estável, só da tela, e as
  * referências entre listas guardam a chave do item referido; as posições são calculadas no envio. Decimais ficam
@@ -769,6 +809,36 @@ export interface DocumentoEditavel extends ItemEditavel {
     remover_modelo: boolean;
     modeloUrl: string | null;
     modeloNome: string | null;
+}
+
+/** Para quais categorias e naturezas a pergunta vale (sem "todas" e sem categoria = sem vínculo). */
+export interface VinculoEditavel {
+    todas_categorias: boolean;
+    /** Chaves das categorias. */
+    categorias: string[];
+    /** Vazia = todas as naturezas oferecidas. */
+    naturezas: string[];
+}
+
+export interface PerguntaEditavel extends ItemEditavel, VinculoEditavel {
+    id: number | null;
+    enunciado: string;
+    ajuda: string;
+    tipo: string;
+    obrigatoria: boolean;
+    limite_caracteres: number | null;
+    opcoes: OpcaoDaPergunta[];
+    /** Chave da pergunta de origem da condição. */
+    condicao_pergunta: string | null;
+    /** Chaves das respostas da origem que mostram a pergunta. */
+    condicao_opcoes: string[];
+}
+
+export interface SecaoQuestionarioEditavel extends ItemEditavel {
+    id: number | null;
+    titulo: string;
+    descricao: string;
+    perguntas: PerguntaEditavel[];
 }
 
 export interface CriterioEditavel extends ItemEditavel {
@@ -843,12 +913,18 @@ export interface EditalFormulario {
     categorias: CategoriaFormulario[];
     documentos: DocumentoFormulario[];
     criterios: CriterioFormulario[];
+    questionario: QuestionarioFormulario;
 }
 
 export interface RetaguardaEditaisFormProps {
     edital: EditalFormulario | null;
     /** O que falta para publicar (vazia na criação). */
     pendencias: string[];
+    /** O edital já tem inscrição finalizada: o questionário não muda mais. */
+    questionarioTravado: boolean;
+    /** Motivo da trava, mostrado na aba Questionário. */
+    avisoQuestionarioTravado: string;
+    tiposPergunta: OpcaoFormulario[];
     /** Importação por IA que gerou o edital, enquanto não foi conferida. */
     importacao: ImportacaoDoEdital | null;
     naturezas: OpcaoFormulario[];
@@ -1055,6 +1131,8 @@ export interface AbaFormulario {
     rotulo: string;
     /** Campos do formulário desta aba: os erros deles contam no marcador da aba. */
     campos: string[];
+    /** Pendências da aba (ex.: perguntas sem vínculo), somadas aos erros no marcador. */
+    pendencias?: number;
 }
 
 export interface RetaguardaMinhaSenhaProps {

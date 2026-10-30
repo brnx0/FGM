@@ -505,7 +505,7 @@ class QuestionarioDoEditalTest extends TestCase
         Inscricao::factory()->finalizada()->create(['edital_id' => $this->edital->id]);
 
         $this->get("/retaguarda/editais/{$this->edital->slug}/edit")
-            ->assertInertia(fn (Assert $p) => $p->where('questionarioTravado', true));
+            ->assertInertia(fn (Assert $p) => $p->where('questionarioTravado', true)->where('avisoQuestionarioTravado', Edital::AVISO_QUESTIONARIO_TRAVADO));
     }
 
     public function test_novo_edital_nao_tem_trava(): void

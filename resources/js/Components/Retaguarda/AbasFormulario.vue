@@ -19,7 +19,16 @@ const ativa = defineModel<string>({ required: true });
 
 const botoes = ref<HTMLButtonElement[]>([]);
 
-const errosDa = (aba: AbaFormulario): number => aba.campos.filter((campo) => Boolean(props.erros[campo])).length;
+const errosDa = (aba: AbaFormulario): number => aba.campos.filter((campo) => Boolean(props.erros[campo])).length + (aba.pendencias ?? 0);
+
+/** Texto do marcador para leitores de tela: separa erros de pendências quando a aba tem pendências. */
+const textoDoMarcador = (aba: AbaFormulario): string => {
+    const pendencias = aba.pendencias ?? 0;
+    const erros = errosDa(aba) - pendencias;
+    const partes = [erros > 0 ? `${erros} ${erros === 1 ? 'erro' : 'erros'}` : '', pendencias > 0 ? `${pendencias} ${pendencias === 1 ? 'pendência' : 'pendências'}` : ''];
+
+    return partes.filter(Boolean).join(' e ');
+};
 
 const idAba = (aba: AbaFormulario): string => `${props.id}-aba-${aba.id}`;
 const idPainel = (aba: AbaFormulario): string => `${props.id}-painel-${aba.id}`;
@@ -102,7 +111,7 @@ const classeAba = computed<string>(() =>
                     v-if="errosDa(aba) > 0"
                     class="inline-flex min-w-5 items-center justify-center rounded-pill bg-invalido-texto px-1.5 text-[0.6875rem] leading-5 font-bold text-superficie tabular-nums"
                 >
-                    {{ errosDa(aba) }}<span class="sr-only"> {{ errosDa(aba) === 1 ? 'erro' : 'erros' }}</span>
+                    <span aria-hidden="true">{{ errosDa(aba) }}</span><span class="sr-only">{{ `, ${textoDoMarcador(aba)}` }}</span>
                 </span>
             </button>
         </div>
