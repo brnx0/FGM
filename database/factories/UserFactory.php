@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\TipoCadastro;
+use App\Models\PessoaFisica;
 use App\Models\Role;
 use App\Models\User;
 use App\Support\Cpf;
@@ -30,6 +31,14 @@ class UserFactory extends Factory
     public function cadastroCompleto(): static
     {
         return $this->state(fn () => ['profile_completed_at' => now()]);
+    }
+
+    /** Com o cadastro de pessoa física e o perfil completos. */
+    public function comPerfil(): static
+    {
+        return $this->afterCreating(function (User $user): void {
+            PessoaFisica::factory()->for($user)->create();
+        });
     }
 
     /** Cadastro finalizado como proponente. */

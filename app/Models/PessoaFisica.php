@@ -2,8 +2,13 @@
 
 namespace App\Models;
 
+use App\Enums\Escolaridade;
+use App\Enums\FaixaDeRenda;
 use App\Enums\IdentidadeGenero;
+use App\Enums\PovoTradicional;
 use App\Enums\RacaCor;
+use App\Enums\TipoDeficiencia;
+use BackedEnum;
 use Database\Factories\PessoaFisicaFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -20,6 +25,12 @@ class PessoaFisica extends Model
         'documento_crnm', 'documento_outros', 'comprovante_residencia',
     ];
 
+    /** Campos do perfil que o questionário do edital reaproveita. */
+    public const array CAMPOS_DO_PERFIL = [
+        'identidade_genero', 'raca_cor', 'pcd', 'deficiencia', 'deficiencia_outra',
+        'escolaridade', 'renda', 'povo_tradicional', 'anos_atuacao',
+    ];
+
     protected $table = 'pessoas_fisicas';
 
     protected $fillable = [
@@ -27,7 +38,7 @@ class PessoaFisica extends Model
         'pais_origem', 'rg', 'documento_cpf', 'documento_rg', 'documento_passaporte', 'documento_crnm', 'documento_outros',
         'drt', 'cultura_principal_renda', 'ja_foi_avaliador', 'interesse_avaliador', 'representa_coletivo',
         'telefone', 'telefone_adicional', 'email',
-        'identidade_genero', 'raca_cor', 'pcd',
+        'identidade_genero', 'raca_cor', 'pcd', 'deficiencia', 'deficiencia_outra', 'escolaridade', 'renda', 'povo_tradicional', 'anos_atuacao',
         'cep', 'logradouro', 'numero', 'bairro', 'complemento', 'cidade', 'estado', 'territorio', 'comprovante_residencia',
     ];
 
@@ -41,7 +52,50 @@ class PessoaFisica extends Model
             'pcd' => 'boolean',
             'identidade_genero' => IdentidadeGenero::class,
             'raca_cor' => RacaCor::class,
+            'deficiencia' => TipoDeficiencia::class,
+            'escolaridade' => Escolaridade::class,
+            'renda' => FaixaDeRenda::class,
+            'povo_tradicional' => PovoTradicional::class,
+            'anos_atuacao' => 'integer',
         ];
+    }
+
+    /** Cadastros anteriores ao perfil ficam incompletos até a pessoa preencher o que falta. */
+    public function perfilCompleto(): bool
+    {
+        $basico = $this->identidade_genero !== null
+            && $this->raca_cor !== null
+            && $this->escolaridade !== null
+            && $this->renda !== null
+            && $this->povo_tradicional !== null
+            && $this->anos_atuacao !== null;
+
+        if (! $basico) {
+            return false;
+        }
+
+        if (! $this->pcd) {
+            return true;
+        }
+
+        return $this->deficiencia !== null
+            && ($this->deficiencia !== TipoDeficiencia::Outra || filled($this->deficiencia_outra));
+    }
+
+    /**
+     * Os valores do perfil como ficam gravados na inscrição (enums como texto).
+     *
+     * @return array<string, string|int|bool|null>
+     */
+    public function retratoDoPerfil(): array
+    {
+        return collect(self::CAMPOS_DO_PERFIL)
+            ->mapWithKeys(function (string $campo): array {
+                $valor = $this->{$campo};
+
+                return [$campo => $valor instanceof BackedEnum ? $valor->value : $valor];
+            })
+            ->all();
     }
 
     /** @return BelongsTo<User, $this> */

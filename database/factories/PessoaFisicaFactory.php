@@ -2,7 +2,10 @@
 
 namespace Database\Factories;
 
+use App\Enums\Escolaridade;
+use App\Enums\FaixaDeRenda;
 use App\Enums\IdentidadeGenero;
+use App\Enums\PovoTradicional;
 use App\Enums\RacaCor;
 use App\Models\PessoaFisica;
 use App\Models\PrefeituraBairro;
@@ -39,6 +42,12 @@ class PessoaFisicaFactory extends Factory
             'identidade_genero' => fake()->randomElement(IdentidadeGenero::cases()),
             'raca_cor' => fake()->randomElement(RacaCor::cases()),
             'pcd' => false,
+            'deficiencia' => null,
+            'deficiencia_outra' => null,
+            'escolaridade' => fake()->randomElement(Escolaridade::cases()),
+            'renda' => fake()->randomElement(FaixaDeRenda::cases()),
+            'povo_tradicional' => PovoTradicional::NaoPertence,
+            'anos_atuacao' => fake()->numberBetween(0, 30),
             'cep' => fake()->numerify('40######'),
             'logradouro' => fake()->streetName(),
             'numero' => fake()->buildingNumber(),
@@ -50,5 +59,11 @@ class PessoaFisicaFactory extends Factory
             'territorio' => fake()->randomElement(['centro_brotas', 'barra_pituba', 'cajazeiras', PrefeituraBairro::FORA_DE_SALVADOR]),
             'comprovante_residencia' => null,
         ];
+    }
+
+    /** Cadastro feito antes do perfil existir. */
+    public function perfilIncompleto(): static
+    {
+        return $this->state(fn () => ['escolaridade' => null, 'renda' => null, 'povo_tradicional' => null, 'anos_atuacao' => null]);
     }
 }

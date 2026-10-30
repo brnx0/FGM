@@ -37,7 +37,7 @@ const descricao = computed(() => [props.ajuda && idAjuda.value, props.erro && id
                 { 'campo-invalido': erro && variante === 'caixa' },
             ]"
         >
-            <span class="flex flex-col">
+            <span class="flex min-w-0 flex-1 flex-col">
                 <span :id="idRotulo" class="font-semibold">
                     <slot>{{ rotulo }}</slot><span v-if="obrigatorio" aria-hidden="true" class="ml-0.5 text-invalido-texto">*</span>
                 </span>

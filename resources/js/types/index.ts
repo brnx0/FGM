@@ -200,6 +200,12 @@ export interface CadastroPessoaFisica {
     identidade_genero: string;
     raca_cor: string;
     pcd: boolean;
+    deficiencia: string | null;
+    deficiencia_outra: string | null;
+    escolaridade: string | null;
+    renda: string | null;
+    povo_tradicional: string | null;
+    anos_atuacao: number | null;
     cep: string;
     logradouro: string;
     numero: string | null;
@@ -220,6 +226,10 @@ export interface CadastroCompletarProps {
         estados: OpcaoCadastro[];
         identidadesGenero: OpcaoCadastro[];
         racasCores: OpcaoCadastro[];
+        tiposDeficiencia: OpcaoCadastro[];
+        escolaridades: OpcaoCadastro[];
+        faixasDeRenda: OpcaoCadastro[];
+        povosTradicionais: OpcaoCadastro[];
         territorios: OpcaoCadastro[];
     };
 }

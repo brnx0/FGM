@@ -2,9 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\Escolaridade;
+use App\Enums\FaixaDeRenda;
 use App\Enums\IdentidadeGenero;
+use App\Enums\PovoTradicional;
 use App\Enums\RacaCor;
 use App\Enums\TipoCadastro;
+use App\Enums\TipoDeficiencia;
 use App\Http\Requests\SalvarPessoaFisicaRequest;
 use App\Http\Requests\SalvarTipoCadastroRequest;
 use App\Models\Organizacao;
@@ -13,6 +17,7 @@ use App\Models\PrefeituraBairro;
 use App\Support\Cpf;
 use App\Support\Estados;
 use App\Support\Paises;
+use BackedEnum;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -49,6 +54,10 @@ class CadastroController extends Controller
                 'estados' => collect(Estados::TODOS)->map(fn (string $nome, string $sigla): array => ['valor' => $sigla, 'rotulo' => $nome])->values(),
                 'identidadesGenero' => self::opcoes(IdentidadeGenero::cases()),
                 'racasCores' => self::opcoes(RacaCor::cases()),
+                'tiposDeficiencia' => self::opcoes(TipoDeficiencia::cases()),
+                'escolaridades' => self::opcoes(Escolaridade::cases()),
+                'faixasDeRenda' => self::opcoes(FaixaDeRenda::cases()),
+                'povosTradicionais' => self::opcoes(PovoTradicional::cases()),
                 'territorios' => PrefeituraBairro::opcoesDoPortal($salvo?->territorio),
             ],
         ]);
@@ -66,6 +75,14 @@ class CadastroController extends Controller
             'telefone' => $user->phone !== null ? preg_replace('/\D/', '', $user->phone) : $request->validated('telefone'),
             'email' => $user->email ?? $request->validated('email'),
         ]);
+
+        // O tipo de deficiência só vale para quem é PcD, e o "qual" só para a opção "Outra".
+        if (! $cadastro->pcd) {
+            $cadastro->deficiencia = null;
+        }
+        if ($cadastro->deficiencia !== TipoDeficiencia::Outra) {
+            $cadastro->deficiencia_outra = null;
+        }
 
         $substituidos = [];
         foreach (PessoaFisica::ARQUIVOS as $campo) {
@@ -122,11 +139,11 @@ class CadastroController extends Controller
     }
 
     /**
-     * @param  list<IdentidadeGenero|RacaCor|TipoCadastro>  $casos
+     * @param  list<BackedEnum>  $casos
      * @return list<array{valor: string, rotulo: string}>
      */
     private static function opcoes(array $casos): array
     {
-        return array_map(fn (IdentidadeGenero|RacaCor|TipoCadastro $caso): array => ['valor' => $caso->value, 'rotulo' => $caso->rotulo()], $casos);
+        return array_map(fn (BackedEnum $caso): array => ['valor' => $caso->value, 'rotulo' => $caso->rotulo()], $casos);
     }
 }
