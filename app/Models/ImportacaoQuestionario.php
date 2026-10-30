@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * resposta: JSON recebido da IA; confiabilidade: {geral: ?int, blocos: {questionario?: {nota: int, justificativa: string}}};
  * atencao: list<{bloco, tipo: 'nao_encontrado'|'divergencia'|'incerta', texto, itens: list<string>}>.
  * provedor e modelo: os da Integração com IA que responderam (ou, antes da resposta, os previstos).
+ * substituir: quem enviou confirmou substituir o questionário existente.
  * execucao: identifica a análise em curso; só o processo lançado com ela pode concluir ou dar erro.
  */
 class ImportacaoQuestionario extends Model
@@ -33,7 +34,7 @@ class ImportacaoQuestionario extends Model
     protected $table = 'importacoes_questionario';
 
     protected $fillable = [
-        'user_id', 'edital_id', 'situacao', 'arquivo', 'arquivo_nome', 'tipo_arquivo', 'provedor', 'modelo',
+        'user_id', 'edital_id', 'situacao', 'arquivo', 'arquivo_nome', 'tipo_arquivo', 'substituir', 'provedor', 'modelo',
         'tokens_entrada', 'tokens_saida', 'tokens_total', 'erro', 'resposta', 'confiabilidade', 'atencao',
         'conferida_em', 'iniciada_em', 'execucao',
     ];
@@ -46,6 +47,7 @@ class ImportacaoQuestionario extends Model
         return [
             'situacao' => SituacaoImportacao::class,
             'provedor' => ProvedorIa::class,
+            'substituir' => 'boolean',
             'tokens_entrada' => 'integer',
             'tokens_saida' => 'integer',
             'tokens_total' => 'integer',

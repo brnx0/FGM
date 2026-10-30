@@ -44,7 +44,12 @@ class AnalisarQuestionarioCommand extends Command
 
     private const string SUPERADA = 'A importação não está mais nesta análise; nada foi gravado.';
 
+    /** O edital ganhou questionário durante a análise de uma importação enviada sem confirmar a substituição. */
+    public const string ERRO_QUESTIONARIO_ALTERADO = 'O questionário foi alterado durante a análise. Importe de novo e confirme a substituição.';
+
     private int|string $id;
+
+    private int|string $editalId;
 
     private string $execucao;
 
@@ -66,6 +71,7 @@ class AnalisarQuestionarioCommand extends Command
         }
 
         $this->id = $importacao->getKey();
+        $this->editalId = $importacao->edital_id;
         $this->execucao = $execucao;
 
         if (! $this->naExecucao(fn (ImportacaoQuestionario $atual) => $atual->update(['iniciada_em' => now(), 'erro' => null]))) {
@@ -113,15 +119,15 @@ class AnalisarQuestionarioCommand extends Command
                 'resposta' => $resultado['dados'],
             ]));
 
-            $travado = false;
-            if (! $guardou || ! $this->substituirQuestionario($resultado['dados'], $montador, $sincronizador, $this->avisoDaRedundancia($resultado), $travado)) {
+            $recusa = null;
+            if (! $guardou || ! $this->substituirQuestionario($resultado['dados'], $montador, $sincronizador, $this->avisoDaRedundancia($resultado), $recusa)) {
                 $this->error(self::SUPERADA);
 
                 return self::FAILURE;
             }
 
-            if ($travado) {
-                $this->error(Edital::AVISO_QUESTIONARIO_TRAVADO);
+            if ($recusa !== null) {
+                $this->error($recusa);
 
                 return self::FAILURE;
             }
@@ -172,28 +178,44 @@ class AnalisarQuestionarioCommand extends Command
     }
 
     /**
-     * Substitui o questionário e conclui a importação na mesma transação, com a importação e o edital travados. Com o
-     * questionário travado, nada muda no edital e a importação fica com o aviso da trava ($travado = true). As posições
-     * das categorias vêm, no montar e no substituir, da mesma relação ordenada ($edital->categorias).
+     * Substitui o questionário e conclui a importação na mesma transação. Trava primeiro o edital e depois a importação
+     * (a ordem do projeto: edital antes) e só segue se a importação ainda estiver nesta execução. Nada muda no edital, e
+     * a importação fica com o motivo em $recusa, se o questionário estiver travado (inscrição finalizada) ou se ganhou
+     * seções durante a análise de uma importação enviada sem confirmar a substituição. As posições das categorias vêm,
+     * no montar e no substituir, da mesma relação ordenada ($edital->categorias).
      *
      * @param  array<mixed>  $dados
      * @param  list<array{bloco: string, tipo: string, texto: string, itens: list<string>}>  $avisos  Pontos de atenção a acrescentar.
      */
-    private function substituirQuestionario(array $dados, QuestionarioDaResposta $montador, SincronizadorDoQuestionario $sincronizador, array $avisos, bool &$travado): bool
+    private function substituirQuestionario(array $dados, QuestionarioDaResposta $montador, SincronizadorDoQuestionario $sincronizador, array $avisos, ?string &$recusa): bool
     {
-        return $this->naExecucao(function (ImportacaoQuestionario $atual) use ($dados, $montador, $sincronizador, $avisos, &$travado): void {
-            $edital = Edital::query()->whereKey($atual->edital_id)->lockForUpdate()->firstOrFail();
+        return DB::transaction(function () use ($dados, $montador, $sincronizador, $avisos, &$recusa): bool {
+            $edital = Edital::query()->whereKey($this->editalId)->lockForUpdate()->first();
+            $atual = ImportacaoQuestionario::query()
+                ->whereKey($this->id)
+                ->daExecucao($this->execucao)
+                ->lockForUpdate()
+                ->first();
 
-            if ($edital->questionarioTravado()) {
-                $travado = true;
+            if ($edital === null || $atual === null) {
+                return false;
+            }
+
+            $recusa = match (true) {
+                $edital->questionarioTravado() => Edital::AVISO_QUESTIONARIO_TRAVADO,
+                ! $atual->substituir && $edital->secoesDoQuestionario()->exists() => self::ERRO_QUESTIONARIO_ALTERADO,
+                default => null,
+            };
+
+            if ($recusa !== null) {
                 $atual->update([
                     'situacao' => SituacaoImportacao::Erro,
-                    'erro' => Edital::AVISO_QUESTIONARIO_TRAVADO,
+                    'erro' => $recusa,
                     'confiabilidade' => null,
                     'atencao' => null,
                 ]);
 
-                return;
+                return true;
             }
 
             $montado = $montador->montar($dados, $edital);
@@ -204,6 +226,8 @@ class AnalisarQuestionarioCommand extends Command
                 'atencao' => [...$avisos, ...$montado['atencao']],
                 'situacao' => SituacaoImportacao::Concluida,
             ])->save();
+
+            return true;
         });
     }
 

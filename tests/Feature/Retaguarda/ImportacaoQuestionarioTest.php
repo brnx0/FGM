@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Retaguarda;
 
+use App\Console\Commands\AnalisarQuestionarioCommand;
 use App\Enums\NaturezaProponente;
 use App\Enums\ProvedorIa;
 use App\Enums\SituacaoImportacao;
@@ -278,6 +279,7 @@ class ImportacaoQuestionarioTest extends TestCase
         $importacao = $this->importar($this->pdf(), ['substituir' => '1']);
 
         $this->assertSame(SituacaoImportacao::Concluida, $importacao->situacao);
+        $this->assertTrue($importacao->substituir);
         $this->assertModelMissing($antiga);
         $this->assertSame(['Sobre a proposta', 'Declarações'], $this->titulosDasSecoes());
     }
@@ -378,6 +380,27 @@ class ImportacaoQuestionarioTest extends TestCase
         $this->assertSame(Edital::AVISO_QUESTIONARIO_TRAVADO, $importacao->erro);
         $this->assertModelExists($antiga);
         $this->assertSame(['Seção antiga'], $this->titulosDasSecoes());
+    }
+
+    public function test_questionario_criado_durante_a_analise_sem_confirmacao_nao_e_substituido(): void
+    {
+        Http::fake([self::URL_ANALISE => self::respostaDoGemini($this->respostaDoQuestionario())]);
+        $this->app->instance(LancadorDeAnaliseDoQuestionario::class, new class extends LancadorDeAnaliseDoQuestionario
+        {
+            public function lancar(ImportacaoQuestionario $importacao): void
+            {
+                $secao = EditalQuestionarioSecao::factory()->create(['edital_id' => $importacao->edital_id, 'titulo' => 'Seção salva no meio']);
+                EditalPergunta::factory()->create(['edital_id' => $importacao->edital_id, 'edital_questionario_secao_id' => $secao->id]);
+                Artisan::call('questionarios:analisar', ['importacao' => $importacao->getKey(), 'execucao' => $importacao->execucao]);
+            }
+        });
+
+        $importacao = $this->importar($this->pdf());
+
+        $this->assertFalse($importacao->substituir);
+        $this->assertSame(SituacaoImportacao::Erro, $importacao->situacao);
+        $this->assertSame(AnalisarQuestionarioCommand::ERRO_QUESTIONARIO_ALTERADO, $importacao->erro);
+        $this->assertSame(['Seção salva no meio'], $this->titulosDasSecoes());
     }
 
     public function test_arquivo_que_nao_e_pdf_nem_docx_e_recusado(): void

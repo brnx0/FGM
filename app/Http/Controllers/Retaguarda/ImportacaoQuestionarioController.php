@@ -95,6 +95,7 @@ class ImportacaoQuestionarioController extends Controller implements HasMiddlewa
                     'arquivo' => $caminho,
                     'arquivo_nome' => mb_strcut($arquivo->getClientOriginalName(), 0, 255, 'UTF-8'),
                     'tipo_arquivo' => $request->tipoDoArquivo(),
+                    'substituir' => $request->boolean('substituir'),
                     ...$this->principal($request),
                     'iniciada_em' => now(),
                     'execucao' => ImportacaoEdital::novaExecucao(),

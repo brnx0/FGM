@@ -20,6 +20,8 @@ return new class extends Migration
             $table->string('arquivo_nome', 255);
             // pdf ou docx.
             $table->string('tipo_arquivo', 10);
+            // Quem enviou confirmou substituir o questionário existente; sem isso, a análise não apaga seções.
+            $table->boolean('substituir')->default(false);
             // Provedor (App\Enums\ProvedorIa) e modelo da Integração com IA que responderam.
             $table->string('provedor', 20)->nullable();
             $table->string('modelo', 100);
