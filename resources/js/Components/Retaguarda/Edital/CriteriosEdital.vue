@@ -121,7 +121,9 @@ const limparPontuacao = (campo: string): void => emit('limparErros', [`pontuacao
                     </div>
 
                     <fieldset class="min-w-0" :aria-describedby="erroDaLista('categorias') ? idCampo('categorias-erro') : undefined">
-                        <legend class="text-[0.9375rem] font-semibold">Categorias</legend>
+                        <legend class="text-[0.9375rem] font-semibold">
+                            Categorias<span v-if="!criterio.todas_categorias" aria-hidden="true" class="ml-0.5 text-invalido-texto">*</span>
+                        </legend>
                         <div class="mt-1.5 flex flex-wrap gap-x-6">
                             <label :class="classeMarcacao">
                                 <input
@@ -151,6 +153,7 @@ const limparPontuacao = (campo: string): void => emit('limparErros', [`pontuacao
                                     v-model="criterio.categorias"
                                     type="checkbox"
                                     :value="categoria.chave"
+                                    :required="criterio.categorias.length === 0"
                                     :class="classeCaixa"
                                     :aria-invalid="erroDaLista('categorias') ? true : undefined"
                                     @change="limparLista('categorias')"
@@ -158,7 +161,7 @@ const limparPontuacao = (campo: string): void => emit('limparErros', [`pontuacao
                                 {{ rotuloDaCategoria(categoria, posicao) }}
                             </label>
                         </div>
-                        <p v-if="erroDaLista('categorias')" :id="idCampo('categorias-erro')" class="mt-1 text-[0.875rem] font-semibold text-erro-texto">
+                        <p v-if="erroDaLista('categorias')" :id="idCampo('categorias-erro')" class="mt-1 text-[0.875rem] font-semibold text-invalido-texto">
                             {{ erroDaLista('categorias') }}
                         </p>
                     </fieldset>

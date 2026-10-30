@@ -251,7 +251,7 @@ const classeBotaoIa =
                     {{ gerando === TODOS ? 'Gerando…' : 'Gerar instruções de todos' }}
                 </button>
             </div>
-            <p aria-live="polite" class="text-[0.9375rem]" :class="avisos[TODOS]?.erro ? 'font-semibold text-erro-texto' : 'text-tinta-suave'">{{ avisos[TODOS]?.mensagem }}</p>
+            <p aria-live="polite" class="text-[0.9375rem]" :class="avisos[TODOS]?.erro ? 'font-semibold text-invalido-texto' : 'text-tinta-suave'">{{ avisos[TODOS]?.mensagem }}</p>
         </div>
 
         <ListaEditavel
@@ -355,11 +355,13 @@ const classeBotaoIa =
                             {{ natureza.rotulo }}
                         </label>
                     </div>
-                    <p v-if="erroDaLista('naturezas')" :id="idCampo('naturezas-erro')" class="mt-1 text-[0.875rem] font-semibold text-erro-texto">{{ erroDaLista('naturezas') }}</p>
+                    <p v-if="erroDaLista('naturezas')" :id="idCampo('naturezas-erro')" class="mt-1 text-[0.875rem] font-semibold text-invalido-texto">{{ erroDaLista('naturezas') }}</p>
                 </fieldset>
 
                 <fieldset class="min-w-0" :aria-describedby="erroDaLista('categorias') ? idCampo('categorias-erro') : undefined">
-                    <legend class="text-[0.9375rem] font-semibold">Categorias</legend>
+                    <legend class="text-[0.9375rem] font-semibold">
+                        Categorias<span v-if="!documento.todas_categorias" aria-hidden="true" class="ml-0.5 text-invalido-texto">*</span>
+                    </legend>
                     <div class="mt-1.5 flex flex-wrap gap-x-6">
                         <label :class="classeMarcacao">
                             <input
@@ -389,6 +391,7 @@ const classeBotaoIa =
                                 v-model="documento.categorias"
                                 type="checkbox"
                                 :value="categoria.chave"
+                                :required="documento.categorias.length === 0"
                                 :class="classeCaixa"
                                 :aria-invalid="erroDaLista('categorias') ? true : undefined"
                                 @change="limparLista('categorias')"
@@ -396,7 +399,7 @@ const classeBotaoIa =
                             {{ rotuloDaCategoria(categoria, posicao) }}
                         </label>
                     </div>
-                    <p v-if="erroDaLista('categorias')" :id="idCampo('categorias-erro')" class="mt-1 text-[0.875rem] font-semibold text-erro-texto">{{ erroDaLista('categorias') }}</p>
+                    <p v-if="erroDaLista('categorias')" :id="idCampo('categorias-erro')" class="mt-1 text-[0.875rem] font-semibold text-invalido-texto">{{ erroDaLista('categorias') }}</p>
                 </fieldset>
 
                 <CampoCadastro
@@ -473,7 +476,7 @@ const classeBotaoIa =
                         <p
                             aria-live="polite"
                             class="min-w-0 flex-1 basis-60 text-[0.9375rem]"
-                            :class="avisos[documento.chave]?.erro ? 'font-semibold text-erro-texto' : 'text-tinta-suave'"
+                            :class="avisos[documento.chave]?.erro ? 'font-semibold text-invalido-texto' : 'text-tinta-suave'"
                         >
                             {{ avisos[documento.chave]?.mensagem }}
                         </p>

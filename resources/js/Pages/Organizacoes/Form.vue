@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue';
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import AvisoCamposObrigatorios from '../../Components/AvisoCamposObrigatorios.vue';
 import CampoArquivo from '../../Components/CampoArquivo.vue';
 import CampoCadastro from '../../Components/CampoCadastro.vue';
 import EtapasCadastro from '../../Components/EtapasCadastro.vue';
@@ -328,7 +329,7 @@ const textoBotao = computed(() => {
 const titulo = editando ? 'Editar Pessoa Jurídica' : 'Cadastrar Pessoa Jurídica';
 
 const classeCampo =
-    'h-12 w-full rounded-[12px] border border-tinta-suave/70 bg-superficie px-4 text-base text-home-tinta placeholder:text-tinta-suave aria-invalid:border-erro-texto aria-invalid:ring-1 aria-invalid:ring-erro-texto disabled:cursor-not-allowed disabled:bg-nevoa disabled:opacity-70';
+    'h-12 w-full rounded-[12px] border border-tinta-suave/70 bg-superficie px-4 text-base text-home-tinta placeholder:text-tinta-suave disabled:cursor-not-allowed disabled:bg-nevoa disabled:opacity-70';
 const classeSomenteLeitura =
     'h-12 w-full cursor-default rounded-[12px] border border-hairline bg-nevoa px-4 text-base font-semibold text-home-tinta tabular-nums';
 const classeMarcacao = 'flex min-h-11 cursor-pointer items-start gap-3 py-2 text-[0.9375rem] leading-[1.5]';
@@ -379,6 +380,9 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                         <path d="M3 21h18M5 21V7l7-4 7 4v14M9 10h1M14 10h1M9 14h1M14 14h1M10 21v-3h4v3" />
                     </svg>
                 </template>
+
+                <!-- Dentro do primeiro cartão: o formulário sobe sobre a faixa escura, onde o texto do aviso não seria legível. -->
+                <AvisoCamposObrigatorios class="mb-5" />
 
                 <div class="grid gap-x-6 gap-y-5 md:grid-cols-2">
                     <div class="flex flex-col gap-2 md:col-span-2">
@@ -650,7 +654,7 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                 <p class="max-w-3xl text-[0.9375rem] leading-[1.6] text-tinta-suave">
                     Quem responde juridicamente pela Pessoa Jurídica. Ela pode ter mais de um; nem todo representante legal é sócio.
                 </p>
-                <p v-if="form.errors.representantes" role="alert" class="mt-3 text-[0.9375rem] font-semibold text-erro-texto">{{ form.errors.representantes }}</p>
+                <p v-if="form.errors.representantes" role="alert" class="mt-3 text-[0.9375rem] font-semibold text-invalido-texto">{{ form.errors.representantes }}</p>
 
                 <div class="mt-5 flex flex-col gap-4">
                     <CartaoRepresentante
@@ -709,7 +713,7 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                         </svg>
                         {{ textoBotao }}
                     </button>
-                    <p v-if="form.hasErrors" role="alert" class="text-[0.9375rem] font-semibold text-erro-texto">Confira os campos destacados acima.</p>
+                    <p v-if="form.hasErrors" role="alert" class="text-[0.9375rem] font-semibold text-invalido-texto">Confira os campos destacados acima.</p>
                 </div>
             </div>
         </form>

@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, nextTick, reactive, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, reactive, ref, watch } from 'vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import AvisoCamposObrigatorios from '../../../Components/AvisoCamposObrigatorios.vue';
 import CampoArquivo from '../../../Components/CampoArquivo.vue';
 import CampoCadastro from '../../../Components/CampoCadastro.vue';
+import { focarPrimeiroErro } from '../../../Components/focarPrimeiroErro';
 import MapaLocal from '../../../Components/MapaLocal.vue';
 import { consultar } from '../../../Components/Organizacao/mascaras';
 import SecaoCadastro from '../../../Components/SecaoCadastro.vue';
@@ -108,6 +110,14 @@ const aplicarCoordenadas = (): void => {
     busca.mensagem = '';
 };
 
+// O servidor erra latitude e longitude juntas; a mensagem fica embaixo do mapa e o campo de coordenadas é quem a recebe.
+const erroDoMapa = computed<string | undefined>(() => form.errors.latitude || form.errors.longitude || undefined);
+const ID_ERRO_DO_MAPA = 'coordenadas-erro-mapa';
+const descricaoCoordenadas = (descricao?: string): string | undefined => [descricao, erroDoMapa.value && ID_ERRO_DO_MAPA].filter(Boolean).join(' ') || undefined;
+
+// Horário de término exige o de início (required_with no servidor).
+const exigeHoraInicio = computed<boolean>(() => form.hora_fim !== '');
+
 // Limite do servidor (max em KB na validação): o arquivo grande nem sai do navegador.
 const LIMITE_IMAGEM = 5 * 1024 * 1024;
 
@@ -128,7 +138,7 @@ const salvar = (): void => {
     const opcoes = {
         forceFormData: true,
         preserveScroll: true,
-        onError: () => nextTick(() => document.querySelector<HTMLElement>('#formulario-evento [aria-invalid="true"]')?.focus()),
+        onError: () => focarPrimeiroErro('#formulario-evento'),
     };
 
     if (editando) {
@@ -144,7 +154,7 @@ const textoBotao = computed(() => {
 });
 
 const classeCampo =
-    'h-12 w-full rounded-[12px] border border-tinta-suave/70 bg-superficie px-4 text-base text-home-tinta placeholder:text-tinta-suave aria-invalid:border-erro-texto aria-invalid:ring-1 aria-invalid:ring-erro-texto';
+    'h-12 w-full rounded-[12px] border border-tinta-suave/70 bg-superficie px-4 text-base text-home-tinta placeholder:text-tinta-suave';
 const classeMarcacao = 'flex min-h-11 cursor-pointer items-start gap-3 py-2 text-[0.9375rem] leading-[1.5]';
 const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
 </script>
@@ -164,6 +174,8 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
         </div>
 
         <form id="formulario-evento" novalidate class="flex flex-col gap-6" @submit.prevent="salvar">
+            <AvisoCamposObrigatorios />
+
             <SecaoCadastro id="secao-evento-dados" :numero="1" titulo="Dados do evento">
                 <template #icone>
                     <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -201,11 +213,18 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                     </CampoCadastro>
 
                     <div class="grid grid-cols-2 gap-4">
-                        <CampoCadastro id="hora_inicio" rotulo="Horário de início" :erro="form.errors.hora_inicio" v-slot="{ descricao, invalido }">
+                        <CampoCadastro
+                            id="hora_inicio"
+                            rotulo="Horário de início"
+                            :obrigatorio="exigeHoraInicio"
+                            :erro="form.errors.hora_inicio"
+                            v-slot="{ descricao, invalido }"
+                        >
                             <input
                                 id="hora_inicio"
                                 v-model="form.hora_inicio"
                                 type="time"
+                                :required="exigeHoraInicio"
                                 :class="classeCampo"
                                 :aria-invalid="invalido || undefined"
                                 :aria-describedby="descricao"
@@ -327,7 +346,7 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                                 Remover marcação
                             </button>
                         </div>
-                        <p aria-live="polite" class="text-[0.9375rem]" :class="busca.erro ? 'font-semibold text-erro-texto' : 'text-tinta-suave'">
+                        <p aria-live="polite" class="text-[0.9375rem]" :class="busca.erro ? 'font-semibold text-invalido-texto' : 'text-tinta-suave'">
                             {{ busca.mensagem || 'Busque pelo endereço (ou pelo local) e confira o pin. Clique no mapa ou arraste o pin para ajustar.' }}
                         </p>
                         <MapaLocal
@@ -338,8 +357,8 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                             class="h-80"
                             @update:posicao="marcar"
                         />
-                        <p v-if="form.errors.latitude || form.errors.longitude" role="alert" class="text-[0.9375rem] font-semibold text-erro-texto">
-                            {{ form.errors.latitude ?? form.errors.longitude }}
+                        <p v-if="erroDoMapa" :id="ID_ERRO_DO_MAPA" role="alert" class="text-[0.9375rem] font-semibold text-invalido-texto">
+                            {{ erroDoMapa }}
                         </p>
                         <p v-else-if="form.latitude === null" class="text-[0.8125rem] text-tinta-suave">Sem marcação, o evento aparece sem mapa no portal.</p>
                     </div>
@@ -360,8 +379,8 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                             autocomplete="off"
                             placeholder="Ex.: -12.977001, -38.514773"
                             :class="[classeCampo, 'tabular-nums md:max-w-md']"
-                            :aria-invalid="invalido || undefined"
-                            :aria-describedby="descricao"
+                            :aria-invalid="invalido || erroDoMapa ? true : undefined"
+                            :aria-describedby="descricaoCoordenadas(descricao)"
                             @change="aplicarCoordenadas"
                             @keydown.enter.prevent="aplicarCoordenadas"
                         />
@@ -438,7 +457,7 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                     >
                         {{ textoBotao }}
                     </button>
-                    <p v-if="form.hasErrors" role="alert" class="text-[0.9375rem] font-semibold text-erro-texto">Confira os campos destacados acima.</p>
+                    <p v-if="form.hasErrors" role="alert" class="text-[0.9375rem] font-semibold text-invalido-texto">Confira os campos destacados acima.</p>
                 </div>
             </div>
         </form>

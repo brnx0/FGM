@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { nextTick, ref } from 'vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import AvisoCamposObrigatorios from '../../Components/AvisoCamposObrigatorios.vue';
 import FaixaPortal from '../../Components/FaixaPortal.vue';
+import { focarPrimeiroErro } from '../../Components/focarPrimeiroErro';
 import EscolhasDaInscricao from '../../Components/Inscricao/EscolhasDaInscricao.vue';
 import PortalProponenteLayout from '../../Layouts/PortalProponenteLayout.vue';
 import type { PortalInscricaoProps } from '../../types';
@@ -16,12 +17,10 @@ const formulario = useForm<{ cadastro: string; categoria: number | null; cotas: 
     cotas: [],
 });
 
-const escolhas = ref<InstanceType<typeof EscolhasDaInscricao> | null>(null);
-
 const criar = (): void => {
     // Rota portal.inscricoes.store (o front não tem helper de rotas nomeadas).
     formulario.post(`/portal/editais/${props.edital.slug}/inscricoes`, {
-        onError: () => nextTick(() => escolhas.value?.focarPrimeiroErro()),
+        onError: () => focarPrimeiroErro('#formulario-inscricao'),
     });
 };
 </script>
@@ -90,9 +89,9 @@ const criar = (): void => {
                     o que separar.
                 </p>
 
-                <form novalidate class="mt-6 flex flex-col gap-6" @submit.prevent="criar">
+                <form id="formulario-inscricao" novalidate class="mt-6 flex flex-col gap-6" @submit.prevent="criar">
+                    <AvisoCamposObrigatorios />
                     <EscolhasDaInscricao
-                        ref="escolhas"
                         v-model:cadastro="formulario.cadastro"
                         v-model:categoria="formulario.categoria"
                         v-model:cotas-escolhidas="formulario.cotas"

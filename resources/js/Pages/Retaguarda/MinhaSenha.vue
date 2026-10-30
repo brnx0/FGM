@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { nextTick } from 'vue';
 import { Head, useForm } from '@inertiajs/vue3';
+import AvisoCamposObrigatorios from '../../Components/AvisoCamposObrigatorios.vue';
 import CampoCadastro from '../../Components/CampoCadastro.vue';
+import { focarPrimeiroErro } from '../../Components/focarPrimeiroErro';
 import SecaoCadastro from '../../Components/SecaoCadastro.vue';
 import RetaguardaLayout from '../../Layouts/RetaguardaLayout.vue';
 import type { RetaguardaMinhaSenhaProps } from '../../types';
@@ -22,13 +23,13 @@ const form = useForm({
 const salvar = (): void => {
     form.put(URL_SENHA, {
         preserveScroll: true,
-        onError: () => nextTick(() => document.querySelector<HTMLElement>('#formulario-senha [aria-invalid="true"]')?.focus()),
+        onError: () => focarPrimeiroErro('#formulario-senha'),
         onFinish: () => form.reset(),
     });
 };
 
 const classeCampo =
-    'h-12 w-full rounded-[12px] border border-tinta-suave/70 bg-superficie px-4 text-base text-home-tinta placeholder:text-tinta-suave aria-invalid:border-erro-texto aria-invalid:ring-1 aria-invalid:ring-erro-texto';
+    'h-12 w-full rounded-[12px] border border-tinta-suave/70 bg-superficie px-4 text-base text-home-tinta placeholder:text-tinta-suave';
 </script>
 
 <template>
@@ -44,6 +45,8 @@ const classeCampo =
         </div>
 
         <form id="formulario-senha" novalidate class="flex flex-col gap-6" @submit.prevent="salvar">
+            <AvisoCamposObrigatorios />
+
             <SecaoCadastro id="secao-senha" :numero="1" titulo="Sua senha">
                 <template #icone>
                     <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -103,7 +106,7 @@ const classeCampo =
                 >
                     {{ form.processing ? 'Salvando…' : 'Salvar senha' }}
                 </button>
-                <p v-if="form.hasErrors" role="alert" class="text-[0.9375rem] font-semibold text-erro-texto">Confira os campos destacados acima.</p>
+                <p v-if="form.hasErrors" role="alert" class="text-[0.9375rem] font-semibold text-invalido-texto">Confira os campos destacados acima.</p>
             </div>
         </form>
     </div>

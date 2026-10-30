@@ -105,7 +105,7 @@ const tituloDoCartao = computed<string>(() => `h${props.nivel}`);
 
 <template>
     <div class="flex flex-col gap-4">
-        <p v-if="erros[prefixo]" role="alert" class="text-[0.9375rem] font-semibold text-erro-texto">{{ erros[prefixo] }}</p>
+        <p v-if="erros[prefixo]" role="alert" class="text-[0.9375rem] font-semibold text-invalido-texto">{{ erros[prefixo] }}</p>
 
         <p v-if="lista.length === 0" class="rounded-[16px] border border-dashed border-tinta-suave/50 p-5 text-[0.9375rem] leading-[1.6] text-tinta-suave">
             {{ vazio }}

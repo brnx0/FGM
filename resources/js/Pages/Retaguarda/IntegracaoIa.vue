@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed, nextTick, reactive, ref, watch } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
+import AvisoCamposObrigatorios from '../../Components/AvisoCamposObrigatorios.vue';
 import CampoCadastro from '../../Components/CampoCadastro.vue';
+import { focarPrimeiroErro } from '../../Components/focarPrimeiroErro';
 import CamposProvedorIa from '../../Components/Retaguarda/CamposProvedorIa.vue';
 import { classeCampo, classeTexto } from '../../Components/Retaguarda/listaEditavel';
 import SecaoCadastro from '../../Components/SecaoCadastro.vue';
@@ -49,15 +51,11 @@ const avisoDeTroca = computed((): string =>
         : '',
 );
 
-const focarPrimeiroInvalido = (formulario: string): void => {
-    void nextTick(() => document.querySelector<HTMLElement>(`#${formulario} [aria-invalid="true"]`)?.focus());
-};
-
 // O put preserva o estado da página: a chave digitada sai do campo à mão depois de salvar.
 const salvarPrincipal = (): void => {
     formPrincipal.put(URL_PRINCIPAL, {
         preserveScroll: true,
-        onError: () => focarPrimeiroInvalido('formulario-ia-principal'),
+        onError: () => focarPrimeiroErro('#formulario-ia-principal'),
         onSuccess: () => {
             formPrincipal.reset('chave_api');
             formPrincipal.defaults();
@@ -68,7 +66,7 @@ const salvarPrincipal = (): void => {
 const salvarRedundancia = (): void => {
     formRedundancia.put(URL_REDUNDANCIA, {
         preserveScroll: true,
-        onError: () => focarPrimeiroInvalido('formulario-ia-redundancia'),
+        onError: () => focarPrimeiroErro('#formulario-ia-redundancia'),
         onSuccess: () => {
             formRedundancia.reset('chave_api');
             formRedundancia.defaults();
@@ -98,7 +96,7 @@ const usandoPromptModelo = computed((): boolean => formImportacao.prompt.trim() 
 const salvarImportacao = (): void => {
     formImportacao.put(URL_IMPORTACAO, {
         preserveScroll: true,
-        onError: () => focarPrimeiroInvalido('formulario-ia-importacao'),
+        onError: () => focarPrimeiroErro('#formulario-ia-importacao'),
         onSuccess: () => formImportacao.defaults(),
     });
 };
@@ -182,7 +180,10 @@ const classeEtiqueta = 'shrink-0 rounded-pill bg-nevoa px-2.5 py-0.5 text-[0.75r
                         {{ avisoDeTroca }}
                     </p>
 
-                    <label class="flex min-h-12 cursor-pointer items-center justify-between gap-4 rounded-[12px] border border-hairline px-4 py-3">
+                    <label
+                        class="flex min-h-12 cursor-pointer items-center justify-between gap-4 rounded-[12px] border border-hairline px-4 py-3"
+                        :class="{ 'campo-invalido': formPrincipal.errors.ativo }"
+                    >
                         <span class="flex flex-col">
                             <span id="ia-ativo-rotulo" class="font-semibold">Ativar validação por IA</span>
                             <span id="ia-ativo-ajuda" class="text-[0.8125rem] text-tinta-suave">
@@ -195,7 +196,8 @@ const classeEtiqueta = 'shrink-0 rounded-pill bg-nevoa px-2.5 py-0.5 text-[0.75r
                             role="switch"
                             class="peer sr-only"
                             aria-labelledby="ia-ativo-rotulo"
-                            aria-describedby="ia-ativo-ajuda"
+                            :aria-invalid="formPrincipal.errors.ativo ? true : undefined"
+                            :aria-describedby="formPrincipal.errors.ativo ? 'ia-ativo-ajuda ia-ativo-erro' : 'ia-ativo-ajuda'"
                             @change="formPrincipal.clearErrors('ativo')"
                         />
                         <span
@@ -209,7 +211,7 @@ const classeEtiqueta = 'shrink-0 rounded-pill bg-nevoa px-2.5 py-0.5 text-[0.75r
                             ></span>
                         </span>
                     </label>
-                    <p v-if="formPrincipal.errors.ativo" class="text-[0.875rem] font-semibold text-erro-texto">{{ formPrincipal.errors.ativo }}</p>
+                    <p v-if="formPrincipal.errors.ativo" id="ia-ativo-erro" class="text-[0.875rem] font-semibold text-invalido-texto">{{ formPrincipal.errors.ativo }}</p>
 
                     <template #acoes>
                         <button type="submit" :disabled="formPrincipal.processing" :class="classeBotaoSalvar">
@@ -218,7 +220,7 @@ const classeEtiqueta = 'shrink-0 rounded-pill bg-nevoa px-2.5 py-0.5 text-[0.75r
                     </template>
                 </CamposProvedorIa>
 
-                <p v-if="formPrincipal.hasErrors" role="alert" class="mt-4 text-[0.9375rem] font-semibold text-erro-texto sm:text-right">
+                <p v-if="formPrincipal.hasErrors" role="alert" class="mt-4 text-[0.9375rem] font-semibold text-invalido-texto sm:text-right">
                     Confira os campos destacados acima.
                 </p>
             </SecaoCadastro>
@@ -298,7 +300,7 @@ const classeEtiqueta = 'shrink-0 rounded-pill bg-nevoa px-2.5 py-0.5 text-[0.75r
                             </template>
                         </CamposProvedorIa>
 
-                        <p v-if="formRedundancia.hasErrors" role="alert" class="text-[0.9375rem] font-semibold text-erro-texto sm:text-right">
+                        <p v-if="formRedundancia.hasErrors" role="alert" class="text-[0.9375rem] font-semibold text-invalido-texto sm:text-right">
                             Confira os campos destacados acima.
                         </p>
                     </template>
@@ -328,6 +330,8 @@ const classeEtiqueta = 'shrink-0 rounded-pill bg-nevoa px-2.5 py-0.5 text-[0.75r
                         </svg>
                         Configure o provedor principal acima para importar editais.
                     </p>
+
+                    <AvisoCamposObrigatorios />
 
                     <div class="grid gap-x-6 gap-y-5 sm:grid-cols-2">
                         <CampoCadastro
@@ -411,7 +415,7 @@ const classeEtiqueta = 'shrink-0 rounded-pill bg-nevoa px-2.5 py-0.5 text-[0.75r
                         </button>
                     </div>
 
-                    <p v-if="formImportacao.hasErrors" role="alert" class="text-[0.9375rem] font-semibold text-erro-texto sm:text-right">
+                    <p v-if="formImportacao.hasErrors" role="alert" class="text-[0.9375rem] font-semibold text-invalido-texto sm:text-right">
                         Confira os campos destacados acima.
                     </p>
                 </div>

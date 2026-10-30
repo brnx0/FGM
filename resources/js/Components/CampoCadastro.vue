@@ -23,7 +23,7 @@ const descricao = computed(() => [textoAjuda.value && idAjuda.value, props.erro 
     <div class="flex min-w-0 flex-col gap-1.5">
         <label :for="id" class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.9375rem] font-semibold">
             <span>
-                {{ rotulo }}<span v-if="obrigatorio" aria-hidden="true" class="ml-0.5 text-erro-texto">*</span>
+                {{ rotulo }}<span v-if="obrigatorio" aria-hidden="true" class="ml-0.5 text-invalido-texto">*</span>
             </span>
             <span v-if="govbr" class="inline-flex items-center gap-1 rounded-pill bg-nevoa px-2 py-0.5 text-[0.6875rem] font-bold tracking-[0.08em] text-acao uppercase">
                 <svg aria-hidden="true" viewBox="0 0 24 24" class="size-3" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -37,7 +37,7 @@ const descricao = computed(() => [textoAjuda.value && idAjuda.value, props.erro 
         <slot :descricao="descricao" :invalido="Boolean(erro)" />
 
         <p v-if="textoAjuda" :id="idAjuda" class="text-[0.8125rem] leading-[1.5] text-tinta-suave">{{ textoAjuda }}</p>
-        <p v-if="erro" :id="idErro" class="flex items-start gap-1.5 text-[0.875rem] font-semibold text-erro-texto">
+        <p v-if="erro" :id="idErro" class="flex items-start gap-1.5 text-[0.875rem] font-semibold text-invalido-texto">
             <svg aria-hidden="true" viewBox="0 0 24 24" class="mt-0.5 size-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                 <circle cx="12" cy="12" r="9" />
                 <path d="m15 9-6 6M9 9l6 6" />

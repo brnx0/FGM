@@ -65,7 +65,7 @@ const tamanho = (bytes: number): string =>
         : `${(bytes / 1024 / 1024).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} MB`;
 
 const estiloCaixa = computed(() => {
-    if (props.invalido) return 'border-erro-texto bg-superficie';
+    if (props.invalido) return 'campo-invalido';
     if (props.desabilitado) return `border-tinta-suave/70 bg-superficie opacity-60${props.arquivo || props.enviado ? '' : ' border-dashed'}`;
     if (arrastando.value) return 'border-dashed border-acao bg-nevoa';
     if (props.arquivo || props.enviado) return 'border-tinta-suave/70 bg-superficie hover:border-acao';

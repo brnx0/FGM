@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { computed, nextTick } from 'vue';
+import { computed } from 'vue';
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import AvisoCamposObrigatorios from '../../Components/AvisoCamposObrigatorios.vue';
 import CampoArquivo from '../../Components/CampoArquivo.vue';
 import CampoCadastro from '../../Components/CampoCadastro.vue';
 import EtapasCadastro from '../../Components/EtapasCadastro.vue';
 import FaixaPortal from '../../Components/FaixaPortal.vue';
+import { focarPrimeiroErro } from '../../Components/focarPrimeiroErro';
 import SaudacaoCadastro from '../../Components/SaudacaoCadastro.vue';
 import SecaoCadastro from '../../Components/SecaoCadastro.vue';
 import PortalProponenteLayout from '../../Layouts/PortalProponenteLayout.vue';
@@ -102,7 +104,7 @@ const dicaDocumento = 'PDF, JPG ou PNG, até 2 MB';
 const salvar = (): void => {
     form.post('/cadastro', {
         preserveScroll: true,
-        onError: () => nextTick(() => document.querySelector<HTMLElement>('#formulario-cadastro [aria-invalid="true"]')?.focus()),
+        onError: () => focarPrimeiroErro('#formulario-cadastro'),
     });
 };
 
@@ -112,7 +114,7 @@ const textoBotao = computed(() => {
 });
 
 const classeCampo =
-    'h-12 w-full rounded-[12px] border border-tinta-suave/70 bg-superficie px-4 text-base text-home-tinta placeholder:text-tinta-suave aria-invalid:border-erro-texto aria-invalid:ring-1 aria-invalid:ring-erro-texto';
+    'h-12 w-full rounded-[12px] border border-tinta-suave/70 bg-superficie px-4 text-base text-home-tinta placeholder:text-tinta-suave';
 // Campos do gov.br: classes próprias, e não somadas às de classeCampo, para a cor de fundo e a borda não disputarem.
 const classeSomenteLeitura =
     'h-12 w-full cursor-default rounded-[12px] border border-hairline bg-nevoa px-4 text-base font-semibold text-home-tinta tabular-nums';
@@ -146,6 +148,9 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                         <path d="M4 21a8 8 0 0 1 16 0" />
                     </svg>
                 </template>
+
+                <!-- Dentro do primeiro bloco: o formulário sobe sobre a faixa azul e o aviso ficaria sobre ela. -->
+                <AvisoCamposObrigatorios class="mb-5" />
 
                 <div class="grid gap-x-6 gap-y-5 md:grid-cols-2">
                     <CampoCadastro id="nome" rotulo="Nome completo" obrigatorio govbr v-slot="{ descricao }">
@@ -670,7 +675,7 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                         </svg>
                         {{ textoBotao }}
                     </button>
-                    <p v-if="form.hasErrors" role="alert" class="text-[0.9375rem] font-semibold text-erro-texto">Confira os campos destacados acima.</p>
+                    <p v-if="form.hasErrors" role="alert" class="text-[0.9375rem] font-semibold text-invalido-texto">Confira os campos destacados acima.</p>
                 </div>
             </div>
         </form>

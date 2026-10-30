@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import AvisoCamposObrigatorios from '../../../Components/AvisoCamposObrigatorios.vue';
 import CampoArquivo from '../../../Components/CampoArquivo.vue';
 import CampoCadastro from '../../../Components/CampoCadastro.vue';
 import AbasFormulario from '../../../Components/Retaguarda/AbasFormulario.vue';
@@ -26,6 +27,7 @@ import {
     textoDecimal,
 } from '../../../Components/Retaguarda/listaEditavel';
 import SecaoCadastro from '../../../Components/SecaoCadastro.vue';
+import { focarPrimeiroErro } from '../../../Components/focarPrimeiroErro';
 import RetaguardaLayout from '../../../Layouts/RetaguardaLayout.vue';
 import type {
     AbaFormulario,
@@ -236,11 +238,10 @@ const irParaAba = async (aba: string): Promise<void> => {
 };
 
 // Com erro, abre a primeira aba que tem algum e leva o foco ao campo inválido dela (os cartões com erro já se abriram).
-const mostrarPrimeiroErro = async (): Promise<void> => {
+const mostrarPrimeiroErro = (): void => {
     const comErro = abas.value.find((aba) => aba.campos.length > 0);
     if (comErro) abaAtiva.value = comErro.id;
-    await nextTick();
-    document.querySelector<HTMLElement>(`#edital-painel-${abaAtiva.value} [aria-invalid="true"]`)?.focus();
+    focarPrimeiroErro(`#edital-painel-${abaAtiva.value}`);
 };
 
 // Item removido deixa de valer nas listas que o referem; reordenar não mexe na ligação (é pela chave).
@@ -395,7 +396,7 @@ const salvar = (): void => {
         forceFormData: true,
         queryStringArrayFormat: 'indices' as const,
         preserveScroll: true,
-        onError: () => void mostrarPrimeiroErro(),
+        onError: mostrarPrimeiroErro,
     };
 
     if (editando) {
@@ -404,6 +405,11 @@ const salvar = (): void => {
         form.transform(paraEnvio).post(BASE, opcoes);
     }
 };
+
+// O servidor exige título, resumo e categoria de quem publica, e o PDF (o enviado agora ou o já salvo). Na passagem de
+// rascunho a publicado exige também o edital completo (EditalController), e esse erro volta no campo "publicado".
+const pdfObrigatorio = computed<boolean>(() => form.publicado && !salvo?.pdfUrl);
+const completoParaPublicar = computed<boolean>(() => form.publicado && !salvo?.publicado);
 
 const textoBotao = computed(() => {
     if (!form.processing) return 'Salvar edital';
@@ -454,6 +460,8 @@ const tituloDaPagina = editando ? salvo.titulo || 'Edital sem título' : 'Novo e
         />
 
         <form id="formulario-edital" novalidate class="flex flex-col gap-6" @submit.prevent="salvar">
+            <AvisoCamposObrigatorios />
+
             <AbasFormulario id="edital" v-model="abaAtiva" variante="lateral" :abas="abas" :erros="erros">
                 <template v-for="(aba, indice) in DEFINICAO_ABAS" :key="aba.id" #[aba.id]>
                     <SecaoCadastro :id="`secao-edital-${aba.id}`" :numero="indice + 1" :titulo="aba.rotulo">
@@ -493,12 +501,20 @@ const tituloDaPagina = editando ? salvo.titulo || 'Edital sem título' : 'Novo e
                             </CampoCadastro>
 
                             <div class="md:col-span-2">
-                                <CampoCadastro id="titulo" rotulo="Título" ajuda="Obrigatório para publicar." :erro="erros.titulo" v-slot="{ descricao, invalido }">
+                                <CampoCadastro
+                                    id="titulo"
+                                    rotulo="Título"
+                                    :obrigatorio="form.publicado"
+                                    ajuda="Obrigatório para publicar."
+                                    :erro="erros.titulo"
+                                    v-slot="{ descricao, invalido }"
+                                >
                                     <input
                                         id="titulo"
                                         v-model="form.titulo"
                                         type="text"
                                         maxlength="255"
+                                        :required="form.publicado"
                                         :class="classeCampo"
                                         :aria-invalid="invalido || undefined"
                                         :aria-describedby="descricao"
@@ -549,12 +565,20 @@ const tituloDaPagina = editando ? salvo.titulo || 'Edital sem título' : 'Novo e
                             </CampoCadastro>
 
                             <div class="md:col-span-2">
-                                <CampoCadastro id="categoria" rotulo="Categoria da vitrine" ajuda="Área mostrada no portal. Obrigatória para publicar." :erro="erros.categoria" v-slot="{ descricao, invalido }">
+                                <CampoCadastro
+                                    id="categoria"
+                                    rotulo="Categoria da vitrine"
+                                    :obrigatorio="form.publicado"
+                                    ajuda="Área mostrada no portal. Obrigatória para publicar."
+                                    :erro="erros.categoria"
+                                    v-slot="{ descricao, invalido }"
+                                >
                                     <input
                                         id="categoria"
                                         v-model="form.categoria"
                                         type="text"
                                         maxlength="255"
+                                        :required="form.publicado"
                                         placeholder="Ex.: Fomento, Audiovisual"
                                         :class="classeCampo"
                                         :aria-invalid="invalido || undefined"
@@ -565,11 +589,19 @@ const tituloDaPagina = editando ? salvo.titulo || 'Edital sem título' : 'Novo e
                             </div>
 
                             <div class="md:col-span-2">
-                                <CampoCadastro id="resumo" rotulo="Resumo" ajuda="Apresentação curta na vitrine. Obrigatório para publicar." :erro="erros.resumo" v-slot="{ descricao, invalido }">
+                                <CampoCadastro
+                                    id="resumo"
+                                    rotulo="Resumo"
+                                    :obrigatorio="form.publicado"
+                                    ajuda="Apresentação curta na vitrine. Obrigatório para publicar."
+                                    :erro="erros.resumo"
+                                    v-slot="{ descricao, invalido }"
+                                >
                                     <textarea
                                         id="resumo"
                                         v-model="form.resumo"
                                         rows="5"
+                                        :required="form.publicado"
                                         :class="classeTexto"
                                         :aria-invalid="invalido || undefined"
                                         :aria-describedby="descricao"
@@ -610,7 +642,9 @@ const tituloDaPagina = editando ? salvo.titulo || 'Edital sem título' : 'Novo e
 
                         <div v-else-if="aba.id === 'participacao'" class="@container grid gap-x-6 gap-y-5">
                             <fieldset class="min-w-0" :aria-describedby="['naturezas-ajuda', erros.naturezas && 'naturezas-erro'].filter(Boolean).join(' ')">
-                                <legend class="text-[0.9375rem] font-semibold">Naturezas aceitas</legend>
+                                <legend class="text-[0.9375rem] font-semibold">
+                                    Naturezas aceitas<span v-if="completoParaPublicar" aria-hidden="true" class="ml-0.5 text-invalido-texto">*</span>
+                                </legend>
                                 <p id="naturezas-ajuda" :class="[classeDica, 'mt-1']">Quem pode se inscrever. Ao menos uma para publicar.</p>
                                 <div class="mt-1.5 grid gap-x-6 @lg:grid-cols-2">
                                     <label v-for="natureza in naturezas" :key="natureza.valor" :class="classeMarcacao">
@@ -618,6 +652,7 @@ const tituloDaPagina = editando ? salvo.titulo || 'Edital sem título' : 'Novo e
                                             v-model="form.naturezas"
                                             type="checkbox"
                                             :value="natureza.valor"
+                                            :required="completoParaPublicar && form.naturezas.length === 0"
                                             :class="classeCaixa"
                                             :aria-invalid="erros.naturezas ? true : undefined"
                                             @change="limparNaturezas"
@@ -625,7 +660,7 @@ const tituloDaPagina = editando ? salvo.titulo || 'Edital sem título' : 'Novo e
                                         {{ natureza.rotulo }}
                                     </label>
                                 </div>
-                                <p v-if="erros.naturezas" id="naturezas-erro" class="mt-1 text-[0.875rem] font-semibold text-erro-texto">{{ erros.naturezas }}</p>
+                                <p v-if="erros.naturezas" id="naturezas-erro" class="mt-1 text-[0.875rem] font-semibold text-invalido-texto">{{ erros.naturezas }}</p>
                             </fieldset>
 
                             <div class="grid gap-x-6 gap-y-5 @2xl:grid-cols-3">
@@ -774,13 +809,14 @@ const tituloDaPagina = editando ? salvo.titulo || 'Edital sem título' : 'Novo e
 
                         <div v-else-if="aba.id === 'arquivos'" class="grid gap-x-6 gap-y-6 md:grid-cols-2">
                             <div class="flex min-w-0 flex-col gap-3">
-                                <CampoCadastro id="pdf" rotulo="PDF do edital" :erro="erros.pdf" v-slot="{ descricao, invalido }">
+                                <CampoCadastro id="pdf" rotulo="PDF do edital" :obrigatorio="pdfObrigatorio" :erro="erros.pdf" v-slot="{ descricao, invalido }">
                                     <CampoArquivo
                                         id="pdf"
                                         accept="application/pdf"
                                         dica="Só PDF, até 20 MB. Obrigatório para publicar"
                                         :arquivo="form.pdf"
                                         :enviado="Boolean(salvo?.pdfUrl)"
+                                        :obrigatorio="pdfObrigatorio"
                                         :descricao="descricao"
                                         :invalido="invalido"
                                         @escolher="escolherArquivo($event, 'pdf')"
@@ -847,7 +883,7 @@ const tituloDaPagina = editando ? salvo.titulo || 'Edital sem título' : 'Novo e
                                         <span id="publicado-ajuda" class="block text-[0.8125rem] text-tinta-suave">O edital só aparece no portal publicado e com PDF.</span>
                                     </span>
                                 </label>
-                                <p v-if="erros.publicado" id="publicado-erro" class="flex items-start gap-1.5 text-[0.875rem] font-semibold text-erro-texto">{{ erros.publicado }}</p>
+                                <p v-if="erros.publicado" id="publicado-erro" class="flex items-start gap-1.5 text-[0.875rem] font-semibold text-invalido-texto">{{ erros.publicado }}</p>
                             </div>
                         </div>
                     </SecaoCadastro>
@@ -870,7 +906,7 @@ const tituloDaPagina = editando ? salvo.titulo || 'Edital sem título' : 'Novo e
                     >
                         {{ textoBotao }}
                     </button>
-                    <p v-if="form.hasErrors" role="alert" class="text-[0.9375rem] font-semibold text-erro-texto">Confira os campos destacados nas abas marcadas.</p>
+                    <p v-if="form.hasErrors" role="alert" class="text-[0.9375rem] font-semibold text-invalido-texto">Confira os campos destacados nas abas marcadas.</p>
                 </div>
             </div>
         </form>

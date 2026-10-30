@@ -182,7 +182,7 @@ const status = computed(() => {
             :aria-invalid="invalido || undefined"
             :aria-describedby="descricao"
             :placeholder="placeholder"
-            class="h-12 w-full rounded-[12px] border border-tinta-suave/70 bg-superficie pr-11 pl-4 text-base text-home-tinta placeholder:text-tinta-suave aria-invalid:border-erro-texto aria-invalid:ring-1 aria-invalid:ring-erro-texto"
+            class="h-12 w-full rounded-[12px] border border-tinta-suave/70 bg-superficie pr-11 pl-4 text-base text-home-tinta placeholder:text-tinta-suave"
             @input="digitar"
             @keydown="teclar"
             @blur="sair"

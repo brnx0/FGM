@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue';
+import AvisoCamposObrigatorios from '../AvisoCamposObrigatorios.vue';
 import CampoCadastro from '../CampoCadastro.vue';
 import { buscarModelosIa, testarConexaoIa } from './conexaoIa';
 import { classeCampoBase } from './listaEditavel';
@@ -124,11 +125,15 @@ const classeBotao =
 
 <template>
     <div class="flex flex-col gap-5">
+        <!-- Só aparece com algum * na tela: o provedor é obrigatório no principal; na redundância, só depois de escolhido. -->
+        <AvisoCamposObrigatorios v-if="!vazio || selecionado" />
+
         <CampoCadastro :id="`${id}-provedor`" rotulo="Provedor" :obrigatorio="!vazio" :erro="erros.provedor">
             <template #default="{ descricao, invalido }">
                 <select
                     :id="`${id}-provedor`"
                     v-model="provedor"
+                    :required="!vazio"
                     :class="[classeCampoBase, 'w-full sm:max-w-sm']"
                     :aria-invalid="invalido || undefined"
                     :aria-describedby="descricao"
@@ -166,6 +171,7 @@ const classeBotao =
                             autocapitalize="off"
                             spellcheck="false"
                             maxlength="300"
+                            :required="!selecionado.chave"
                             data-1p-ignore
                             data-lpignore="true"
                             data-bwignore
@@ -200,6 +206,7 @@ const classeBotao =
                         <select
                             :id="`${id}-modelo`"
                             v-model="modelo"
+                            required
                             :class="[classeCampoBase, 'w-full sm:min-w-0 sm:flex-1']"
                             :aria-invalid="invalido || undefined"
                             :aria-describedby="descricao"
@@ -233,7 +240,7 @@ const classeBotao =
 
         <slot />
 
-        <p aria-live="polite" class="text-[0.9375rem]" :class="status.erro ? 'font-semibold text-erro-texto' : 'text-tinta-suave'">{{ status.mensagem }}</p>
+        <p aria-live="polite" class="text-[0.9375rem]" :class="status.erro ? 'font-semibold text-invalido-texto' : 'text-tinta-suave'">{{ status.mensagem }}</p>
 
         <div class="flex flex-col-reverse gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
             <button v-if="selecionado" type="button" :disabled="status.acao !== ''" :class="classeBotao" @click="testar">

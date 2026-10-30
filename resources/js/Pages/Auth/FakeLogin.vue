@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { Head, useForm } from '@inertiajs/vue3';
+import AvisoCamposObrigatorios from '../../Components/AvisoCamposObrigatorios.vue';
+import { focarPrimeiroErro } from '../../Components/focarPrimeiroErro';
 import HomeLayout from '../../Layouts/HomeLayout.vue';
 import type { ContaFake } from '../../types';
 
@@ -52,7 +54,7 @@ const entrar = (): void => {
         return;
     }
     // CPF recusado pelo servidor: o erro aparece no campo, que recebe o foco.
-    form.post('/auth/govbr/fake', { onError: () => campoCpf.value?.focus() });
+    form.post('/auth/govbr/fake', { onError: () => focarPrimeiroErro('#formulario-login') });
 };
 
 const usarConta = (conta: ContaFake): void => {
@@ -96,7 +98,7 @@ const usarConta = (conta: ContaFake): void => {
                 </div>
 
                 <section aria-labelledby="titulo-login" class="iris-surge iris-surge-depois lg:pt-6 lg:tela-baixa:pt-0">
-                    <form novalidate @submit.prevent="entrar">
+                    <form id="formulario-login" novalidate @submit.prevent="entrar">
                         <h1 id="titulo-login" class="text-[1.25rem] font-bold tracking-normal">Identifique-se no gov.br com:</h1>
 
                         <p class="mt-6 flex items-center gap-3 font-semibold lg:tela-baixa:mt-4">
@@ -109,7 +111,9 @@ const usarConta = (conta: ContaFake): void => {
                         </p>
                         <p class="mt-3 text-[0.9375rem] lg:tela-baixa:mt-2">Digite seu CPF e sua senha para <strong>acessar</strong> sua conta gov.br</p>
 
-                        <label for="cpf" class="mt-5 block font-semibold lg:tela-baixa:mt-4">CPF</label>
+                        <AvisoCamposObrigatorios class="mt-3 lg:tela-baixa:mt-1" />
+
+                        <label for="cpf" class="mt-5 block font-semibold lg:tela-baixa:mt-3">CPF<span aria-hidden="true" class="ml-0.5 text-invalido-texto">*</span></label>
                         <input
                             id="cpf"
                             ref="campoCpf"
@@ -118,13 +122,14 @@ const usarConta = (conta: ContaFake): void => {
                             inputmode="numeric"
                             autocomplete="off"
                             maxlength="14"
+                            required
                             placeholder="Digite seu CPF"
                             class="mt-1 h-11 w-full rounded border border-tinta-suave bg-superficie px-4 text-tinta tabular-nums placeholder:text-tinta-suave placeholder:italic"
-                            :aria-invalid="form.errors.cpf ? 'true' : undefined"
+                            :aria-invalid="form.errors.cpf ? true : undefined"
                             :aria-describedby="form.errors.cpf ? 'cpf-erro' : undefined"
                             @input="digitarCpf"
                         />
-                        <p v-if="form.errors.cpf" id="cpf-erro" role="alert" class="mt-2 flex items-start gap-2 text-[0.9375rem] font-semibold text-erro-texto">
+                        <p v-if="form.errors.cpf" id="cpf-erro" role="alert" class="mt-2 flex items-start gap-2 text-[0.9375rem] font-semibold text-invalido-texto">
                             <svg aria-hidden="true" viewBox="0 0 24 24" class="mt-0.5 size-[18px] shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                                 <circle cx="12" cy="12" r="9" />
                                 <path d="m15 9-6 6M9 9l6 6" />
@@ -142,7 +147,7 @@ const usarConta = (conta: ContaFake): void => {
                                 autocomplete="off"
                                 placeholder="Digite sua senha atual"
                                 class="h-11 w-full rounded border border-tinta-suave bg-superficie pr-12 pl-4 text-tinta placeholder:text-tinta-suave placeholder:italic"
-                                :aria-invalid="erroSenha ? 'true' : undefined"
+                                :aria-invalid="erroSenha ? true : undefined"
                                 :aria-describedby="erroSenha ? 'senha-erro' : undefined"
                                 @input="erroSenha = ''"
                             />
@@ -160,7 +165,7 @@ const usarConta = (conta: ContaFake): void => {
                                 </svg>
                             </button>
                         </div>
-                        <p v-if="erroSenha" id="senha-erro" role="alert" class="mt-2 flex items-start gap-2 text-[0.9375rem] font-semibold text-erro-texto">
+                        <p v-if="erroSenha" id="senha-erro" role="alert" class="mt-2 flex items-start gap-2 text-[0.9375rem] font-semibold text-invalido-texto">
                             <svg aria-hidden="true" viewBox="0 0 24 24" class="mt-0.5 size-[18px] shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                                 <circle cx="12" cy="12" r="9" />
                                 <path d="m15 9-6 6M9 9l6 6" />
@@ -179,7 +184,7 @@ const usarConta = (conta: ContaFake): void => {
                         </div>
                     </form>
 
-                    <aside aria-labelledby="simulacao-titulo" class="mt-10 rounded-card border border-hairline bg-parchment p-5 text-[0.9375rem] lg:tela-baixa:mt-5 lg:tela-baixa:p-4">
+                    <aside aria-labelledby="simulacao-titulo" class="mt-10 rounded-card border border-hairline bg-parchment p-5 text-[0.9375rem] lg:tela-baixa:mt-4 lg:tela-baixa:p-4">
                         <h2 id="simulacao-titulo" class="text-[1rem] font-bold tracking-normal">Este é um login simulado</h2>
                         <p class="mt-1 text-tinta-suave">
                             Nenhum dado é enviado ao gov.br e a senha não é conferida. Para entrar como outra pessoa, use uma conta de teste:

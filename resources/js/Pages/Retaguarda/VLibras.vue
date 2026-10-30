@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { nextTick } from 'vue';
 import { Head, useForm } from '@inertiajs/vue3';
+import AvisoCamposObrigatorios from '../../Components/AvisoCamposObrigatorios.vue';
+import { focarPrimeiroErro } from '../../Components/focarPrimeiroErro';
 import SecaoCadastro from '../../Components/SecaoCadastro.vue';
 import RetaguardaLayout from '../../Layouts/RetaguardaLayout.vue';
 import type { RetaguardaVLibrasProps } from '../../types';
@@ -17,7 +18,7 @@ const form = useForm({ ...props.configuracao });
 const salvar = (): void => {
     form.put(URL_VLIBRAS, {
         preserveScroll: true,
-        onError: () => nextTick(() => document.querySelector<HTMLElement>('#formulario-vlibras [aria-invalid="true"]')?.focus()),
+        onError: () => focarPrimeiroErro('#formulario-vlibras'),
     });
 };
 
@@ -51,6 +52,8 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
         </div>
 
         <form id="formulario-vlibras" novalidate class="flex flex-col gap-6" @submit.prevent="salvar">
+            <AvisoCamposObrigatorios />
+
             <SecaoCadastro id="secao-vlibras" :numero="1" titulo="VLibras no portal">
                 <template #icone>
                     <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -61,16 +64,26 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                 </template>
 
                 <div class="grid gap-y-5">
-                    <label :class="classeMarcacao">
-                        <input v-model="form.ativo" type="checkbox" :class="classeCaixa" aria-describedby="ativo-ajuda" />
-                        <span>
-                            <span class="font-semibold">Mostrar o VLibras no portal</span>
-                            <span id="ativo-ajuda" class="block text-[0.8125rem] text-tinta-suave">Desligado, o botão do VLibras some de todas as páginas.</span>
-                        </span>
-                    </label>
+                    <div>
+                        <label :class="classeMarcacao">
+                            <input
+                                v-model="form.ativo"
+                                type="checkbox"
+                                :class="classeCaixa"
+                                :aria-invalid="form.errors.ativo ? true : undefined"
+                                :aria-describedby="form.errors.ativo ? 'ativo-ajuda ativo-erro' : 'ativo-ajuda'"
+                                @change="form.clearErrors('ativo')"
+                            />
+                            <span>
+                                <span class="font-semibold">Mostrar o VLibras no portal</span>
+                                <span id="ativo-ajuda" class="block text-[0.8125rem] text-tinta-suave">Desligado, o botão do VLibras some de todas as páginas.</span>
+                            </span>
+                        </label>
+                        <p v-if="form.errors.ativo" id="ativo-erro" class="text-[0.875rem] font-semibold text-invalido-texto">{{ form.errors.ativo }}</p>
+                    </div>
 
                     <fieldset :aria-describedby="form.errors.lado ? 'lado-erro' : undefined">
-                        <legend class="text-[0.9375rem] font-semibold">Lado da tela</legend>
+                        <legend class="text-[0.9375rem] font-semibold">Lado da tela<span aria-hidden="true" class="ml-0.5 text-invalido-texto">*</span></legend>
                         <div class="flex flex-wrap gap-x-6">
                             <label v-for="lado in props.lados" :key="lado.valor" :class="classeMarcacao">
                                 <input
@@ -78,6 +91,7 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                                     type="radio"
                                     name="lado"
                                     :value="lado.valor"
+                                    required
                                     :class="classeCaixa"
                                     :aria-invalid="form.errors.lado ? true : undefined"
                                     @change="form.clearErrors('lado')"
@@ -85,11 +99,11 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                                 {{ lado.rotulo }}
                             </label>
                         </div>
-                        <p v-if="form.errors.lado" id="lado-erro" class="text-[0.875rem] font-semibold text-erro-texto">{{ form.errors.lado }}</p>
+                        <p v-if="form.errors.lado" id="lado-erro" class="text-[0.875rem] font-semibold text-invalido-texto">{{ form.errors.lado }}</p>
                     </fieldset>
 
                     <fieldset :aria-describedby="form.errors.avatar ? 'avatar-ajuda avatar-erro' : 'avatar-ajuda'">
-                        <legend class="text-[0.9375rem] font-semibold">Avatar padrão</legend>
+                        <legend class="text-[0.9375rem] font-semibold">Avatar padrão<span aria-hidden="true" class="ml-0.5 text-invalido-texto">*</span></legend>
                         <p id="avatar-ajuda" class="text-[0.8125rem] text-tinta-suave">O intérprete com que o VLibras abre para o visitante.</p>
                         <div class="flex flex-wrap gap-x-6">
                             <label v-for="avatar in props.avatares" :key="avatar.valor" :class="classeMarcacao">
@@ -98,6 +112,7 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                                     type="radio"
                                     name="avatar"
                                     :value="avatar.valor"
+                                    required
                                     :class="classeCaixa"
                                     :aria-invalid="form.errors.avatar ? true : undefined"
                                     @change="form.clearErrors('avatar')"
@@ -105,7 +120,7 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                                 {{ avatar.rotulo }}
                             </label>
                         </div>
-                        <p v-if="form.errors.avatar" id="avatar-erro" class="text-[0.875rem] font-semibold text-erro-texto">{{ form.errors.avatar }}</p>
+                        <p v-if="form.errors.avatar" id="avatar-erro" class="text-[0.875rem] font-semibold text-invalido-texto">{{ form.errors.avatar }}</p>
                     </fieldset>
                 </div>
             </SecaoCadastro>
@@ -118,7 +133,7 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                 >
                     {{ form.processing ? 'Salvando…' : 'Salvar' }}
                 </button>
-                <p v-if="form.hasErrors" role="alert" class="text-[0.9375rem] font-semibold text-erro-texto">Confira os campos destacados acima.</p>
+                <p v-if="form.hasErrors" role="alert" class="text-[0.9375rem] font-semibold text-invalido-texto">Confira os campos destacados acima.</p>
             </div>
         </form>
     </div>

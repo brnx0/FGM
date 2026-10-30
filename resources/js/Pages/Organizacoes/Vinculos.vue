@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import AvisoCamposObrigatorios from '../../Components/AvisoCamposObrigatorios.vue';
 import CampoCadastro from '../../Components/CampoCadastro.vue';
+import { focarPrimeiroErro } from '../../Components/focarPrimeiroErro';
 import { formatarCpf } from '../../Components/Organizacao/mascaras';
 import ConfirmarExclusao from '../../Components/Retaguarda/ConfirmarExclusao.vue';
 import FaixaPortal from '../../Components/FaixaPortal.vue';
@@ -18,11 +20,12 @@ const formulario = useForm({ cpf: '', nome: '' });
 const vincular = (): void => {
     formulario.post(base, {
         onSuccess: () => formulario.reset(),
+        onError: () => focarPrimeiroErro('#formulario-vinculo'),
     });
 };
 
 const classeCampo =
-    'h-12 w-full rounded-[12px] border border-tinta-suave/70 bg-superficie px-4 text-base text-home-tinta placeholder:text-tinta-suave aria-invalid:border-erro-texto aria-invalid:ring-1 aria-invalid:ring-erro-texto';
+    'h-12 w-full rounded-[12px] border border-tinta-suave/70 bg-superficie px-4 text-base text-home-tinta placeholder:text-tinta-suave';
 </script>
 
 <template>
@@ -110,7 +113,9 @@ const classeCampo =
                     Informe o CPF e o nome. A pessoa vê a organização assim que entrar no portal e completar o cadastro.
                 </p>
 
-                <form novalidate class="mt-6 flex flex-col gap-5" @submit.prevent="vincular">
+                <form id="formulario-vinculo" novalidate class="mt-6 flex flex-col gap-5" @submit.prevent="vincular">
+                    <AvisoCamposObrigatorios />
+
                     <div class="grid gap-x-6 gap-y-5 md:grid-cols-2">
                         <CampoCadastro id="vinculo-cpf" rotulo="CPF" obrigatorio :erro="formulario.errors.cpf" v-slot="{ descricao, invalido }">
                             <input
