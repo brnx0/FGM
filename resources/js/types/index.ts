@@ -421,6 +421,8 @@ export interface EditalPortal {
     pdf: string;
     /** Foto enviada na retaguarda; sem ela, o card usa uma foto da vitrine. */
     imagem: string | null;
+    /** Situação da inscrição do usuário no edital: finalizada se alguma estiver finalizada; nulo sem inscrição. */
+    minhaInscricao: SituacaoInscricao | null;
 }
 
 export interface PortalEditaisProps {
@@ -514,6 +516,8 @@ export interface PortalInscricaoDocumentosProps extends OpcoesDaInscricao {
     };
     /** Rascunho dentro do período da chamada: só então as escolhas podem ser trocadas. */
     podeEditar: boolean;
+    /** O que ainda impede de finalizar (vazio = pode finalizar); a consulta JSON de situação traz a lista atualizada e podeFinalizar. */
+    pendencias: string[];
     /** Os exigidos para as escolhas da inscrição, de todas as etapas, na ordem do edital. */
     documentos: DocumentoDaInscricao[];
 }

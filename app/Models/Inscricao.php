@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Enums\ChecagemDocumento;
 use App\Enums\ModalidadeCota;
 use App\Enums\NaturezaProponente;
+use App\Enums\SituacaoConferencia;
 use App\Enums\SituacaoEdital;
 use App\Enums\SituacaoInscricao;
 use App\Support\Inscricao\RegrasDaInscricao;
@@ -109,6 +111,35 @@ class Inscricao extends Model
             ->get()
             ->filter(fn (EditalDocumento $documento): bool => RegrasDaInscricao::aceitaNatureza($documento->naturezas, $this->natureza))
             ->values();
+    }
+
+    /**
+     * O que impede de finalizar, na ordem dos documentos do edital: obrigatório sem arquivo, documento ainda sendo
+     * conferido (a conferência parada há mais de 5 minutos já conta como não conferida) e documento em "Rigorosa"
+     * (obrigatório ou opcional anexado) que não foi aprovado. Reprovado ou não conferido em "Aceita sem validar" não impede.
+     *
+     * @return list<string>
+     */
+    public function pendenciasParaFinalizar(?CarbonInterface $agora = null): array
+    {
+        $enviados = $this->documentos()->get()->keyBy(fn (InscricaoDocumento $enviado): int => (int) $enviado->edital_documento_id);
+        $pendencias = [];
+
+        foreach ($this->documentosExigidos() as $exigido) {
+            $situacao = $enviados->get((int) $exigido->id)?->situacaoExibida($agora);
+
+            if ($situacao === null) {
+                if ($exigido->obrigatorio) {
+                    $pendencias[] = "Anexe \"{$exigido->nome}\".";
+                }
+            } elseif ($situacao === SituacaoConferencia::Conferindo) {
+                $pendencias[] = "Aguarde a conferência de \"{$exigido->nome}\".";
+            } elseif ($exigido->checagem === ChecagemDocumento::Rigorosa && $situacao !== SituacaoConferencia::Aprovado) {
+                $pendencias[] = "\"{$exigido->nome}\" precisa ser aprovado na conferência.";
+            }
+        }
+
+        return $pendencias;
     }
 
     /** Edital no portal e chamada da inscrição aberta (dias da chamada, ver UsaDiaCivil). */

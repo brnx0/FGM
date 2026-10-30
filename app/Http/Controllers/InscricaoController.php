@@ -23,12 +23,14 @@ use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
-/** Inscrição do proponente num edital: criar o rascunho, abrir e trocar as escolhas (cadastro, categoria e cotas). */
+/** Inscrição do proponente num edital: criar o rascunho, abrir, trocar as escolhas (cadastro, categoria e cotas), finalizar e reabrir. */
 class InscricaoController extends Controller
 {
     public const string ERRO_LIMITE_ATINGIDO = 'Este cadastro já atingiu o limite de inscrições deste edital.';
 
     public const string ERRO_REABRIR = 'Reabra a inscrição para alterar as escolhas.';
+
+    public const string ERRO_PENDENCIAS = 'Resolva as pendências para finalizar a inscrição.';
 
     public function store(SalvarInscricaoRequest $request, Edital $edital): RedirectResponse
     {
@@ -76,6 +78,7 @@ class InscricaoController extends Controller
                 'fimDoPeriodo' => $inscricao->chamada?->fim?->format('d/m/Y'),
             ],
             'podeEditar' => $inscricao->situacao === SituacaoInscricao::Rascunho && $inscricao->noPeriodo(),
+            'pendencias' => $inscricao->pendenciasParaFinalizar(),
             'documentos' => $inscricao->documentosExigidos()
                 ->map(fn (EditalDocumento $documento): array => [
                     'id' => (int) $documento->id,
@@ -93,12 +96,15 @@ class InscricaoController extends Controller
     }
 
     /**
-     * Situação da conferência de cada documento enviado, para a tela consultar enquanto algum está conferindo. Sem o
-     * detalhe técnico da falha, que fica só no banco; conferindo parado aparece como não conferido.
+     * Situação da conferência de cada documento enviado e o que ainda impede de finalizar, para a tela consultar
+     * enquanto algum está conferindo. Sem o detalhe técnico da falha, que fica só no banco; conferindo parado aparece
+     * como não conferido.
      */
     public function situacao(Inscricao $inscricao): JsonResponse
     {
         Gate::authorize('gerenciar', $inscricao);
+
+        $pendencias = $inscricao->pendenciasParaFinalizar();
 
         return response()->json([
             'documentos' => $inscricao->documentos()->orderBy('id')->get()
@@ -112,6 +118,8 @@ class InscricaoController extends Controller
                     ];
                 })
                 ->all(),
+            'podeFinalizar' => $pendencias === [],
+            'pendencias' => $pendencias,
         ]);
     }
 
@@ -152,6 +160,62 @@ class InscricaoController extends Controller
         ArquivoArmazenado::apagarTodos($arquivosDescartados);
 
         return redirect()->route('portal.inscricoes.show', $inscricao)->with('sucesso', 'Escolhas salvas.');
+    }
+
+    /**
+     * Finaliza o rascunho no período e sem pendências. O número (ano e id com 6 dígitos) nasce na primeira vez e é mantido
+     * quando a inscrição é reaberta e finalizada de novo. Finalizar o que já está finalizado não muda nada.
+     */
+    public function finalizar(Inscricao $inscricao): RedirectResponse
+    {
+        Gate::authorize('gerenciar', $inscricao);
+
+        return DB::transaction(function () use ($inscricao): RedirectResponse {
+            $travada = $this->travarInscricao($inscricao);
+
+            if (! $travada->noPeriodo()) {
+                return $this->inscricoesFechadas();
+            }
+
+            if ($travada->situacao === SituacaoInscricao::Finalizada) {
+                return redirect()->route('portal.inscricoes.show', $inscricao);
+            }
+
+            if ($travada->pendenciasParaFinalizar() !== []) {
+                return redirect()->route('portal.inscricoes.show', $inscricao)->with('erro', self::ERRO_PENDENCIAS);
+            }
+
+            $agora = now();
+            $travada->update([
+                'situacao' => SituacaoInscricao::Finalizada,
+                'finalizada_em' => $agora,
+                'numero' => $travada->numero ?? sprintf('%d%06d', $agora->year, (int) $travada->id),
+            ]);
+
+            return redirect()->route('portal.inscricoes.show', $inscricao)->with('sucesso', 'Inscrição finalizada.');
+        });
+    }
+
+    /** Volta a inscrição finalizada a rascunho, no período; o número e os documentos ficam. */
+    public function reabrir(Inscricao $inscricao): RedirectResponse
+    {
+        Gate::authorize('gerenciar', $inscricao);
+
+        return DB::transaction(function () use ($inscricao): RedirectResponse {
+            $travada = $this->travarInscricao($inscricao);
+
+            if (! $travada->noPeriodo()) {
+                return $this->inscricoesFechadas();
+            }
+
+            if ($travada->situacao === SituacaoInscricao::Finalizada) {
+                $travada->update(['situacao' => SituacaoInscricao::Rascunho, 'finalizada_em' => null]);
+
+                return redirect()->route('portal.inscricoes.show', $inscricao)->with('sucesso', 'Inscrição reaberta.');
+            }
+
+            return redirect()->route('portal.inscricoes.show', $inscricao);
+        });
     }
 
     /** Põe na inscrição o que foi escolhido: cadastro, categoria, cotas e a chamada que a categoria define. */

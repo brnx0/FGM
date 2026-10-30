@@ -62,6 +62,8 @@ Route::middleware(['auth', 'nao-gestor', 'cadastro-completo', 'inertia.encrypt',
     Route::get('/portal/inscricoes/{inscricao}', 'show')->whereNumber('inscricao')->name('portal.inscricoes.show');
     Route::put('/portal/inscricoes/{inscricao}', 'update')->whereNumber('inscricao')->name('portal.inscricoes.update');
     Route::get('/portal/inscricoes/{inscricao}/situacao', 'situacao')->whereNumber('inscricao')->name('portal.inscricoes.situacao');
+    Route::post('/portal/inscricoes/{inscricao}/finalizar', 'finalizar')->whereNumber('inscricao')->name('portal.inscricoes.finalizar');
+    Route::post('/portal/inscricoes/{inscricao}/reabrir', 'reabrir')->whereNumber('inscricao')->name('portal.inscricoes.reabrir');
 
     // {documento} é o id em edital_documentos; se a inscrição não o exige, 404.
     Route::controller(InscricaoDocumentoController::class)->group(function () {

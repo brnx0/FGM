@@ -435,10 +435,14 @@ class ConferenciaDocumentoTest extends TestCase
 
         $this->actingAs($this->user)->getJson($url)
             ->assertOk()
-            ->assertExactJson(['documentos' => [
-                ['id' => (int) $this->exigido->id, 'situacao' => 'reprovado', 'motivo' => 'O arquivo está ilegível.'],
-                ['id' => (int) $opcional->id, 'situacao' => 'conferindo', 'motivo' => null],
-            ]]);
+            ->assertExactJson([
+                'documentos' => [
+                    ['id' => (int) $this->exigido->id, 'situacao' => 'reprovado', 'motivo' => 'O arquivo está ilegível.'],
+                    ['id' => (int) $opcional->id, 'situacao' => 'conferindo', 'motivo' => null],
+                ],
+                'podeFinalizar' => false,
+                'pendencias' => ['"Documento de identidade" precisa ser aprovado na conferência.', 'Aguarde a conferência de "'.$opcional->nome.'".'],
+            ]);
 
         $this->actingAs(User::factory()->proponente()->create())->getJson($url)->assertNotFound();
         $this->getJson('/portal/inscricoes/abc/situacao')->assertNotFound();
