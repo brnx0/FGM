@@ -24,6 +24,7 @@ use App\Models\InscricaoResposta;
 use App\Models\Organizacao;
 use App\Models\PessoaFisica;
 use App\Models\User;
+use App\Support\Inscricao\QuestionarioDaInscricao;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -384,6 +385,35 @@ class FinalizarInscricaoTest extends TestCase
         $this->assertSame(SituacaoInscricao::Finalizada, $this->inscricao->fresh()->situacao);
     }
 
+    public function test_resposta_que_deixou_de_servir_depois_da_edicao_da_pergunta_nao_conta(): void
+    {
+        $proposta = EditalQuestionarioSecao::factory()->for($this->edital)->create(['titulo' => 'Proposta', 'ordem' => 1]);
+        $texto = EditalPergunta::factory()->for($this->edital)->create(['edital_questionario_secao_id' => $proposta->id, 'ordem' => 1]);
+        $escolha = EditalPergunta::factory()->for($this->edital)->escolha(TipoPergunta::EscolhaUnica, ['Sim', 'Não'])->create([
+            'edital_questionario_secao_id' => $proposta->id, 'ordem' => 2,
+        ]);
+        InscricaoResposta::factory()->create(['inscricao_id' => $this->inscricao->id, 'edital_pergunta_id' => $texto->id, 'texto' => 'Resposta']);
+        InscricaoResposta::factory()->create([
+            'inscricao_id' => $this->inscricao->id, 'edital_pergunta_id' => $escolha->id, 'texto' => null, 'opcoes' => ['o2'],
+        ]);
+        $this->assertSame([], $this->inscricao->fresh()->pendenciasParaFinalizar());
+
+        // O gestor troca a pergunta de texto por escolha e tira a opção escolhida na outra.
+        $texto->update(['tipo' => TipoPergunta::EscolhaUnica, 'opcoes' => [['chave' => 'o1', 'texto' => 'A', 'outro' => false]]]);
+        $escolha->update(['opcoes' => [['chave' => 'o1', 'texto' => 'Sim', 'outro' => false]]]);
+
+        $this->actingAs($this->user)->post(route('portal.inscricoes.finalizar', $this->inscricao))
+            ->assertSessionHas('erro', InscricaoController::ERRO_PENDENCIAS);
+        $this->assertNaoFinalizada();
+        $this->assertSame(['Responda as perguntas obrigatórias de "Proposta".'], $this->inscricao->fresh()->pendenciasParaFinalizar());
+
+        $this->get(route('portal.inscricoes.show', $this->inscricao))
+            ->assertInertia(fn (Assert $page) => $page->where('respostas', []));
+
+        (new QuestionarioDaInscricao($this->inscricao->fresh()))->descartarRespostasQueNaoValem();
+        $this->assertSame(0, $this->inscricao->respostas()->count());
+    }
+
     public function test_obrigatoria_oculta_ou_de_outra_categoria_nao_impede_finalizar(): void
     {
         $proposta = EditalQuestionarioSecao::factory()->for($this->edital)->create(['titulo' => 'Proposta', 'ordem' => 1]);
@@ -446,7 +476,7 @@ class FinalizarInscricaoTest extends TestCase
 
         $this->actingAs($this->user)->post(route('portal.inscricoes.finalizar', $this->inscricao))
             ->assertRedirect(route('portal.inscricoes.show', $this->inscricao))
-            ->assertSessionHas('erro', InscricaoController::AVISO_PERFIL_INCOMPLETO);
+            ->assertSessionHas('erro', InscricaoController::ERRO_PERFIL_INCOMPLETO_AO_FINALIZAR);
 
         $this->assertNaoFinalizada();
         $this->assertNull($this->inscricao->fresh()->perfil);

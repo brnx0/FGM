@@ -2,8 +2,10 @@
 
 namespace Tests\Feature\Retaguarda;
 
+use App\Enums\Escolaridade;
 use App\Enums\PorteOrganizacao;
 use App\Enums\RacaCor;
+use App\Enums\TipoDeficiencia;
 use App\Models\Organizacao;
 use App\Models\PessoaFisica;
 use App\Models\PrefeituraBairro;
@@ -97,6 +99,11 @@ class ProponentesTest extends TestCase
     {
         $maria = $this->maria([
             'raca_cor' => RacaCor::Parda,
+            'pcd' => true,
+            'deficiencia' => TipoDeficiencia::Outra,
+            'deficiencia_outra' => 'Baixa audição unilateral',
+            'escolaridade' => Escolaridade::MedioCompleto,
+            'anos_atuacao' => 7,
             'telefone' => '71999998888',
             'foto_perfil' => 'cadastros/1/foto.png',
             'documento_cpf' => 'cadastros/1/cpf.pdf',
@@ -116,6 +123,9 @@ class ProponentesTest extends TestCase
             ->where('secoes.1.campos.0', ['rotulo' => 'CPF', 'valor' => '***.982.247-**'])
             ->where('secoes.3.campos.0', ['rotulo' => 'Telefone', 'valor' => '(71) 99999-8888'])
             ->where('secoes.4.campos.1', ['rotulo' => 'Raça/cor', 'valor' => 'Parda'])
+            ->where('secoes.4.campos.3', ['rotulo' => 'Tipo de deficiência', 'valor' => 'Outra: Baixa audição unilateral'])
+            ->where('secoes.4.campos.4', ['rotulo' => 'Escolaridade', 'valor' => 'Ensino médio completo ou equivalente'])
+            ->where('secoes.4.campos.7', ['rotulo' => 'Anos de atuação na área cultural', 'valor' => '7'])
             ->where('anexos.0.campo', 'foto_perfil')
             ->where('anexos.0.imagem', true)
             ->where('anexos.1.url', route('retaguarda.proponentes.anexo', [$maria, 'documento_cpf']))

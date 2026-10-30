@@ -39,6 +39,8 @@ class InscricaoController extends Controller
 
     public const string AVISO_PERFIL_INCOMPLETO = 'Complete o seu perfil no cadastro de Pessoa Física para se inscrever.';
 
+    public const string ERRO_PERFIL_INCOMPLETO_AO_FINALIZAR = 'Complete o seu perfil no cadastro de Pessoa Física para finalizar a inscrição.';
+
     public function store(SalvarInscricaoRequest $request, Edital $edital): RedirectResponse
     {
         if (! $request->user()->perfilCompleto()) {
@@ -214,6 +216,8 @@ class InscricaoController extends Controller
         Gate::authorize('gerenciar', $inscricao);
 
         return DB::transaction(function () use ($inscricao): RedirectResponse {
+            // O edital antes da inscrição: espera quem troca ou importa o questionário (que trava o edital) terminar.
+            $this->travarEdital($inscricao->edital);
             $travada = $this->travarInscricao($inscricao);
 
             if (! $travada->noPeriodo()) {
@@ -227,7 +231,7 @@ class InscricaoController extends Controller
             $dono = $travada->user;
 
             if (! $dono->perfilCompleto()) {
-                return redirect()->route('portal.inscricoes.show', $inscricao)->with('erro', self::AVISO_PERFIL_INCOMPLETO);
+                return redirect()->route('portal.inscricoes.show', $inscricao)->with('erro', self::ERRO_PERFIL_INCOMPLETO_AO_FINALIZAR);
             }
 
             if ($travada->pendenciasParaFinalizar() !== []) {

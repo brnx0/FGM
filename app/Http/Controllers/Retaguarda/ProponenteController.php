@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Retaguarda;
 
 use App\Enums\TipoCadastro;
+use App\Enums\TipoDeficiencia;
 use App\Http\Controllers\Controller;
 use App\Models\Organizacao;
 use App\Models\PessoaFisica;
@@ -183,10 +184,15 @@ class ProponenteController extends Controller
                 'Telefone adicional' => $this->telefone($pessoa->telefone_adicional),
                 'E-mail' => $pessoa->email,
             ]),
-            $secao('identidade', 'Identidade de gênero, raça/cor e PcD', [
+            $secao('identidade', 'Identidade e perfil', [
                 'Identidade de gênero' => $pessoa->identidade_genero?->rotulo(),
                 'Raça/cor' => $pessoa->raca_cor?->rotulo(),
                 'Pessoa com deficiência (PcD)' => $simNao($pessoa->pcd),
+                'Tipo de deficiência' => $this->tipoDeDeficiencia($pessoa),
+                'Escolaridade' => $pessoa->escolaridade?->rotulo(),
+                'Renda mensal' => $pessoa->renda?->rotulo(),
+                'Povo ou comunidade tradicional' => $pessoa->povo_tradicional?->rotulo(),
+                'Anos de atuação na área cultural' => $pessoa->anos_atuacao === null ? null : (string) $pessoa->anos_atuacao,
             ]),
             $secao('endereco', 'Endereço', [
                 'CEP' => $pessoa->cep !== null && strlen($pessoa->cep) === 8 ? substr($pessoa->cep, 0, 5).'-'.substr($pessoa->cep, 5) : $pessoa->cep,
@@ -199,6 +205,18 @@ class ProponenteController extends Controller
                 'Território' => PrefeituraBairro::rotuloDoCodigo($pessoa->territorio),
             ]),
         ];
+    }
+
+    /** O tipo de deficiência com o "Qual?" quando é "Outra"; nulo sem PcD. */
+    private function tipoDeDeficiencia(PessoaFisica $pessoa): ?string
+    {
+        if (! $pessoa->pcd || $pessoa->deficiencia === null) {
+            return null;
+        }
+
+        return $pessoa->deficiencia === TipoDeficiencia::Outra && filled($pessoa->deficiencia_outra)
+            ? $pessoa->deficiencia->rotulo().': '.$pessoa->deficiencia_outra
+            : $pessoa->deficiencia->rotulo();
     }
 
     /**

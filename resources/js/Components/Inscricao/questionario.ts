@@ -72,6 +72,12 @@ const dataBrasileira = (texto: string): string => {
     return partes ? `${partes[3]}/${partes[2]}/${partes[1]}` : texto;
 };
 
+/** "1234.56" → "1.234,56"; o que não for número fica como veio. */
+const numeroBrasileiro = (texto: string): string => {
+    const valor = Number(texto);
+    return texto.trim() === '' || !Number.isFinite(valor) ? texto : valor.toLocaleString('pt-BR', { maximumFractionDigits: 20 });
+};
+
 /** A resposta como a revisão mostra; vazio quando não há resposta. */
 export const textoDaResposta = (pergunta: PerguntaDaInscricao, resposta: RespostaDaInscricao | undefined): string => {
     if (resposta === undefined) {
@@ -91,6 +97,8 @@ export const textoDaResposta = (pergunta: PerguntaDaInscricao, resposta: Respost
                 .join(', ');
         case 'data':
             return dataBrasileira(resposta.texto ?? '');
+        case 'numero':
+            return numeroBrasileiro(resposta.texto ?? '');
         default:
             return resposta.texto ?? '';
     }

@@ -153,6 +153,15 @@ const classeGrupo = 'flex flex-col gap-1 rounded-[12px] border border-hairline p
                     <span class="min-w-0 break-words">{{ opcao.texto }}</span>
                 </label>
             </div>
+            <!-- Opcional: dá para voltar a ficar sem resposta (o rádio sozinho não desmarca). -->
+            <button
+                v-if="!pergunta.obrigatoria && resposta.opcoes.length > 0"
+                type="button"
+                class="inline-flex min-h-11 items-center self-start text-[0.875rem] font-semibold text-acao underline hover:text-acao-escuro"
+                @click="alterar({ opcoes: [], outro: '' })"
+            >
+                Limpar resposta
+            </button>
         </CampoCadastro>
 
         <CampoCadastro

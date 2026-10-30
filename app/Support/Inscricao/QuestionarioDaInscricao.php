@@ -33,6 +33,12 @@ class QuestionarioDaInscricao
     /** @var Collection<int, EditalPergunta>|null */
     private ?Collection $perguntas = null;
 
+    /** @var array<int, ValorDaResposta>|null */
+    private ?array $respostasSalvas = null;
+
+    /** @var list<int> ids das perguntas com linha gravada, da última leitura */
+    private array $idsGravados = [];
+
     public function __construct(private Inscricao $inscricao) {}
 
     /**
@@ -70,15 +76,35 @@ class QuestionarioDaInscricao
     }
 
     /**
-     * As respostas gravadas, pelo id da pergunta.
+     * As respostas gravadas, pelo id da pergunta, relidas com a pergunta como está hoje (normalizar): se o gestor
+     * trocou o tipo ou tirou a opção escolhida, o que não serve mais não conta como resposta. As de perguntas que não
+     * valem para a inscrição vão como gravadas (ficam ocultas e o descarte as apaga). Lidas uma vez por instância.
      *
      * @return array<int, ValorDaResposta>
      */
     public function respostasSalvas(): array
     {
-        return $this->inscricao->respostas()->get()
-            ->mapWithKeys(fn (InscricaoResposta $resposta): array => [(int) $resposta->edital_pergunta_id => $resposta->valor()])
-            ->all();
+        if ($this->respostasSalvas !== null) {
+            return $this->respostasSalvas;
+        }
+
+        $perguntas = $this->perguntasQueValem()->keyBy(fn (EditalPergunta $pergunta): int => (int) $pergunta->id);
+        $this->idsGravados = [];
+        $respostas = [];
+
+        foreach ($this->inscricao->respostas()->get() as $resposta) {
+            /** @var InscricaoResposta $resposta */
+            $id = (int) $resposta->edital_pergunta_id;
+            $this->idsGravados[] = $id;
+            $pergunta = $perguntas->get($id);
+            $valor = $pergunta === null ? $resposta->valor() : self::normalizar($pergunta, $resposta->valor());
+
+            if ($valor !== null) {
+                $respostas[$id] = $valor;
+            }
+        }
+
+        return $this->respostasSalvas = $respostas;
     }
 
     /**
@@ -155,18 +181,22 @@ class QuestionarioDaInscricao
     }
 
     /**
-     * Apaga as respostas de perguntas que não valem mais para a inscrição ou ficaram ocultas, recalculando até
-     * estabilizar (apagar a resposta de uma origem pode esconder a dependente).
+     * Apaga as respostas de perguntas que não valem mais para a inscrição, ficaram ocultas ou que, relidas com a
+     * pergunta de hoje, não servem mais, recalculando até estabilizar (apagar a resposta de uma origem pode esconder
+     * a dependente).
      */
     public function descartarRespostasQueNaoValem(): void
     {
+        $this->respostasSalvas = null;
+
         do {
             $respostas = $this->respostasSalvas();
             $visiveis = $this->visiveis($respostas)->map(fn (EditalPergunta $pergunta): int => (int) $pergunta->id)->all();
-            $descartar = array_values(array_diff(array_keys($respostas), $visiveis));
+            $descartar = array_values(array_diff($this->idsGravados, array_intersect(array_keys($respostas), $visiveis)));
 
             if ($descartar !== []) {
                 $this->inscricao->respostas()->whereIn('edital_pergunta_id', $descartar)->delete();
+                $this->respostasSalvas = null;
             }
         } while ($descartar !== []);
     }

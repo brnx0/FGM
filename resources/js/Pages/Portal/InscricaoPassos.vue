@@ -22,6 +22,7 @@ const props = defineProps<PortalInscricaoPassosProps>();
 const BASE = `/portal/inscricoes/${props.inscricao.id}`;
 const ORDEM_DAS_ETAPAS = ['inscricao', 'validacao_cotas', 'habilitacao'];
 const ERRO_SEM_ARQUIVO = 'Anexe este documento para continuar.';
+const AVISO_FICOU_NOS_DOCUMENTOS = 'Ainda falta algum documento obrigatório. Confira a lista e anexe o que falta para continuar.';
 const ID_TITULO_DO_PASSO = 'passo-titulo';
 
 // O Inertia faz uma requisição comum por vez: a nova cancela a que ainda está em andamento (um envio de arquivo, por exemplo)
@@ -60,6 +61,8 @@ const secaoAtual = computed<SecaoDaInscricao | undefined>(() =>
 
 // "Avançar" nos documentos confere na tela os obrigatórios sem arquivo; o erro some de cada um quando o arquivo chega.
 const documentosConferidos = ref<boolean>(false);
+// Aviso de quando o servidor manteve a inscrição nos documentos (algo mudou desde que a tela abriu).
+const avisoDosDocumentos = ref<string | null>(null);
 
 // Os passos trocam sem recriar a página (links com preserve-state e o redirecionamento depois de salvar): a cada troca,
 // o foco vai para o título do passo novo, e quem usa leitor de tela ouve onde está.
@@ -67,6 +70,7 @@ watch(
     () => props.passoAtual,
     () => {
         documentosConferidos.value = false;
+        avisoDosDocumentos.value = null;
         void nextTick(() => document.getElementById(ID_TITULO_DO_PASSO)?.focus());
     },
 );
@@ -114,6 +118,7 @@ const erroDoDocumento = (documento: DocumentoDaInscricao): string | undefined =>
 
 const avancarDosDocumentos = (): void => {
     documentosConferidos.value = true;
+    avisoDosDocumentos.value = null;
     if (props.documentos.some(semArquivo)) {
         focarPrimeiroErro('#passo-documentos');
         return;
@@ -122,7 +127,19 @@ const avancarDosDocumentos = (): void => {
     // O servidor confere de novo: com algo faltando, abre o primeiro passo incompleto.
     const seguinte = props.passos[indiceAtual.value + 1];
     if (seguinte) {
-        router.get(enderecoDoPasso(seguinte.id), {}, { preserveState: true });
+        router.get(
+            enderecoDoPasso(seguinte.id),
+            {},
+            {
+                preserveState: true,
+                onSuccess: () => {
+                    if (props.passoAtual === 'documentos') {
+                        avisoDosDocumentos.value = AVISO_FICOU_NOS_DOCUMENTOS;
+                        void nextTick(() => document.getElementById('passo-documentos-aviso')?.focus());
+                    }
+                },
+            },
+        );
     }
 };
 
@@ -229,6 +246,15 @@ const classeRodape = 'flex flex-wrap items-center justify-between gap-3 border-t
                 />
 
                 <div v-else-if="passoAtual === 'documentos'" id="passo-documentos" class="flex flex-col gap-6">
+                    <p
+                        v-if="avisoDosDocumentos"
+                        id="passo-documentos-aviso"
+                        role="alert"
+                        tabindex="-1"
+                        class="rounded-[12px] border border-invalido-texto/40 bg-invalido-fundo px-4 py-3 font-semibold text-invalido-texto"
+                    >
+                        {{ avisoDosDocumentos }}
+                    </p>
                     <section v-for="grupo in etapas" :key="grupo.etapa" :aria-labelledby="`etapa-${grupo.etapa}-titulo`" class="flex flex-col gap-4">
                         <h3 :id="`etapa-${grupo.etapa}-titulo`" class="text-[1.0625rem] font-bold">{{ grupo.rotulo }}</h3>
                         <ul class="flex flex-col gap-4">

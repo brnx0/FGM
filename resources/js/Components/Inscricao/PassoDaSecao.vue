@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, nextTick } from 'vue';
 import { Link, useForm } from '@inertiajs/vue3';
 import type { PerguntaDaInscricao, RespostaDaInscricao, SecaoDaInscricao } from '../../types';
 import AvisoCamposObrigatorios from '../AvisoCamposObrigatorios.vue';
@@ -50,8 +50,15 @@ const visiveis = computed<Set<number>>(() => {
 const perguntasNaTela = computed<PerguntaDaInscricao[]>(() => props.secao.perguntas.filter((pergunta) => visiveis.value.has(pergunta.id)));
 const temObrigatoria = computed<boolean>(() => perguntasNaTela.value.some((pergunta) => pergunta.obrigatoria));
 
-// "12,5" vira "12.5", que o servidor entende; o resto vai como foi digitado.
-const numeroParaEnvio = (texto: string): string => (/^-?\d+,\d+$/.test(texto.trim()) ? texto.trim().replace(',', '.') : texto);
+// No formato brasileiro, "12,5" vira "12.5" e "1.234,56" vira "1234.56", que o servidor entende; o resto vai como foi
+// digitado (o servidor recusa o que não for número).
+const numeroParaEnvio = (texto: string): string => {
+    const limpo = texto.trim();
+    if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(limpo)) {
+        return limpo.replace(/\./g, '').replace(',', '.');
+    }
+    return /^-?\d+,\d+$/.test(limpo) ? limpo.replace(',', '.') : texto;
+};
 
 // O que vai para o servidor de cada pergunta, no formato que SalvarRespostasRequest valida.
 const paraEnvio = (pergunta: PerguntaDaInscricao, resposta: RespostaEditavel): Record<string, unknown> => {
@@ -82,6 +89,8 @@ const erroDaPergunta = (pergunta: PerguntaDaInscricao): string | undefined => {
     const chave = chavesDeErro(pergunta).find((candidata) => candidata !== `respostas.${pergunta.id}.outro`);
     return chave === undefined ? undefined : erros.value[chave];
 };
+// Erro da seção inteira (respostas sem formato), que não é de nenhuma pergunta: vai no topo do passo.
+const erroGeral = computed<string | undefined>(() => erros.value.respostas);
 const erroDoOutro = (pergunta: PerguntaDaInscricao): string | undefined => erros.value[`respostas.${pergunta.id}.outro`];
 const limparErros = (pergunta: PerguntaDaInscricao): void => {
     const chaves = chavesDeErro(pergunta);
@@ -99,7 +108,13 @@ const avancar = (): void => {
         // Caminho da rota portal.inscricoes.secoes.update (o front não tem helper de rotas nomeadas).
         .put(`/portal/inscricoes/${props.inscricaoId}/secoes/${props.secao.id}`, {
             preserveScroll: true,
-            onError: () => focarPrimeiroErro(`#${idFormulario}`),
+            onError: () => {
+                if (erroGeral.value) {
+                    void nextTick(() => document.getElementById(`${idFormulario}-erro`)?.focus());
+                    return;
+                }
+                focarPrimeiroErro(`#${idFormulario}`);
+            },
         });
 };
 
@@ -110,6 +125,15 @@ const classeBotao =
 <template>
     <form :id="idFormulario" novalidate class="flex flex-col gap-6" @submit.prevent="avancar">
         <p v-if="secao.descricao" class="max-w-3xl leading-[1.6] whitespace-pre-line text-tinta-suave">{{ secao.descricao }}</p>
+        <p
+            v-if="erroGeral"
+            :id="`${idFormulario}-erro`"
+            role="alert"
+            tabindex="-1"
+            class="rounded-[12px] border border-invalido-texto/40 bg-invalido-fundo px-4 py-3 font-semibold text-invalido-texto"
+        >
+            {{ erroGeral }}
+        </p>
         <AvisoCamposObrigatorios v-if="temObrigatoria" />
 
         <PerguntaDaInscricaoCampo

@@ -294,8 +294,9 @@ class QuestionarioDaInscricaoTest extends TestCase
         $this->assertSame('secao-'.$this->proposta->id, PassosDaInscricao::atual($passos, null));
         $this->assertSame('escolhas', PassosDaInscricao::atual($passos, 'escolhas'));
 
+        // As respostas são lidas uma vez por instância: depois de gravar, uma nova as relê.
         $this->resposta($origem, null, ['nao']);
-        $passos = PassosDaInscricao::para($this->inscricao, $questionario);
+        $passos = PassosDaInscricao::para($this->inscricao, $this->questionario());
         $this->assertSame(['escolhas', 'secao-'.$this->proposta->id, 'documentos', 'revisao'], array_column($passos, 'id'));
         $this->assertSame('revisao', PassosDaInscricao::atual($passos, 'revisao'));
     }
