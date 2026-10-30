@@ -1195,6 +1195,32 @@ export interface RetaguardaAreasAtuacaoFormProps {
     area: AreaAtuacaoRetaguarda | null;
 }
 
+/** Avaliador na lista da retaguarda (Retaguarda\AvaliadorController@index), com o CPF mascarado. */
+export interface AvaliadorRetaguarda {
+    id: number;
+    nome: string;
+    cpf: string;
+    email: string;
+    ativo: boolean;
+}
+
+export interface RetaguardaAvaliadoresIndexProps {
+    avaliadores: Paginado<AvaliadorRetaguarda>;
+    filtros: { busca: string };
+}
+
+/** Avaliador no formulário (Retaguarda\AvaliadorController@edit): CPF formatado e data em AAAA-MM-DD. */
+export interface RetaguardaAvaliadoresFormProps {
+    avaliador: {
+        id: number;
+        nome: string;
+        data_nascimento: string;
+        cpf: string;
+        email: string;
+        ativo: boolean;
+    } | null;
+}
+
 /** Troca da própria senha (Retaguarda\MinhaSenhaController@edit). Sem senha (só gov.br), a atual não é pedida. */
 /** Uma aba de AbasFormulario (formulários longos da retaguarda). */
 export interface AbaFormulario {
