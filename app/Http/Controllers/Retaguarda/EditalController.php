@@ -133,7 +133,6 @@ class EditalController extends Controller
         // Referências entre listas vão por posição, como o formulário as envia de volta.
         $posicaoDaChamada = $this->posicoesPorId($edital->chamadas);
         $posicaoDaCategoria = $this->posicoesPorId($edital->categorias);
-        $posicaoDoDocumento = $this->posicoesPorId($edital->documentos);
 
         return Inertia::render('Retaguarda/Editais/Form', [
             'edital' => [
