@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Storage;
 use Throwable;
 
 /**
- * Confere com a IA (o provedor principal e, se ele falhar, a redundância) o PDF de um documento da inscrição. Lançado
+ * Confere com a IA (o provedor principal e, se ele falhar, a redundância) o PDF ou a imagem de um documento da inscrição. Lançado
  * em segundo plano por LancadorDeConferencia com a execução (InscricaoDocumento::execucao) para a qual foi iniciado.
  *
  * Cada gravação confere, com a linha travada, que o documento ainda está conferindo nesta execução: um processo
@@ -32,7 +32,7 @@ use Throwable;
  * mensagem genérica para o proponente e o detalhe em `erro`, que é sempre texto em português, nunca a chave da API.
  */
 #[Signature('inscricoes:conferir {documento : Id do documento enviado na inscrição} {execucao? : Execução a conferir (padrão: a atual do documento)}')]
-#[Description('Confere com a IA o PDF de um documento da inscrição')]
+#[Description('Confere com a IA o PDF ou a imagem de um documento da inscrição')]
 class ConferirDocumentoCommand extends Command
 {
     /** O que o proponente vê quando a IA não consegue conferir. */
@@ -58,7 +58,7 @@ class ConferirDocumentoCommand extends Command
     public function handle(AnaliseComRedundancia $analise): int
     {
         set_time_limit(self::TEMPO_LIMITE);
-        // O PDF (até 10 MB), o base64 e o JSON do pedido ficam na memória ao mesmo tempo; o padrão da CLI é 128M.
+        // O arquivo (até 10 MB), o base64 e o JSON do pedido ficam na memória ao mesmo tempo; o padrão da CLI é 128M.
         $memoria = (string) ini_get('memory_limit');
         if ($memoria !== '-1' && ini_parse_quantity($memoria) < ini_parse_quantity(self::MEMORIA)) {
             ini_set('memory_limit', self::MEMORIA);
@@ -93,18 +93,25 @@ class ConferirDocumentoCommand extends Command
                 throw new FalhaNaIa(AnaliseComRedundancia::SEM_CONFIGURACAO);
             }
 
-            $pdf = Storage::disk(Inscricao::DISCO)->get($documento->arquivo)
+            $disco = Storage::disk(Inscricao::DISCO);
+            $arquivo = $disco->get($documento->arquivo)
                 ?? throw new FalhaNaIa('O arquivo enviado não foi encontrado. Envie o documento de novo.');
+            // O tipo vem do conteúdo gravado (PDF ou imagem): é ele que diz ao provedor como ler o arquivo.
+            $tipo = $disco->mimeType($documento->arquivo);
+            if (! in_array($tipo, Inscricao::TIPOS_DE_ARQUIVO, true)) {
+                throw new FalhaNaIa('O arquivo enviado não é um PDF nem uma imagem JPG ou PNG. Envie o documento de novo.');
+            }
 
             $resultado = $analise->analisar(
                 $provedores,
-                $pdf,
+                $arquivo,
                 PromptDaConferencia::montar($documento),
                 self::TEMPERATURA,
                 PromptDaConferencia::esquema(),
                 PromptDaConferencia::conferir(...),
+                $tipo,
             );
-            unset($pdf);
+            unset($arquivo);
 
             $aprovado = $resultado['dados']['aprovado'] === true;
 

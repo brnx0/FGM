@@ -21,7 +21,7 @@ class AnalisadorOpenAi extends AnalisadorPorHttp
         return ProvedorIa::OpenAi;
     }
 
-    protected function corpo(string $modelo, ?string $pdfBinario, string $prompt, ?float $temperatura, array $esquema): array
+    protected function corpo(string $modelo, ?string $arquivoBinario, string $tipoDoArquivo, string $prompt, ?float $temperatura, array $esquema): array
     {
         return array_filter([
             'model' => $modelo,
@@ -29,15 +29,27 @@ class AnalisadorOpenAi extends AnalisadorPorHttp
             'input' => [[
                 'role' => 'user',
                 'content' => [
-                    ...($pdfBinario === null ? [] : [
-                        ['type' => 'input_file', 'filename' => 'arquivo.pdf', 'file_data' => 'data:application/pdf;base64,'.base64_encode($pdfBinario)],
-                    ]),
+                    ...($arquivoBinario === null ? [] : [self::parteDoArquivo($arquivoBinario, $tipoDoArquivo)]),
                     ['type' => 'input_text', 'text' => $prompt],
                 ],
             ]],
             'text' => ['format' => ['type' => 'json_schema', 'name' => 'edital', 'strict' => true, 'schema' => EsquemaOpenAi::de($esquema)]],
             'temperature' => $temperatura,
         ], fn (mixed $valor): bool => $valor !== null);
+    }
+
+    /**
+     * A imagem vai como input_image; o PDF, como input_file.
+     *
+     * @return array<string, string>
+     */
+    private static function parteDoArquivo(string $arquivoBinario, string $tipoDoArquivo): array
+    {
+        $dados = "data:{$tipoDoArquivo};base64,".base64_encode($arquivoBinario);
+
+        return str_starts_with($tipoDoArquivo, 'image/')
+            ? ['type' => 'input_image', 'image_url' => $dados]
+            : ['type' => 'input_file', 'filename' => 'arquivo.pdf', 'file_data' => $dados];
     }
 
     protected function enviar(PendingRequest $pedido, string $modelo, #[SensitiveParameter] string $chave, array $corpo): Response

@@ -48,6 +48,9 @@ class ConferenciaDocumentoTest extends TestCase
 
     private const string CONTEUDO_PDF = "%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n";
 
+    /** Só o começo da imagem: é por ele que o tipo do arquivo é reconhecido. */
+    private const string CONTEUDO_PNG = "\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00";
+
     private User $user;
 
     private Edital $edital;
@@ -131,6 +134,34 @@ class ConferenciaDocumentoTest extends TestCase
                 && str_contains($conteudo[1]['text'], '529.982.247-25')
                 && str_contains($conteudo[1]['text'], NaturezaProponente::PessoaFisica->rotulo());
         });
+    }
+
+    public function test_imagem_vai_para_a_ia_como_imagem(): void
+    {
+        Http::fake([self::URL_OPENAI => self::respostaDaOpenAi(['aprovado' => true, 'motivo' => 'A foto está legível.'])]);
+        $documento = $this->documentoConferindo(['arquivo_nome' => 'rg.png'], conteudo: self::CONTEUDO_PNG);
+
+        $this->assertSame(0, $this->conferir($documento));
+
+        $this->assertSame(SituacaoConferencia::Aprovado, $documento->refresh()->situacao);
+        Http::assertSent(fn (Request $pedido): bool => $pedido['input'][0]['content'][0] === [
+            'type' => 'input_image',
+            'image_url' => 'data:image/png;base64,'.base64_encode(self::CONTEUDO_PNG),
+        ]);
+    }
+
+    public function test_arquivo_gravado_que_nao_e_pdf_nem_imagem_fica_nao_conferido_sem_chamar_a_ia(): void
+    {
+        Http::fake();
+        $documento = $this->documentoConferindo(conteudo: "GIF89a\x01\x00\x01\x00\x00\x00\x00");
+
+        $this->assertSame(1, $this->conferir($documento));
+
+        $documento->refresh();
+        $this->assertSame(SituacaoConferencia::NaoConferido, $documento->situacao);
+        $this->assertSame(InscricaoDocumentoController::NAO_CONFERIDO, $documento->motivo);
+        $this->assertSame('O arquivo enviado não é um PDF nem uma imagem JPG ou PNG. Envie o documento de novo.', $documento->erro);
+        Http::assertNothingSent();
     }
 
     public function test_reprovado_grava_o_motivo(): void
@@ -491,7 +522,7 @@ class ConferenciaDocumentoTest extends TestCase
     {
         $this->app->instance(AnaliseComRedundancia::class, new class(app(AnalisadorGemini::class), app(AnalisadorOpenAi::class)) extends AnaliseComRedundancia
         {
-            public function analisar(array $provedores, ?string $pdfBinario, string $prompt, float $temperatura, array $esquema, ?callable $conferirResposta = null): array
+            public function analisar(array $provedores, ?string $arquivoBinario, string $prompt, float $temperatura, array $esquema, ?callable $conferirResposta = null, string $tipoDoArquivo = 'application/pdf'): array
             {
                 throw new RuntimeException('Falhou com a chave sk-teste-ChaveFalsaDaOpenAi-0123456789 no meio.');
             }
@@ -549,14 +580,14 @@ class ConferenciaDocumentoTest extends TestCase
     }
 
     /**
-     * Documento do exigido na conferência `execucao-atual`, com o PDF no disco.
+     * Documento do exigido na conferência `execucao-atual`, com o arquivo no disco (o PDF, se nenhum outro vier).
      *
      * @param  array<string, mixed>  $atributos
      */
-    private function documentoConferindo(array $atributos = [], string $execucao = 'execucao-atual'): InscricaoDocumento
+    private function documentoConferindo(array $atributos = [], string $execucao = 'execucao-atual', string $conteudo = self::CONTEUDO_PDF): InscricaoDocumento
     {
         $caminho = "inscricoes/{$this->inscricao->id}/{$execucao}.pdf";
-        Storage::disk('local')->put($caminho, self::CONTEUDO_PDF);
+        Storage::disk('local')->put($caminho, $conteudo);
 
         return InscricaoDocumento::factory()->conferindo()->for($this->inscricao)->for($this->exigido, 'documento')->create([
             'arquivo' => $caminho,

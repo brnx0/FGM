@@ -33,6 +33,9 @@ class Inscricao extends Model
 
     public const string PASTA = 'inscricoes';
 
+    /** Tipos aceitos nos documentos enviados: PDF ou imagem, que a IA confere do mesmo jeito. */
+    public const array TIPOS_DE_ARQUIVO = ['application/pdf', 'image/jpeg', 'image/png'];
+
     protected $table = 'inscricoes';
 
     protected $fillable = [

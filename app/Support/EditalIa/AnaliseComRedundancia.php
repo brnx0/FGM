@@ -24,15 +24,16 @@ class AnaliseComRedundancia
 
     /**
      * @param  list<array{provedor: ProvedorIa, conexao: ConexaoIa}>  $provedores
-     * @param  string|null  $pdfBinario  Sem PDF (null), o pedido leva só o texto do prompt.
+     * @param  string|null  $arquivoBinario  Sem arquivo (null), o pedido leva só o texto do prompt.
      * @param  array<string, mixed>  $esquema  No formato de EsquemaDaResposta.
      * @param  (callable(array<mixed>): void)|null  $conferirResposta  Lança RespostaInvalida para a resposta passar ao
      *                                                                 provedor seguinte; null aceita qualquer JSON.
+     * @param  string  $tipoDoArquivo  application/pdf, image/jpeg ou image/png.
      * @return array{dados: array<mixed>, tokens: array{entrada: int, saida: int, total: int}, provedor: ProvedorIa, modelo: string, falhas: list<array{provedor: ProvedorIa, motivo: string}>}
      *
      * @throws FalhaNaIa sem provedores, ou com o motivo de cada um quando nenhum responde
      */
-    public function analisar(array $provedores, ?string $pdfBinario, string $prompt, float $temperatura, array $esquema, ?callable $conferirResposta = null): array
+    public function analisar(array $provedores, ?string $arquivoBinario, string $prompt, float $temperatura, array $esquema, ?callable $conferirResposta = null, string $tipoDoArquivo = 'application/pdf'): array
     {
         if ($provedores === []) {
             throw new FalhaNaIa(self::SEM_CONFIGURACAO);
@@ -45,7 +46,7 @@ class AnaliseComRedundancia
 
             try {
                 $resultado = $this->analisador($provedor)
-                    ->analisar($modelo, (string) $conexao->chaveGuardada(), $pdfBinario, $prompt, $temperatura, $esquema);
+                    ->analisar($modelo, (string) $conexao->chaveGuardada(), $arquivoBinario, $prompt, $temperatura, $esquema, $tipoDoArquivo);
                 if ($conferirResposta !== null) {
                     $conferirResposta($resultado['dados']);
                 }
