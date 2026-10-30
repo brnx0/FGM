@@ -7,6 +7,7 @@ use App\Models\EditalPergunta;
 use App\Models\EditalQuestionarioSecao;
 use App\Models\Inscricao;
 use App\Models\InscricaoResposta;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 
 /**
@@ -50,6 +51,21 @@ class QuestionarioDaInscricao
         return $this->perguntas = $this->secoes()
             ->flatMap(fn (EditalQuestionarioSecao $secao): Collection => $secao->perguntas)
             ->filter(fn (EditalPergunta $pergunta): bool => $pergunta->valePara($categoriaId, $this->inscricao->natureza))
+            ->values();
+    }
+
+    /**
+     * As seções com ao menos uma pergunta que vale, na ordem, cada uma com só as perguntas que valem (visíveis ou não).
+     *
+     * @return Collection<int, EditalQuestionarioSecao>
+     */
+    public function secoesQueValem(): Collection
+    {
+        $porSecao = $this->perguntasQueValem()->groupBy(fn (EditalPergunta $pergunta): int => (int) $pergunta->edital_questionario_secao_id);
+
+        return $this->secoes()
+            ->filter(fn (EditalQuestionarioSecao $secao): bool => $porSecao->has((int) $secao->id))
+            ->map(fn (EditalQuestionarioSecao $secao): EditalQuestionarioSecao => (clone $secao)->setRelation('perguntas', new EloquentCollection($porSecao->get((int) $secao->id)->all())))
             ->values();
     }
 

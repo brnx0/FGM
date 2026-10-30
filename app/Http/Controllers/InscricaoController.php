@@ -9,9 +9,12 @@ use App\Http\Requests\SalvarInscricaoRequest;
 use App\Models\ConfiguracaoIa;
 use App\Models\Edital;
 use App\Models\EditalDocumento;
+use App\Models\EditalPergunta;
+use App\Models\EditalQuestionarioSecao;
 use App\Models\Inscricao;
 use App\Models\InscricaoDocumento;
 use App\Support\ArquivoArmazenado;
+use App\Support\Inscricao\PassosDaInscricao;
 use App\Support\Inscricao\PropsDaInscricao;
 use App\Support\Inscricao\QuestionarioDaInscricao;
 use App\Support\Inscricao\RegrasDaInscricao;
@@ -34,8 +37,14 @@ class InscricaoController extends Controller
 
     public const string ERRO_PENDENCIAS = 'Resolva as pendências para finalizar a inscrição.';
 
+    public const string AVISO_PERFIL_INCOMPLETO = 'Complete o seu perfil no cadastro de Pessoa Física para se inscrever.';
+
     public function store(SalvarInscricaoRequest $request, Edital $edital): RedirectResponse
     {
+        if (! $request->user()->perfilCompleto()) {
+            return redirect()->route('cadastro')->with('aviso', self::AVISO_PERFIL_INCOMPLETO);
+        }
+
         $inscricao = new Inscricao([
             'edital_id' => $edital->id,
             'user_id' => $request->user()->id,
@@ -57,6 +66,11 @@ class InscricaoController extends Controller
         return redirect()->route('portal.inscricoes.show', $inscricao);
     }
 
+    /**
+     * A inscrição em passos: escolhas, seções do questionário, documentos e revisão. O passo pedido em ?passo= só abre
+     * com os anteriores completos; finalizada ou fora do período abre na revisão. As seções vão com todas as perguntas
+     * que valem (visíveis ou não), para a tela recalcular a visibilidade enquanto o proponente responde.
+     */
     public function show(Request $request, Inscricao $inscricao): Response
     {
         Gate::authorize('gerenciar', $inscricao);
@@ -67,8 +81,12 @@ class InscricaoController extends Controller
         $enviados = $inscricao->documentos()->get()
             ->keyBy(fn (InscricaoDocumento $enviado): int => (int) $enviado->edital_documento_id);
         $validacaoLigada = ConfiguracaoIa::validacaoLigada();
+        $questionario = new QuestionarioDaInscricao($inscricao);
+        $passos = PassosDaInscricao::para($inscricao, $questionario);
+        $podeEditar = $inscricao->situacao === SituacaoInscricao::Rascunho && $inscricao->noPeriodo();
+        $passoPedido = $request->query('passo');
 
-        return Inertia::render('Portal/InscricaoDocumentos', [
+        return Inertia::render('Portal/InscricaoPassos', [
             'edital' => PropsDaInscricao::edital($edital),
             'inscricao' => [
                 'id' => (int) $inscricao->id,
@@ -83,9 +101,9 @@ class InscricaoController extends Controller
                 'fimDoPeriodo' => $inscricao->chamada?->fim?->format('d/m/Y'),
                 'finalizadaEm' => $inscricao->finalizada_em?->format('d/m/Y H:i'),
             ],
-            'podeEditar' => $inscricao->situacao === SituacaoInscricao::Rascunho && $inscricao->noPeriodo(),
+            'podeEditar' => $podeEditar,
             'podeReabrir' => $inscricao->situacao === SituacaoInscricao::Finalizada && $inscricao->noPeriodo(),
-            'pendencias' => $inscricao->pendenciasParaFinalizar(),
+            'pendencias' => $inscricao->pendenciasParaFinalizar(questionario: $questionario),
             'documentos' => $inscricao->documentosExigidos()
                 ->map(fn (EditalDocumento $documento): array => [
                     'id' => (int) $documento->id,
@@ -100,6 +118,20 @@ class InscricaoController extends Controller
                     'enviado' => $this->arquivoEnviado($inscricao, $documento, $enviados->get((int) $documento->id)),
                 ])
                 ->all(),
+            'passos' => $passos,
+            'passoAtual' => $podeEditar
+                ? PassosDaInscricao::atual($passos, is_string($passoPedido) ? $passoPedido : null)
+                : PassosDaInscricao::REVISAO,
+            'secoes' => $questionario->secoesQueValem()
+                ->map(fn (EditalQuestionarioSecao $secao): array => [
+                    'id' => (int) $secao->id,
+                    'titulo' => $secao->titulo,
+                    'descricao' => $secao->descricao,
+                    'perguntas' => $secao->perguntas->map(fn (EditalPergunta $pergunta): array => $this->perguntaParaATela($pergunta))->all(),
+                ])
+                ->all(),
+            'respostas' => $questionario->respostasSalvas(),
+            'perfilIncompleto' => ! $user->perfilCompleto(),
             ...PropsDaInscricao::opcoes($user, $edital),
         ]);
     }
@@ -138,7 +170,7 @@ class InscricaoController extends Controller
             return $this->pedirParaReabrir($inscricao);
         }
 
-        $arquivosDescartados = DB::transaction(function () use ($inscricao, $request): array {
+        [$arquivosDescartados, $travada, $questionario] = DB::transaction(function () use ($inscricao, $request): array {
             $this->travarEdital($inscricao->edital);
             $travada = $this->travarInscricao($inscricao);
 
@@ -157,19 +189,24 @@ class InscricaoController extends Controller
                 $this->recusarSeLimiteAtingido($travada);
             }
             $travada->save();
-            (new QuestionarioDaInscricao($travada))->descartarRespostasQueNaoValem();
+            $questionario = new QuestionarioDaInscricao($travada);
+            $questionario->descartarRespostasQueNaoValem();
 
-            return $this->descartarDocumentosForaDaLista($travada);
+            return [$this->descartarDocumentosForaDaLista($travada), $travada, $questionario];
         });
 
         ArquivoArmazenado::apagarTodos($arquivosDescartados);
+        $passos = PassosDaInscricao::para($travada, $questionario);
 
-        return redirect()->route('portal.inscricoes.show', $inscricao)->with('sucesso', 'Escolhas salvas.');
+        return redirect()
+            ->route('portal.inscricoes.show', [$inscricao, 'passo' => PassosDaInscricao::seguinte($passos, PassosDaInscricao::ESCOLHAS)])
+            ->with('sucesso', 'Escolhas salvas.');
     }
 
     /**
-     * Finaliza o rascunho no período e sem pendências. O número (ano e id com 6 dígitos) nasce na primeira vez e é mantido
-     * quando a inscrição é reaberta e finalizada de novo. Finalizar o que já está finalizado não muda nada.
+     * Finaliza o rascunho no período, com o perfil do dono completo e sem pendências. O número (ano e id com 6 dígitos)
+     * nasce na primeira vez e é mantido quando a inscrição é reaberta e finalizada de novo; o retrato do perfil do dono
+     * é refeito a cada finalização. Finalizar o que já está finalizado não muda nada.
      */
     public function finalizar(Inscricao $inscricao): RedirectResponse
     {
@@ -186,12 +223,19 @@ class InscricaoController extends Controller
                 return redirect()->route('portal.inscricoes.show', $inscricao);
             }
 
+            $dono = $travada->user;
+
+            if (! $dono->perfilCompleto()) {
+                return redirect()->route('portal.inscricoes.show', $inscricao)->with('erro', self::AVISO_PERFIL_INCOMPLETO);
+            }
+
             if ($travada->pendenciasParaFinalizar() !== []) {
                 return redirect()->route('portal.inscricoes.show', $inscricao)->with('erro', self::ERRO_PENDENCIAS);
             }
 
             $agora = now();
             $travada->update([
+                'perfil' => $dono->pessoaFisica->retratoDoPerfil(),
                 'situacao' => SituacaoInscricao::Finalizada,
                 'finalizada_em' => $agora,
                 'numero' => $travada->numero ?? sprintf('%d%06d', $agora->year, (int) $travada->id),
@@ -221,6 +265,34 @@ class InscricaoController extends Controller
 
             return redirect()->route('portal.inscricoes.show', $inscricao);
         });
+    }
+
+    /**
+     * A pergunta como a tela usa. Sim/não e declaração vão sem opções: a tela usa as chaves fixas.
+     *
+     * @return array{id: int, enunciado: string, ajuda: ?string, tipo: string, obrigatoria: bool, limite: ?int, opcoes: list<array{chave: string, texto: string, outro: bool}>, condicao: array{pergunta: int, opcoes: list<string>}|null}
+     */
+    private function perguntaParaATela(EditalPergunta $pergunta): array
+    {
+        return [
+            'id' => (int) $pergunta->id,
+            'enunciado' => $pergunta->enunciado,
+            'ajuda' => $pergunta->ajuda,
+            'tipo' => $pergunta->tipo->value,
+            'obrigatoria' => $pergunta->obrigatoria,
+            'limite' => $pergunta->limiteDeCaracteres(),
+            'opcoes' => $pergunta->tipo->temOpcoes()
+                ? array_values(array_map(fn (array $opcao): array => [
+                    'chave' => (string) $opcao['chave'],
+                    'texto' => (string) $opcao['texto'],
+                    'outro' => (bool) ($opcao['outro'] ?? false),
+                ], $pergunta->opcoes ?? []))
+                : [],
+            'condicao' => $pergunta->condicao_pergunta_id === null ? null : [
+                'pergunta' => (int) $pergunta->condicao_pergunta_id,
+                'opcoes' => array_values($pergunta->condicao_opcoes ?? []),
+            ],
+        ];
     }
 
     /**

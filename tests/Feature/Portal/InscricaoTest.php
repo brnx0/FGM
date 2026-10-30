@@ -6,6 +6,7 @@ use App\Enums\EtapaDocumento;
 use App\Enums\ModalidadeCota;
 use App\Enums\NaturezaProponente;
 use App\Enums\SituacaoInscricao;
+use App\Enums\TipoPergunta;
 use App\Http\Controllers\InscricaoController;
 use App\Http\Controllers\PortalController;
 use App\Models\ConfiguracaoIa;
@@ -13,11 +14,16 @@ use App\Models\Edital;
 use App\Models\EditalCategoria;
 use App\Models\EditalChamada;
 use App\Models\EditalDocumento;
+use App\Models\EditalPergunta;
+use App\Models\EditalQuestionarioSecao;
 use App\Models\Inscricao;
 use App\Models\InscricaoDocumento;
+use App\Models\InscricaoResposta;
 use App\Models\Organizacao;
+use App\Models\PessoaFisica;
 use App\Models\User;
 use App\Models\VinculoOrganizacao;
+use App\Support\Inscricao\PassosDaInscricao;
 use App\Support\Inscricao\RegrasDaInscricao;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -47,7 +53,7 @@ class InscricaoTest extends TestCase
 
     public function test_cria_rascunho_com_as_escolhas(): void
     {
-        $user = User::factory()->proponente()->create(['cpf' => self::CPF]);
+        $user = User::factory()->proponente()->comPerfil()->create(['cpf' => self::CPF]);
         $edital = $this->editalAberto(['cotas' => ['negros' => ['ativa' => true], 'pcd' => ['ativa' => true]]]);
         $categoria = EditalCategoria::factory()->for($edital)->create();
         $organizacao = Organizacao::factory()->comResponsavel($user)->create([
@@ -76,7 +82,7 @@ class InscricaoTest extends TestCase
 
     public function test_categoria_em_todas_as_chamadas_inscreve_na_chamada_aberta(): void
     {
-        $user = User::factory()->proponente()->create(['cpf' => self::CPF]);
+        $user = User::factory()->proponente()->comPerfil()->create(['cpf' => self::CPF]);
         $edital = $this->editalAberto();
         $aberta = $edital->chamadas()->sole();
         // Uma chamada encerrada antes da aberta e outra depois: vale a aberta, não a primeira.
@@ -92,19 +98,19 @@ class InscricaoTest extends TestCase
 
     public function test_inscricao_de_edital_sem_datas_abre_sem_o_periodo(): void
     {
-        $user = User::factory()->proponente()->create(['cpf' => self::CPF]);
+        $user = User::factory()->proponente()->comPerfil()->create(['cpf' => self::CPF]);
         $edital = $this->editalAberto();
         $inscricao = $this->rascunho($edital, $user);
         $edital->update(['inscricoes_inicio' => null, 'inscricoes_fim' => null]);
 
         $this->actingAs($user)->get(route('portal.inscricoes.show', $inscricao))
             ->assertOk()
-            ->assertInertia(fn (Assert $p) => $p->component('Portal/InscricaoDocumentos')->where('edital.periodo', null));
+            ->assertInertia(fn (Assert $p) => $p->component('Portal/InscricaoPassos')->where('edital.periodo', null));
     }
 
     public function test_pessoa_fisica_se_inscreve_sem_categoria_nem_cota_quando_o_edital_nao_tem(): void
     {
-        $user = User::factory()->proponente()->create(['cpf' => self::CPF]);
+        $user = User::factory()->proponente()->comPerfil()->create(['cpf' => self::CPF]);
         $this->editalAberto();
 
         $this->actingAs($user)->post('/portal/editais/pnab/inscricoes', ['cadastro' => 'pessoa_fisica'])
@@ -120,7 +126,7 @@ class InscricaoTest extends TestCase
 
     public function test_cadastro_de_natureza_nao_aceita_e_recusado(): void
     {
-        $user = User::factory()->proponente()->create();
+        $user = User::factory()->proponente()->comPerfil()->create();
         $this->editalAberto(['naturezas' => [NaturezaProponente::PessoaFisica]]);
         $organizacao = Organizacao::factory()->comResponsavel($user)->create(['mei' => false, 'finalidade_lucrativa' => true]);
 
@@ -132,7 +138,7 @@ class InscricaoTest extends TestCase
 
     public function test_organizacao_sem_ser_responsavel_e_recusada(): void
     {
-        $user = User::factory()->proponente()->create(['cpf' => self::CPF]);
+        $user = User::factory()->proponente()->comPerfil()->create(['cpf' => self::CPF]);
         $this->editalAberto();
         $organizacao = Organizacao::factory()->create();
         VinculoOrganizacao::factory()->for($organizacao)->create(['cpf' => self::CPF, 'responsavel' => false]);
@@ -145,8 +151,8 @@ class InscricaoTest extends TestCase
 
     public function test_limite_por_cnpj_conta_inscricao_de_outro_responsavel(): void
     {
-        $user = User::factory()->proponente()->create(['cpf' => self::CPF]);
-        $outro = User::factory()->proponente()->create();
+        $user = User::factory()->proponente()->comPerfil()->create(['cpf' => self::CPF]);
+        $outro = User::factory()->proponente()->comPerfil()->create();
         $edital = $this->editalAberto(['inscricoes_por_proponente' => 1]);
         $organizacao = Organizacao::factory()->comResponsavel($user)->create(['cnpj' => self::CNPJ]);
         Inscricao::factory()->for($edital)->for($outro)->create(['documento_cadastro' => self::CNPJ]);
@@ -163,8 +169,8 @@ class InscricaoTest extends TestCase
 
     public function test_trocar_para_cadastro_que_ja_atingiu_o_limite_e_recusado(): void
     {
-        $user = User::factory()->proponente()->create(['cpf' => self::CPF]);
-        $outro = User::factory()->proponente()->create();
+        $user = User::factory()->proponente()->comPerfil()->create(['cpf' => self::CPF]);
+        $outro = User::factory()->proponente()->comPerfil()->create();
         $edital = $this->editalAberto(['inscricoes_por_proponente' => 1]);
         $organizacao = Organizacao::factory()->comResponsavel($user)->create(['cnpj' => self::CNPJ]);
         Inscricao::factory()->for($edital)->for($outro)->create(['documento_cadastro' => self::CNPJ]);
@@ -178,13 +184,13 @@ class InscricaoTest extends TestCase
         // Salvar o mesmo cadastro de novo não conta a inscrição contra si mesma.
         $this->put(route('portal.inscricoes.update', $inscricao), ['cadastro' => 'pessoa_fisica'])
             ->assertSessionHasNoErrors()
-            ->assertRedirect(route('portal.inscricoes.show', $inscricao));
+            ->assertRedirect(route('portal.inscricoes.show', [$inscricao, 'passo' => 'documentos']));
     }
 
     public function test_outro_responsavel_ve_a_situacao_da_inscricao_do_cnpj_sem_abrir(): void
     {
-        $dono = User::factory()->proponente()->create();
-        $outro = User::factory()->proponente()->create(['cpf' => self::CPF]);
+        $dono = User::factory()->proponente()->comPerfil()->create();
+        $outro = User::factory()->proponente()->comPerfil()->create(['cpf' => self::CPF]);
         $edital = $this->editalAberto();
         Organizacao::factory()->comResponsavel($outro)->create(['cnpj' => self::CNPJ]);
         $inscricao = Inscricao::factory()->for($edital)->for($dono)->finalizada()->create(['documento_cadastro' => self::CNPJ]);
@@ -199,7 +205,7 @@ class InscricaoTest extends TestCase
 
     public function test_pagina_da_inscricao_traz_as_opcoes_e_as_inscricoes_do_usuario(): void
     {
-        $user = User::factory()->proponente()->create(['cpf' => self::CPF, 'name' => 'Maria Souza']);
+        $user = User::factory()->proponente()->comPerfil()->create(['cpf' => self::CPF, 'name' => 'Maria Souza']);
         $edital = $this->editalAberto([
             'inscricoes_por_proponente' => 1,
             'cotas' => [
@@ -253,7 +259,7 @@ class InscricaoTest extends TestCase
 
     public function test_limite_por_chamada_so_trava_o_cadastro_quando_todas_as_chamadas_estao_cheias(): void
     {
-        $user = User::factory()->proponente()->create(['cpf' => self::CPF]);
+        $user = User::factory()->proponente()->comPerfil()->create(['cpf' => self::CPF]);
         $edital = $this->editalAberto(['inscricoes_por_proponente' => 1, 'limite_por_chamada' => true]);
         $segunda = EditalChamada::factory()->for($edital)->create(['inicio' => '2026-11-01', 'fim' => '2026-11-15', 'ordem' => 2]);
         $this->rascunho($edital, $user);
@@ -269,7 +275,7 @@ class InscricaoTest extends TestCase
 
     public function test_categoria_e_obrigatoria_e_precisa_ser_do_edital_e_da_natureza(): void
     {
-        $user = User::factory()->proponente()->create();
+        $user = User::factory()->proponente()->comPerfil()->create();
         $edital = $this->editalAberto();
         $soMei = EditalCategoria::factory()->for($edital)->create(['naturezas' => [NaturezaProponente::Mei]]);
         $livre = EditalCategoria::factory()->for($edital)->create(['naturezas' => null]);
@@ -291,7 +297,7 @@ class InscricaoTest extends TestCase
 
     public function test_cotas_nao_oferecidas_ou_vedadas_sao_recusadas(): void
     {
-        $user = User::factory()->proponente()->create();
+        $user = User::factory()->proponente()->comPerfil()->create();
         $this->editalAberto(['cotas' => [
             'negros' => ['ativa' => true], 'indigenas' => ['ativa' => true], 'pcd' => ['ativa' => false],
             'veda_negro_indigena' => true,
@@ -309,7 +315,7 @@ class InscricaoTest extends TestCase
 
     public function test_abre_a_inscricao_com_a_lista_de_documentos_exigidos(): void
     {
-        $user = User::factory()->proponente()->create(['cpf' => self::CPF]);
+        $user = User::factory()->proponente()->comPerfil()->create(['cpf' => self::CPF]);
         $edital = $this->editalAberto();
         $categoria = EditalCategoria::factory()->for($edital)->create(['nome' => 'Livre']);
         $outraCategoria = EditalCategoria::factory()->for($edital)->create();
@@ -324,7 +330,7 @@ class InscricaoTest extends TestCase
         $inscricao = $this->rascunho($edital, $user, ['edital_categoria_id' => $categoria->id]);
 
         $this->actingAs($user)->get(route('portal.inscricoes.show', $inscricao))->assertOk()->assertInertia(fn (Assert $p) => $p
-            ->component('Portal/InscricaoDocumentos')
+            ->component('Portal/InscricaoPassos')
             ->where('edital.slug', 'pnab')
             ->where('inscricao.id', (int) $inscricao->id)
             ->where('inscricao.situacao', 'rascunho')
@@ -357,7 +363,7 @@ class InscricaoTest extends TestCase
     public function test_trocar_categoria_descarta_documentos_e_arquivos_fora_da_lista(): void
     {
         Storage::fake('local');
-        $user = User::factory()->proponente()->create(['cpf' => self::CPF]);
+        $user = User::factory()->proponente()->comPerfil()->create(['cpf' => self::CPF]);
         $edital = $this->editalAberto();
         $a = EditalCategoria::factory()->for($edital)->create(['ordem' => 1]);
         $b = EditalCategoria::factory()->for($edital)->create(['ordem' => 2]);
@@ -373,7 +379,7 @@ class InscricaoTest extends TestCase
 
         $this->actingAs($user)->put(route('portal.inscricoes.update', $inscricao), ['cadastro' => 'pessoa_fisica', 'categoria' => $b->id])
             ->assertSessionHasNoErrors()
-            ->assertRedirect(route('portal.inscricoes.show', $inscricao));
+            ->assertRedirect(route('portal.inscricoes.show', [$inscricao, 'passo' => 'documentos']));
 
         $this->assertSame((int) $b->id, (int) $inscricao->fresh()->edital_categoria_id);
         $restante = InscricaoDocumento::sole();
@@ -385,7 +391,7 @@ class InscricaoTest extends TestCase
     public function test_finalizar_entre_a_leitura_e_a_gravacao_nao_troca_as_escolhas_nem_descarta_documentos(): void
     {
         Storage::fake('local');
-        $user = User::factory()->proponente()->create(['cpf' => self::CPF]);
+        $user = User::factory()->proponente()->comPerfil()->create(['cpf' => self::CPF]);
         $edital = $this->editalAberto(['cotas' => ['pcd' => ['ativa' => true]]]);
         $a = EditalCategoria::factory()->for($edital)->create(['ordem' => 1]);
         $b = EditalCategoria::factory()->for($edital)->create(['ordem' => 2]);
@@ -426,7 +432,7 @@ class InscricaoTest extends TestCase
     public function test_trocar_para_categoria_de_chamada_encerrada_nao_grava_nem_descarta_documentos(): void
     {
         Storage::fake('local');
-        $user = User::factory()->proponente()->create(['cpf' => self::CPF]);
+        $user = User::factory()->proponente()->comPerfil()->create(['cpf' => self::CPF]);
         $edital = $this->editalAberto();
         $encerrada = EditalChamada::factory()->for($edital)->create(['inicio' => '2026-10-01', 'fim' => '2026-11-05', 'ordem' => 2]);
         $a = EditalCategoria::factory()->for($edital)->create(['edital_chamada_id' => $edital->chamadas()->first()->id, 'ordem' => 1]);
@@ -449,7 +455,7 @@ class InscricaoTest extends TestCase
 
     public function test_trocar_a_cota_e_o_cadastro_do_rascunho(): void
     {
-        $user = User::factory()->proponente()->create(['cpf' => self::CPF]);
+        $user = User::factory()->proponente()->comPerfil()->create(['cpf' => self::CPF]);
         $edital = $this->editalAberto(['cotas' => ['negros' => ['ativa' => true], 'pcd' => ['ativa' => true]]]);
         $organizacao = Organizacao::factory()->comResponsavel($user)->create(['cnpj' => self::CNPJ, 'mei' => true]);
         $inscricao = $this->rascunho($edital, $user);
@@ -467,7 +473,7 @@ class InscricaoTest extends TestCase
 
     public function test_inscricao_finalizada_nao_troca_as_escolhas(): void
     {
-        $user = User::factory()->proponente()->create(['cpf' => self::CPF]);
+        $user = User::factory()->proponente()->comPerfil()->create(['cpf' => self::CPF]);
         $edital = $this->editalAberto(['cotas' => ['pcd' => ['ativa' => true]]]);
         $inscricao = Inscricao::factory()->for($edital)->for($user)->finalizada()->create([
             'edital_chamada_id' => $edital->chamadas()->sole()->id, 'documento_cadastro' => self::CPF,
@@ -482,8 +488,8 @@ class InscricaoTest extends TestCase
 
     public function test_inscricao_de_outro_usuario_da_404(): void
     {
-        $dono = User::factory()->proponente()->create();
-        $outro = User::factory()->proponente()->create(['cpf' => self::CPF]);
+        $dono = User::factory()->proponente()->comPerfil()->create();
+        $outro = User::factory()->proponente()->comPerfil()->create(['cpf' => self::CPF]);
         $edital = $this->editalAberto();
         $inscricao = $this->rascunho($edital, $dono);
 
@@ -497,7 +503,7 @@ class InscricaoTest extends TestCase
 
     public function test_inscricao_inexistente_ou_id_nao_numerico_da_404(): void
     {
-        $this->actingAs(User::factory()->proponente()->create());
+        $this->actingAs(User::factory()->proponente()->comPerfil()->create());
 
         $this->get('/portal/inscricoes/999999')->assertNotFound();
         $this->get('/portal/inscricoes/abc')->assertNotFound();
@@ -505,7 +511,7 @@ class InscricaoTest extends TestCase
 
     public function test_fora_do_periodo_nao_cria_nem_edita(): void
     {
-        $user = User::factory()->proponente()->create(['cpf' => self::CPF]);
+        $user = User::factory()->proponente()->comPerfil()->create(['cpf' => self::CPF]);
         $encerrado = $this->editalAberto(['slug' => 'encerrado'], '2026-10-01', '2026-11-09');
         $categoria = EditalCategoria::factory()->for($encerrado)->create();
         $inscricao = $this->rascunho($encerrado, $user);
@@ -524,7 +530,7 @@ class InscricaoTest extends TestCase
 
     public function test_nao_cria_em_edital_que_o_portal_nao_mostra(): void
     {
-        $user = User::factory()->proponente()->create();
+        $user = User::factory()->proponente()->comPerfil()->create();
         $this->editalAberto(['publicado' => false]);
 
         $this->actingAs($user)->post('/portal/editais/pnab/inscricoes', ['cadastro' => 'pessoa_fisica'])->assertNotFound();
@@ -534,7 +540,7 @@ class InscricaoTest extends TestCase
     public function test_patrocinador_e_visitante_nao_criam_nem_abrem(): void
     {
         $edital = $this->editalAberto();
-        $dono = User::factory()->proponente()->create();
+        $dono = User::factory()->proponente()->comPerfil()->create();
         $inscricao = $this->rascunho($edital, $dono);
 
         $this->post('/portal/editais/pnab/inscricoes', ['cadastro' => 'pessoa_fisica'])->assertRedirect('/');
@@ -544,6 +550,147 @@ class InscricaoTest extends TestCase
         $this->post('/portal/editais/pnab/inscricoes', ['cadastro' => 'pessoa_fisica'])->assertRedirect(route('portal.projetos'));
         $this->get(route('portal.inscricoes.show', $inscricao))->assertRedirect(route('portal.projetos'));
         $this->assertSame(1, Inscricao::count());
+    }
+
+    public function test_perfil_incompleto_nao_cria_inscricao_e_leva_ao_cadastro(): void
+    {
+        $user = User::factory()->proponente()->create(['cpf' => self::CPF]);
+        PessoaFisica::factory()->perfilIncompleto()->for($user)->create();
+        $this->editalAberto();
+
+        $this->actingAs($user)->post('/portal/editais/pnab/inscricoes', ['cadastro' => 'pessoa_fisica'])
+            ->assertRedirect(route('cadastro'))
+            ->assertSessionHas('aviso', InscricaoController::AVISO_PERFIL_INCOMPLETO);
+
+        $this->assertSame(0, Inscricao::count());
+    }
+
+    public function test_rascunho_com_perfil_incompleto_abre_com_o_aviso(): void
+    {
+        $user = User::factory()->proponente()->create(['cpf' => self::CPF]);
+        PessoaFisica::factory()->perfilIncompleto()->for($user)->create();
+        $inscricao = $this->rascunho($this->editalAberto(), $user);
+
+        $this->actingAs($user)->get(route('portal.inscricoes.show', $inscricao))->assertOk()->assertInertia(fn (Assert $p) => $p
+            ->component('Portal/InscricaoPassos')
+            ->where('perfilIncompleto', true)
+            ->where('podeEditar', true));
+    }
+
+    public function test_show_traz_passos_secoes_respostas_e_o_passo_atual(): void
+    {
+        $user = User::factory()->proponente()->comPerfil()->create(['cpf' => self::CPF]);
+        $edital = $this->editalAberto();
+        $teatro = EditalCategoria::factory()->for($edital)->create(['ordem' => 1]);
+        $danca = EditalCategoria::factory()->for($edital)->create(['ordem' => 2]);
+        $proposta = EditalQuestionarioSecao::factory()->for($edital)->create(['titulo' => 'Proposta', 'descricao' => 'Sobre o projeto.', 'ordem' => 1]);
+        $soDaDanca = EditalQuestionarioSecao::factory()->for($edital)->create(['titulo' => 'Dança', 'ordem' => 2]);
+        $linguagem = EditalPergunta::factory()->for($edital)->escolha(TipoPergunta::EscolhaUnica, ['Teatro', 'Circo'], comOutro: true)->create([
+            'edital_questionario_secao_id' => $proposta->id, 'enunciado' => 'Linguagem?', 'ajuda' => 'A principal.', 'ordem' => 1,
+        ]);
+        $circo = EditalPergunta::factory()->for($edital)->condicionadaA($linguagem, ['o2'])->create([
+            'edital_questionario_secao_id' => $proposta->id, 'enunciado' => 'Qual lona?', 'ordem' => 2,
+        ]);
+        $acordo = EditalPergunta::factory()->for($edital)->declaracao()->create([
+            'edital_questionario_secao_id' => $proposta->id, 'enunciado' => 'Declaro.', 'obrigatoria' => false, 'ordem' => 3,
+        ]);
+        $resumo = EditalPergunta::factory()->for($edital)->create([
+            'edital_questionario_secao_id' => $proposta->id, 'enunciado' => 'Resumo', 'obrigatoria' => false, 'limite_caracteres' => 500, 'ordem' => 4,
+        ]);
+        $daDanca = EditalPergunta::factory()->for($edital)->create(['edital_questionario_secao_id' => $soDaDanca->id, 'todas_categorias' => false]);
+        $daDanca->categorias()->attach($danca);
+        $inscricao = $this->rascunho($edital, $user, ['edital_categoria_id' => $teatro->id]);
+        InscricaoResposta::factory()->create(['inscricao_id' => $inscricao->id, 'edital_pergunta_id' => $resumo->id, 'texto' => 'Uma peça.']);
+        $secao = PassosDaInscricao::idDaSecao((int) $proposta->id);
+
+        $this->actingAs($user)->get(route('portal.inscricoes.show', [$inscricao, 'passo' => 'revisao']))->assertOk()->assertInertia(fn (Assert $p) => $p
+            ->component('Portal/InscricaoPassos')
+            ->where('passos', [
+                ['id' => 'escolhas', 'rotulo' => 'Escolhas', 'completo' => true],
+                ['id' => $secao, 'rotulo' => 'Proposta', 'completo' => false],
+                ['id' => 'documentos', 'rotulo' => 'Documentos', 'completo' => true],
+                ['id' => 'revisao', 'rotulo' => 'Revisão e envio', 'completo' => false],
+            ])
+            ->where('passoAtual', $secao)
+            ->where('perfilIncompleto', false)
+            ->where('pendencias', ['Responda as perguntas obrigatórias de "Proposta".'])
+            ->has('secoes', 1)
+            ->where('secoes.0.id', (int) $proposta->id)
+            ->where('secoes.0.titulo', 'Proposta')
+            ->where('secoes.0.descricao', 'Sobre o projeto.')
+            ->where('secoes.0.perguntas', [
+                [
+                    'id' => (int) $linguagem->id, 'enunciado' => 'Linguagem?', 'ajuda' => 'A principal.', 'tipo' => 'escolha_unica',
+                    'obrigatoria' => true, 'limite' => null,
+                    'opcoes' => [
+                        ['chave' => 'o1', 'texto' => 'Teatro', 'outro' => false],
+                        ['chave' => 'o2', 'texto' => 'Circo', 'outro' => false],
+                        ['chave' => 'o3', 'texto' => 'Outro', 'outro' => true],
+                    ],
+                    'condicao' => null,
+                ],
+                [
+                    'id' => (int) $circo->id, 'enunciado' => 'Qual lona?', 'ajuda' => null, 'tipo' => 'texto_curto',
+                    'obrigatoria' => true, 'limite' => 255, 'opcoes' => [],
+                    'condicao' => ['pergunta' => (int) $linguagem->id, 'opcoes' => ['o2']],
+                ],
+                [
+                    'id' => (int) $acordo->id, 'enunciado' => 'Declaro.', 'ajuda' => null, 'tipo' => 'declaracao',
+                    'obrigatoria' => false, 'limite' => null, 'opcoes' => [], 'condicao' => null,
+                ],
+                [
+                    'id' => (int) $resumo->id, 'enunciado' => 'Resumo', 'ajuda' => null, 'tipo' => 'texto_curto',
+                    'obrigatoria' => false, 'limite' => 500, 'opcoes' => [], 'condicao' => null,
+                ],
+            ])
+            ->where('respostas', [(int) $resumo->id => ['texto' => 'Uma peça.', 'opcoes' => [], 'outro' => null]]));
+
+        // Sem pedido, abre o primeiro incompleto; com a seção respondida, a revisão pedida abre.
+        $this->get(route('portal.inscricoes.show', $inscricao))->assertInertia(fn (Assert $p) => $p->where('passoAtual', $secao));
+        InscricaoResposta::factory()->create([
+            'inscricao_id' => $inscricao->id, 'edital_pergunta_id' => $linguagem->id, 'texto' => null, 'opcoes' => ['o1'],
+        ]);
+        $this->get(route('portal.inscricoes.show', [$inscricao, 'passo' => 'revisao']))->assertInertia(fn (Assert $p) => $p
+            ->where('passoAtual', 'revisao')
+            ->where('passos.1.completo', true));
+
+        // Finalizada abre na revisão, mesmo pedindo outro passo.
+        $inscricao->update(['situacao' => SituacaoInscricao::Finalizada]);
+        $this->get(route('portal.inscricoes.show', [$inscricao, 'passo' => 'escolhas']))->assertInertia(fn (Assert $p) => $p->where('passoAtual', 'revisao'));
+    }
+
+    public function test_salvar_escolhas_avanca_para_o_passo_seguinte(): void
+    {
+        $user = User::factory()->proponente()->comPerfil()->create(['cpf' => self::CPF]);
+        $edital = $this->editalAberto();
+        $teatro = EditalCategoria::factory()->for($edital)->create(['ordem' => 1]);
+        $danca = EditalCategoria::factory()->for($edital)->create(['ordem' => 2]);
+        $proposta = EditalQuestionarioSecao::factory()->for($edital)->create(['ordem' => 1]);
+        $daDanca = EditalPergunta::factory()->for($edital)->create(['edital_questionario_secao_id' => $proposta->id, 'todas_categorias' => false]);
+        $daDanca->categorias()->attach($danca);
+        $inscricao = $this->rascunho($edital, $user, ['edital_categoria_id' => $danca->id]);
+
+        $this->actingAs($user)->put(route('portal.inscricoes.update', $inscricao), ['cadastro' => 'pessoa_fisica', 'categoria' => $danca->id])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('portal.inscricoes.show', [$inscricao, 'passo' => PassosDaInscricao::idDaSecao((int) $proposta->id)]));
+
+        // No teatro a seção não tem pergunta: o passo seguinte é o dos documentos.
+        $this->put(route('portal.inscricoes.update', $inscricao), ['cadastro' => 'pessoa_fisica', 'categoria' => $teatro->id])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('portal.inscricoes.show', [$inscricao, 'passo' => 'documentos']));
+    }
+
+    public function test_pagina_de_inscricao_do_edital_avisa_perfil_incompleto(): void
+    {
+        $incompleto = User::factory()->proponente()->create(['cpf' => self::CPF]);
+        PessoaFisica::factory()->perfilIncompleto()->for($incompleto)->create();
+        $completo = User::factory()->proponente()->comPerfil()->create();
+        $this->editalAberto();
+
+        $this->actingAs($incompleto)->get('/portal/editais/pnab/inscricao')->assertOk()
+            ->assertInertia(fn (Assert $p) => $p->where('perfilIncompleto', true));
+        $this->actingAs($completo)->get('/portal/editais/pnab/inscricao')->assertOk()
+            ->assertInertia(fn (Assert $p) => $p->where('perfilIncompleto', false));
     }
 
     /**

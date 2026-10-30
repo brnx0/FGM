@@ -3,17 +3,26 @@
 namespace Tests\Feature\Portal;
 
 use App\Enums\ChecagemDocumento;
+use App\Enums\Escolaridade;
+use App\Enums\NaturezaProponente;
 use App\Enums\SituacaoConferencia;
 use App\Enums\SituacaoInscricao;
+use App\Enums\TipoPergunta;
 use App\Http\Controllers\InscricaoController;
 use App\Http\Controllers\InscricaoDocumentoController;
 use App\Http\Controllers\PortalController;
 use App\Models\ConfiguracaoIa;
 use App\Models\Edital;
+use App\Models\EditalCategoria;
 use App\Models\EditalChamada;
 use App\Models\EditalDocumento;
+use App\Models\EditalPergunta;
+use App\Models\EditalQuestionarioSecao;
 use App\Models\Inscricao;
 use App\Models\InscricaoDocumento;
+use App\Models\InscricaoResposta;
+use App\Models\Organizacao;
+use App\Models\PessoaFisica;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -41,7 +50,7 @@ class FinalizarInscricaoTest extends TestCase
         // Validação por IA ligada (a chave da Integração com IA); os testes com ela desligada a desligam.
         ConfiguracaoIa::factory()->create();
 
-        $this->user = User::factory()->proponente()->create(['cpf' => self::CPF]);
+        $this->user = User::factory()->proponente()->comPerfil()->create(['cpf' => self::CPF]);
         $this->edital = $this->editalAberto();
         $this->inscricao = $this->rascunho($this->edital, $this->user);
     }
@@ -251,7 +260,7 @@ class FinalizarInscricaoTest extends TestCase
 
     public function test_so_o_dono_finaliza_e_reabre(): void
     {
-        $this->actingAs(User::factory()->proponente()->create());
+        $this->actingAs(User::factory()->proponente()->comPerfil()->create());
 
         $this->post(route('portal.inscricoes.finalizar', $this->inscricao))->assertNotFound();
         $this->assertNaoFinalizada();
@@ -340,7 +349,7 @@ class FinalizarInscricaoTest extends TestCase
         $this->rascunho($comFinalizada, $this->user);
         Inscricao::factory()->finalizada()->for($comFinalizada)->for($this->user)->create(['documento_cadastro' => self::CPF]);
         $this->rascunho($comRascunho, $this->user);
-        Inscricao::factory()->finalizada()->for($deOutro)->for(User::factory()->proponente()->create())->create();
+        Inscricao::factory()->finalizada()->for($deOutro)->for(User::factory()->proponente()->comPerfil()->create())->create();
 
         // O edital 'pnab' do setUp (rascunho do usuário) é o último: mesma data de início de 'd', id menor.
         $this->actingAs($this->user)->get(route('portal.editais'))->assertInertia(fn (Assert $page) => $page
@@ -355,6 +364,92 @@ class FinalizarInscricaoTest extends TestCase
             ->where('editais.data.3.minhaInscricao', null)
             ->where('editais.data.4.slug', 'pnab')
             ->where('editais.data.4.minhaInscricao', 'rascunho'));
+    }
+
+    public function test_nao_finaliza_com_obrigatoria_visivel_sem_resposta(): void
+    {
+        $proposta = EditalQuestionarioSecao::factory()->for($this->edital)->create(['titulo' => 'Proposta', 'ordem' => 1]);
+        $pergunta = EditalPergunta::factory()->for($this->edital)->create(['edital_questionario_secao_id' => $proposta->id]);
+
+        $this->actingAs($this->user)->post(route('portal.inscricoes.finalizar', $this->inscricao))
+            ->assertRedirect(route('portal.inscricoes.show', $this->inscricao))
+            ->assertSessionHas('erro', InscricaoController::ERRO_PENDENCIAS);
+
+        $this->assertNaoFinalizada();
+        $this->assertSame(['Responda as perguntas obrigatórias de "Proposta".'], $this->inscricao->fresh()->pendenciasParaFinalizar());
+
+        InscricaoResposta::factory()->create(['inscricao_id' => $this->inscricao->id, 'edital_pergunta_id' => $pergunta->id, 'texto' => 'Resposta']);
+
+        $this->post(route('portal.inscricoes.finalizar', $this->inscricao))->assertSessionHas('sucesso');
+        $this->assertSame(SituacaoInscricao::Finalizada, $this->inscricao->fresh()->situacao);
+    }
+
+    public function test_obrigatoria_oculta_ou_de_outra_categoria_nao_impede_finalizar(): void
+    {
+        $proposta = EditalQuestionarioSecao::factory()->for($this->edital)->create(['titulo' => 'Proposta', 'ordem' => 1]);
+        $origem = EditalPergunta::factory()->for($this->edital)->simNao()->create([
+            'edital_questionario_secao_id' => $proposta->id, 'obrigatoria' => false, 'ordem' => 1,
+        ]);
+        EditalPergunta::factory()->for($this->edital)->condicionadaA($origem, [TipoPergunta::CHAVE_SIM])->create([
+            'edital_questionario_secao_id' => $proposta->id, 'ordem' => 2,
+        ]);
+        $deOutraCategoria = EditalPergunta::factory()->for($this->edital)->create([
+            'edital_questionario_secao_id' => $proposta->id, 'todas_categorias' => false, 'ordem' => 3,
+        ]);
+        $deOutraCategoria->categorias()->attach(EditalCategoria::factory()->for($this->edital)->create());
+        InscricaoResposta::factory()->create([
+            'inscricao_id' => $this->inscricao->id, 'edital_pergunta_id' => $origem->id, 'texto' => null, 'opcoes' => [TipoPergunta::CHAVE_NAO],
+        ]);
+
+        $this->assertSame([], $this->inscricao->pendenciasParaFinalizar());
+
+        $this->actingAs($this->user)->post(route('portal.inscricoes.finalizar', $this->inscricao))->assertSessionHas('sucesso');
+        $this->assertSame(SituacaoInscricao::Finalizada, $this->inscricao->fresh()->situacao);
+    }
+
+    public function test_finalizar_guarda_o_retrato_do_perfil_e_finalizar_de_novo_refaz(): void
+    {
+        $pessoa = $this->user->pessoaFisica;
+        $pessoa->update(['escolaridade' => Escolaridade::FundamentalCompleto]);
+
+        $this->actingAs($this->user)->post(route('portal.inscricoes.finalizar', $this->inscricao))->assertSessionHas('sucesso');
+
+        $retrato = $this->inscricao->fresh()->perfil;
+        $this->assertSame($pessoa->fresh()->retratoDoPerfil(), $retrato);
+        $this->assertSame(Escolaridade::FundamentalCompleto->value, $retrato['escolaridade']);
+        $this->assertSame(PessoaFisica::CAMPOS_DO_PERFIL, array_keys($retrato));
+
+        $pessoa->update(['escolaridade' => Escolaridade::MedioIncompleto]);
+        $this->post(route('portal.inscricoes.reabrir', $this->inscricao))->assertSessionHas('sucesso');
+        $this->assertSame(Escolaridade::FundamentalCompleto->value, $this->inscricao->fresh()->perfil['escolaridade']);
+
+        $this->post(route('portal.inscricoes.finalizar', $this->inscricao))->assertSessionHas('sucesso');
+
+        $this->assertSame(Escolaridade::MedioIncompleto->value, $this->inscricao->fresh()->perfil['escolaridade']);
+    }
+
+    public function test_retrato_e_do_dono_mesmo_em_inscricao_de_organizacao(): void
+    {
+        $organizacao = Organizacao::factory()->comResponsavel($this->user)->create(['cnpj' => '11222333000181']);
+        $this->inscricao->update([
+            'organizacao_id' => $organizacao->id, 'documento_cadastro' => '11222333000181', 'natureza' => NaturezaProponente::ComFins,
+        ]);
+
+        $this->actingAs($this->user)->post(route('portal.inscricoes.finalizar', $this->inscricao))->assertSessionHas('sucesso');
+
+        $this->assertSame($this->user->pessoaFisica->retratoDoPerfil(), $this->inscricao->fresh()->perfil);
+    }
+
+    public function test_perfil_incompleto_nao_finaliza(): void
+    {
+        $this->user->pessoaFisica->update(['escolaridade' => null]);
+
+        $this->actingAs($this->user)->post(route('portal.inscricoes.finalizar', $this->inscricao))
+            ->assertRedirect(route('portal.inscricoes.show', $this->inscricao))
+            ->assertSessionHas('erro', InscricaoController::AVISO_PERFIL_INCOMPLETO);
+
+        $this->assertNaoFinalizada();
+        $this->assertNull($this->inscricao->fresh()->perfil);
     }
 
     private function assertNaoFinalizada(): void
