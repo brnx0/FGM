@@ -62,6 +62,8 @@ class InscricaoController extends Controller
         $user = $request->user();
         $edital = $inscricao->edital;
         $inscricao->load(['organizacao', 'categoria', 'chamada']);
+        $enviados = $inscricao->documentos()->get()
+            ->keyBy(fn (InscricaoDocumento $enviado): int => (int) $enviado->edital_documento_id);
 
         return Inertia::render('Portal/InscricaoDocumentos', [
             'edital' => PropsDaInscricao::edital($edital),
@@ -76,8 +78,10 @@ class InscricaoController extends Controller
                 'categoria' => $inscricao->categoria?->nome,
                 'cotas' => $inscricao->cotas?->map(fn (ModalidadeCota $cota): string => $cota->value)->values()->all() ?? [],
                 'fimDoPeriodo' => $inscricao->chamada?->fim?->format('d/m/Y'),
+                'finalizadaEm' => $inscricao->finalizada_em?->format('d/m/Y H:i'),
             ],
             'podeEditar' => $inscricao->situacao === SituacaoInscricao::Rascunho && $inscricao->noPeriodo(),
+            'podeReabrir' => $inscricao->situacao === SituacaoInscricao::Finalizada && $inscricao->noPeriodo(),
             'pendencias' => $inscricao->pendenciasParaFinalizar(),
             'documentos' => $inscricao->documentosExigidos()
                 ->map(fn (EditalDocumento $documento): array => [
@@ -89,6 +93,8 @@ class InscricaoController extends Controller
                     'obrigatorio' => $documento->obrigatorio,
                     'modeloUrl' => filled($documento->modelo) ? route('editais.documentos.modelo', [$edital, $documento]) : null,
                     'modeloNome' => $documento->modelo_nome,
+                    'checagem' => $documento->checagem->value,
+                    'enviado' => $this->arquivoEnviado($inscricao, $documento, $enviados->get((int) $documento->id)),
                 ])
                 ->all(),
             ...PropsDaInscricao::opcoes($user, $edital),
@@ -108,15 +114,10 @@ class InscricaoController extends Controller
 
         return response()->json([
             'documentos' => $inscricao->documentos()->orderBy('id')->get()
-                ->map(function (InscricaoDocumento $documento): array {
-                    $situacao = $documento->situacaoExibida();
-
-                    return [
-                        'id' => (int) $documento->edital_documento_id,
-                        'situacao' => $situacao->value,
-                        'motivo' => $documento->motivo ?? ($situacao === SituacaoConferencia::NaoConferido ? InscricaoDocumentoController::NAO_CONFERIDO : null),
-                    ];
-                })
+                ->map(fn (InscricaoDocumento $documento): array => [
+                    'id' => (int) $documento->edital_documento_id,
+                    ...$this->situacaoParaATela($documento),
+                ])
                 ->all(),
             'podeFinalizar' => $pendencias === [],
             'pendencias' => $pendencias,
@@ -216,6 +217,40 @@ class InscricaoController extends Controller
 
             return redirect()->route('portal.inscricoes.show', $inscricao);
         });
+    }
+
+    /**
+     * O arquivo enviado para o documento exigido, com a situação da conferência; nulo se ainda não foi enviado.
+     *
+     * @return array{nome: string, url: string, situacao: string, motivo: ?string}|null
+     */
+    private function arquivoEnviado(Inscricao $inscricao, EditalDocumento $exigido, ?InscricaoDocumento $enviado): ?array
+    {
+        if ($enviado === null) {
+            return null;
+        }
+
+        return [
+            'nome' => $enviado->arquivo_nome,
+            'url' => route('portal.inscricoes.documentos.arquivo', [$inscricao, $exigido]),
+            ...$this->situacaoParaATela($enviado),
+        ];
+    }
+
+    /**
+     * A situação que o proponente vê (conferindo parado vale como não conferido) e o motivo: o da conferência ou, sem
+     * ele, a mensagem padrão do não conferido.
+     *
+     * @return array{situacao: string, motivo: ?string}
+     */
+    private function situacaoParaATela(InscricaoDocumento $documento): array
+    {
+        $situacao = $documento->situacaoExibida();
+
+        return [
+            'situacao' => $situacao->value,
+            'motivo' => $documento->motivo ?? ($situacao === SituacaoConferencia::NaoConferido ? InscricaoDocumentoController::NAO_CONFERIDO : null),
+        ];
     }
 
     /** Põe na inscrição o que foi escolhido: cadastro, categoria, cotas e a chamada que a categoria define. */

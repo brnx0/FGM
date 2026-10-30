@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { nextTick, ref } from 'vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import CampoCadastro from '../../Components/CampoCadastro.vue';
 import FaixaPortal from '../../Components/FaixaPortal.vue';
+import EscolhasDaInscricao from '../../Components/Inscricao/EscolhasDaInscricao.vue';
 import PortalProponenteLayout from '../../Layouts/PortalProponenteLayout.vue';
-import type { CadastroDaInscricao, PortalInscricaoProps } from '../../types';
+import type { PortalInscricaoProps } from '../../types';
 
 defineOptions({ layout: PortalProponenteLayout });
 
@@ -16,51 +16,14 @@ const formulario = useForm<{ cadastro: string; categoria: number | null; cotas: 
     cotas: [],
 });
 
-const cadastroEscolhido = computed(() => props.cadastros.find((cadastro) => cadastro.chave === formulario.cadastro) ?? null);
-
-// Categorias que a natureza do cadastro escolhido pode escolher (lista vazia vale para todas).
-const categoriasDisponiveis = computed(() => {
-    const natureza = cadastroEscolhido.value?.natureza;
-    if (natureza === undefined) {
-        return [];
-    }
-    return props.categorias.filter((categoria) => categoria.naturezas.length === 0 || categoria.naturezas.includes(natureza));
-});
-
-const motivoIndisponivel = (cadastro: CadastroDaInscricao): string | null => {
-    if (!cadastro.aceito) {
-        return 'O edital não aceita esta natureza de cadastro.';
-    }
-    if (cadastro.limiteAtingido) {
-        return 'Este cadastro já atingiu o limite de inscrições deste edital.';
-    }
-    return null;
-};
-
-const escolherCadastro = (cadastro: CadastroDaInscricao): void => {
-    formulario.cadastro = cadastro.chave;
-    formulario.clearErrors('cadastro', 'categoria');
-    if (!categoriasDisponiveis.value.some((categoria) => categoria.id === formulario.categoria)) {
-        formulario.categoria = null;
-    }
-};
-
-// Com a vedação do edital, pessoas negras e indígenas não podem ser marcadas juntas.
-const cotaBloqueada = (valor: string): boolean => {
-    if (!props.vedaNegroIndigena) {
-        return false;
-    }
-    return (valor === 'negros' && formulario.cotas.includes('indigenas')) || (valor === 'indigenas' && formulario.cotas.includes('negros'));
-};
+const escolhas = ref<InstanceType<typeof EscolhasDaInscricao> | null>(null);
 
 const criar = (): void => {
     // Rota portal.inscricoes.store (o front não tem helper de rotas nomeadas).
-    formulario.post(`/portal/editais/${props.edital.slug}/inscricoes`);
+    formulario.post(`/portal/editais/${props.edital.slug}/inscricoes`, {
+        onError: () => nextTick(() => escolhas.value?.focarPrimeiroErro()),
+    });
 };
-
-const classeCampo =
-    'h-12 w-full rounded-[12px] border border-tinta-suave/70 bg-superficie px-4 text-base text-home-tinta aria-invalid:border-erro-texto aria-invalid:ring-1 aria-invalid:ring-erro-texto';
-const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
 </script>
 
 <template>
@@ -128,76 +91,18 @@ const classeCaixa = 'mt-0.5 size-5 shrink-0 cursor-pointer accent-acao';
                 </p>
 
                 <form novalidate class="mt-6 flex flex-col gap-6" @submit.prevent="criar">
-                    <fieldset class="flex min-w-0 flex-col gap-3">
-                        <legend class="text-[0.9375rem] font-semibold">Cadastro<span aria-hidden="true" class="ml-0.5 text-erro-texto">*</span></legend>
-                        <label
-                            v-for="cadastro in cadastros"
-                            :key="cadastro.chave"
-                            class="flex items-start gap-3 rounded-[12px] border border-hairline p-4"
-                            :class="motivoIndisponivel(cadastro) ? 'opacity-70' : 'cursor-pointer'"
-                        >
-                            <input
-                                type="radio"
-                                name="cadastro"
-                                :value="cadastro.chave"
-                                :checked="formulario.cadastro === cadastro.chave"
-                                :disabled="motivoIndisponivel(cadastro) !== null"
-                                :class="classeCaixa"
-                                @change="escolherCadastro(cadastro)"
-                            />
-                            <span class="min-w-0">
-                                <span class="block font-semibold break-words">{{ cadastro.nome }}</span>
-                                <span class="block text-[0.875rem] text-tinta-suave">{{ cadastro.naturezaRotulo }} · {{ cadastro.documento }}</span>
-                                <span v-if="motivoIndisponivel(cadastro)" class="mt-1 block text-[0.875rem] font-semibold text-erro-texto">{{ motivoIndisponivel(cadastro) }}</span>
-                                <span v-else-if="cadastro.inscricaoDeOutro" class="mt-1 block text-[0.875rem] text-tinta-suave">
-                                    Já existe inscrição deste CNPJ feita por outra pessoa ({{ cadastro.inscricaoDeOutro === 'finalizada' ? 'finalizada' : 'rascunho' }}).
-                                </span>
-                            </span>
-                        </label>
-                        <p v-if="formulario.errors.cadastro" role="alert" class="text-[0.875rem] font-semibold text-erro-texto">{{ formulario.errors.cadastro }}</p>
-                    </fieldset>
-
-                    <CampoCadastro
-                        v-if="categoriasDisponiveis.length > 0"
-                        id="inscricao-categoria"
-                        rotulo="Categoria"
-                        obrigatorio
-                        :erro="formulario.errors.categoria"
-                        v-slot="{ descricao, invalido }"
-                    >
-                        <select
-                            id="inscricao-categoria"
-                            v-model="formulario.categoria"
-                            required
-                            :class="classeCampo"
-                            :aria-invalid="invalido || undefined"
-                            :aria-describedby="descricao"
-                            @change="formulario.clearErrors('categoria')"
-                        >
-                            <option :value="null">Selecione a categoria</option>
-                            <option v-for="categoria in categoriasDisponiveis" :key="categoria.id" :value="categoria.id">{{ categoria.nome }}</option>
-                        </select>
-                    </CampoCadastro>
-
-                    <fieldset v-if="cotas.length > 0" class="flex min-w-0 flex-col gap-3">
-                        <legend class="text-[0.9375rem] font-semibold">Concorrer por cota</legend>
-                        <p class="text-[0.8125rem] leading-[1.5] text-tinta-suave">
-                            Marque só se for concorrer por cota; ela pode pedir documentos a mais.
-                            <template v-if="vedaNegroIndigena">O edital não permite marcar pessoas negras e indígenas ao mesmo tempo.</template>
-                        </p>
-                        <label v-for="cota in cotas" :key="cota.valor" class="flex items-start gap-3" :class="cotaBloqueada(cota.valor) ? 'opacity-70' : 'cursor-pointer'">
-                            <input
-                                v-model="formulario.cotas"
-                                type="checkbox"
-                                :value="cota.valor"
-                                :disabled="cotaBloqueada(cota.valor)"
-                                :class="classeCaixa"
-                                @change="formulario.clearErrors('cotas')"
-                            />
-                            <span>{{ cota.rotulo }}</span>
-                        </label>
-                        <p v-if="formulario.errors.cotas" role="alert" class="text-[0.875rem] font-semibold text-erro-texto">{{ formulario.errors.cotas }}</p>
-                    </fieldset>
+                    <EscolhasDaInscricao
+                        ref="escolhas"
+                        v-model:cadastro="formulario.cadastro"
+                        v-model:categoria="formulario.categoria"
+                        v-model:cotas-escolhidas="formulario.cotas"
+                        :cadastros="cadastros"
+                        :categorias="categorias"
+                        :cotas="cotas"
+                        :veda-negro-indigena="vedaNegroIndigena"
+                        :erros="formulario.errors"
+                        @limpar-erro="(campo) => formulario.clearErrors(campo)"
+                    />
 
                     <div class="flex">
                         <button

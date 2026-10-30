@@ -312,6 +312,8 @@ class InscricaoTest extends TestCase
                 'obrigatorio' => true,
                 'modeloUrl' => null,
                 'modeloNome' => null,
+                'checagem' => 'aceita_sem_validar',
+                'enviado' => null,
             ])
             ->where('documentos.1.nome', 'Laudo')
             ->where('documentos.1.etapa', 'habilitacao')

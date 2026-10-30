@@ -6,6 +6,7 @@ use App\Enums\ChecagemDocumento;
 use App\Enums\SituacaoConferencia;
 use App\Enums\SituacaoInscricao;
 use App\Http\Controllers\InscricaoController;
+use App\Http\Controllers\InscricaoDocumentoController;
 use App\Http\Controllers\PortalController;
 use App\Models\Edital;
 use App\Models\EditalChamada;
@@ -258,6 +259,59 @@ class FinalizarInscricaoTest extends TestCase
         $this->getJson($url)
             ->assertJsonPath('podeFinalizar', true)
             ->assertJsonPath('pendencias', []);
+    }
+
+    public function test_tela_traz_a_checagem_e_o_arquivo_enviado_de_cada_documento(): void
+    {
+        $rg = $this->documentoExigido('RG', ChecagemDocumento::Rigorosa);
+        $laudo = $this->documentoExigido('Laudo', ChecagemDocumento::AceitaSemValidar, false);
+        $certidao = $this->documentoExigido('Certidão', ChecagemDocumento::Rigorosa);
+        $comprovante = $this->documentoExigido('Comprovante', ChecagemDocumento::Nenhuma);
+        $this->enviar($rg, SituacaoConferencia::Reprovado, ['arquivo_nome' => 'rg.pdf', 'motivo' => 'Falta a assinatura.', 'erro' => 'detalhe técnico']);
+        $this->enviar($certidao, SituacaoConferencia::Conferindo, ['iniciada_em' => now()->subMinutes(InscricaoDocumento::MINUTOS_LIMITE + 1)]);
+        $this->enviar($comprovante, SituacaoConferencia::Enviado, ['arquivo_nome' => 'conta.pdf']);
+
+        $this->actingAs($this->user)->get(route('portal.inscricoes.show', $this->inscricao))->assertInertia(fn (Assert $page) => $page
+            ->where('documentos.0.checagem', 'rigorosa')
+            ->where('documentos.0.enviado', [
+                'nome' => 'rg.pdf',
+                'url' => route('portal.inscricoes.documentos.arquivo', [$this->inscricao, $rg]),
+                'situacao' => 'reprovado',
+                'motivo' => 'Falta a assinatura.',
+            ])
+            ->where('documentos.1.checagem', 'aceita_sem_validar')
+            ->where('documentos.1.enviado', null)
+            ->where('documentos.2.enviado.situacao', 'nao_conferido')
+            ->where('documentos.2.enviado.motivo', InscricaoDocumentoController::NAO_CONFERIDO)
+            ->where('documentos.3.checagem', 'nenhuma')
+            ->where('documentos.3.enviado.situacao', 'enviado')
+            ->where('documentos.3.enviado.motivo', null));
+    }
+
+    public function test_tela_da_finalizada_traz_o_envio_e_so_deixa_reabrir_no_periodo(): void
+    {
+        $this->travelTo(Carbon::parse('2026-11-12 15:30', 'America/Bahia'));
+        $this->actingAs($this->user)->post(route('portal.inscricoes.finalizar', $this->inscricao));
+        $url = route('portal.inscricoes.show', $this->inscricao);
+
+        $this->get($url)->assertInertia(fn (Assert $page) => $page
+            ->where('inscricao.finalizadaEm', '12/11/2026 15:30')
+            ->where('podeEditar', false)
+            ->where('podeReabrir', true));
+
+        $this->travelTo(Carbon::parse('2026-11-16 09:00', 'America/Bahia'));
+
+        $this->get($url)->assertInertia(fn (Assert $page) => $page
+            ->where('inscricao.finalizadaEm', '12/11/2026 15:30')
+            ->where('podeReabrir', false));
+    }
+
+    public function test_tela_do_rascunho_nao_tem_data_de_envio_nem_reabre(): void
+    {
+        $this->actingAs($this->user)->get(route('portal.inscricoes.show', $this->inscricao))->assertInertia(fn (Assert $page) => $page
+            ->where('inscricao.finalizadaEm', null)
+            ->where('podeEditar', true)
+            ->where('podeReabrir', false));
     }
 
     public function test_lista_de_editais_mostra_a_situacao_da_minha_inscricao(): void

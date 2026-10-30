@@ -490,16 +490,38 @@ export interface PortalInscricaoProps extends OpcoesDaInscricao {
     inscricoes: InscricaoResumo[];
 }
 
+/** AppEnumsChecagemDocumento. */
+export type ChecagemDocumento = 'rigorosa' | 'aceita_sem_validar' | 'nenhuma';
+
+/** AppEnumsSituacaoConferencia; a conferência parada há mais de 5 minutos já vem como nao_conferido. */
+export type SituacaoConferencia = 'enviado' | 'conferindo' | 'aprovado' | 'reprovado' | 'nao_conferido';
+
+/** Resultado da conferência de um documento enviado; o motivo vem da IA (reprovado) ou da mensagem padrão (não conferido). */
+export interface SituacaoDoDocumento {
+    situacao: SituacaoConferencia;
+    motivo: string | null;
+}
+
+/** Arquivo que o proponente enviou para um documento exigido. */
+export interface ArquivoEnviado extends SituacaoDoDocumento {
+    nome: string;
+    /** Download do arquivo (rota portal.inscricoes.documentos.arquivo). */
+    url: string;
+}
+
 export interface DocumentoDaInscricao {
     id: number;
     nome: string;
     orientacao: string | null;
-    /** Valor de App\Enums\EtapaDocumento. */
+    /** Valor de AppEnumsEtapaDocumento. */
     etapa: string;
     etapaRotulo: string;
     obrigatorio: boolean;
     modeloUrl: string | null;
     modeloNome: string | null;
+    checagem: ChecagemDocumento;
+    /** Nulo enquanto nada foi enviado. */
+    enviado: ArquivoEnviado | null;
 }
 
 /** Tela da inscrição com a lista de documentos (InscricaoController@show). */
@@ -513,13 +535,25 @@ export interface PortalInscricaoDocumentosProps extends OpcoesDaInscricao {
         cotas: string[];
         /** Último dia da chamada da inscrição ("15/11/2026"). */
         fimDoPeriodo: string | null;
+        /** Data e hora do envio ("12/11/2026 15:30"); nulo no rascunho. */
+        finalizadaEm: string | null;
     };
-    /** Rascunho dentro do período da chamada: só então as escolhas podem ser trocadas. */
+    /** Rascunho dentro do período da chamada: só então as escolhas e os documentos podem ser trocados. */
     podeEditar: boolean;
+    /** Finalizada e dentro do período da chamada. */
+    podeReabrir: boolean;
     /** O que ainda impede de finalizar (vazio = pode finalizar); a consulta JSON de situação traz a lista atualizada e podeFinalizar. */
     pendencias: string[];
     /** Os exigidos para as escolhas da inscrição, de todas as etapas, na ordem do edital. */
     documentos: DocumentoDaInscricao[];
+}
+
+/** Consulta periódica enquanto há documento conferindo (InscricaoController@situacao). */
+export interface SituacaoDaInscricao {
+    /** Um por documento enviado; id é o do documento exigido (DocumentoDaInscricao.id). */
+    documentos: (SituacaoDoDocumento & { id: number })[];
+    podeFinalizar: boolean;
+    pendencias: string[];
 }
 
 export interface RetaguardaEditaisIndexProps {
