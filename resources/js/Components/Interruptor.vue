@@ -9,6 +9,10 @@ const props = withDefaults(
         erro?: string;
         obrigatorio?: boolean;
         desabilitado?: boolean;
+        /** Erro do grupo de que o interruptor faz parte (a mensagem fica no grupo): só marca o campo como inválido. */
+        invalido?: boolean;
+        /** Ids extras do aria-describedby (ex.: a mensagem de erro do grupo). */
+        descricao?: string;
         /** 'caixa' traz a borda; 'linha' é sem borda, para listas de opções. */
         variante?: 'caixa' | 'linha';
     }>(),
@@ -23,7 +27,7 @@ const idRotulo = computed(() => `${props.id}-rotulo`);
 const idAjuda = computed(() => `${props.id}-ajuda`);
 const idErro = computed(() => `${props.id}-erro`);
 
-const descricao = computed(() => [props.ajuda && idAjuda.value, props.erro && idErro.value].filter(Boolean).join(' ') || undefined);
+const descritoPor = computed(() => [props.ajuda && idAjuda.value, props.erro && idErro.value, props.descricao].filter(Boolean).join(' ') || undefined);
 </script>
 
 <template>
@@ -51,8 +55,8 @@ const descricao = computed(() => [props.ajuda && idAjuda.value, props.erro && id
                 class="peer sr-only"
                 :disabled="desabilitado"
                 :aria-labelledby="idRotulo"
-                :aria-invalid="erro ? true : undefined"
-                :aria-describedby="descricao"
+                :aria-invalid="erro || invalido ? true : undefined"
+                :aria-describedby="descritoPor"
                 @change="$emit('change')"
             />
             <span

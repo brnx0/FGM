@@ -334,7 +334,9 @@ class EditalController extends Controller
                 }
 
                 // Publicado não pode ficar com pergunta que não aparece a ninguém (também se uma categoria foi apagada).
-                $semVinculo = $edital->publicado && ($questionario !== null || $request->comListas()) ? $edital->pendenciasDoQuestionario() : [];
+                // Com o questionário travado a equipe não teria como vincular: não barra.
+                $conferirVinculo = $edital->publicado && ($questionario !== null || $request->comListas()) && ! $edital->questionarioTravado();
+                $semVinculo = $conferirVinculo ? $edital->pendenciasDoQuestionario() : [];
                 if ($semVinculo !== []) {
                     throw ValidationException::withMessages(['questionario' => implode(' ', $semVinculo)]);
                 }

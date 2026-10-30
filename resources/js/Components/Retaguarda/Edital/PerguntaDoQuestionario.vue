@@ -23,6 +23,8 @@ const props = defineProps<{
     erroDaLista: (campo: string) => string | undefined;
     limpar: (...campos: string[]) => void;
     limparLista: (campo: string) => void;
+    /** Questionário travado: tudo fica só para leitura. */
+    desabilitado?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -152,7 +154,8 @@ const mover = (): void => {
 </script>
 
 <template>
-    <div class="flex min-w-0 flex-col gap-5">
+    <!-- Travado, o fieldset desabilita todos os campos; o cartão continua abrindo para leitura. -->
+    <fieldset :disabled="desabilitado" class="flex min-w-0 flex-col gap-5">
         <CampoCadastro :id="idCampo('enunciado')" rotulo="Enunciado" obrigatorio :erro="erro('enunciado')" v-slot="{ descricao, invalido }">
             <textarea
                 :id="idCampo('enunciado')"
@@ -254,8 +257,8 @@ const mover = (): void => {
                             maxlength="500"
                             required
                             :class="classeCampo"
-                            :aria-invalid="invalido || undefined"
-                            :aria-describedby="descricao"
+                            :aria-invalid="invalido || Boolean(erro('opcoes')) || undefined"
+                            :aria-describedby="[descricao, erro('opcoes') && idCampo('opcoes-erro')].filter(Boolean).join(' ') || undefined"
                             @input="limpar(`opcoes.${indiceOpcao}.texto`, `opcoes.${indiceOpcao}.chave`)"
                         />
                     </CampoCadastro>
@@ -313,6 +316,8 @@ const mover = (): void => {
                 ref="botaoAdicionarOpcao"
                 type="button"
                 :disabled="pergunta.opcoes.length >= MAXIMO_OPCOES"
+                :aria-invalid="erro('opcoes') && pergunta.opcoes.length === 0 ? true : undefined"
+                :aria-describedby="erro('opcoes') ? idCampo('opcoes-erro') : undefined"
                 class="pressionavel mt-3 inline-flex min-h-11 items-center gap-2 rounded-pill border border-acao bg-superficie px-5 text-[0.8125rem] font-bold text-acao hover:bg-nevoa disabled:cursor-not-allowed disabled:opacity-50"
                 @click="adicionarOpcao"
             >
@@ -369,13 +374,15 @@ const mover = (): void => {
                     …a resposta for<span aria-hidden="true" class="ml-0.5 text-invalido-texto">*</span>
                 </legend>
                 <p v-if="respostasDaOrigem(origem).length === 0" :class="[classeDica, 'py-2']">Cadastre as opções da pergunta de origem.</p>
-                <div class="grid gap-x-6 @lg:grid-cols-2">
+                <div class="grid gap-x-6 @lg:grid-cols-2" :class="{ 'campo-invalido mt-1 rounded-[12px] px-3 py-1': erroDaLista('condicao_opcoes') }">
                     <Interruptor
                         v-for="resposta in respostasDaOrigem(origem)"
                         :id="idCampo(`condicao-${resposta.chave}`)"
                         :key="resposta.chave"
                         :rotulo="resposta.rotulo"
                         variante="linha"
+                        :invalido="Boolean(erroDaLista('condicao_opcoes'))"
+                        :descricao="erroDaLista('condicao_opcoes') ? idCampo('condicao_opcoes-erro') : undefined"
                         :model-value="pergunta.condicao_opcoes.includes(resposta.chave)"
                         @update:model-value="marcarResposta(resposta.chave, $event)"
                     />
@@ -386,7 +393,7 @@ const mover = (): void => {
             </fieldset>
         </div>
 
-        <div v-if="outrasSecoes.length > 0" class="flex min-w-0 flex-col gap-1.5">
+        <div v-if="!desabilitado && outrasSecoes.length > 0" class="flex min-w-0 flex-col gap-1.5">
             <label :for="idCampo('mover')" class="text-[0.9375rem] font-semibold">Mover para a seção</label>
             <div class="flex flex-wrap items-center gap-3">
                 <select :id="idCampo('mover')" v-model="destino" :class="[classeCampoBase, 'min-w-0 flex-1 basis-60']" :aria-describedby="idCampo('mover-ajuda')">
@@ -406,5 +413,5 @@ const mover = (): void => {
             </div>
             <p :id="idCampo('mover-ajuda')" :class="classeDica">A pergunta vai para o fim da seção escolhida.</p>
         </div>
-    </div>
+    </fieldset>
 </template>

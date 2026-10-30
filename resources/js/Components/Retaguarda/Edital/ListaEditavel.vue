@@ -34,8 +34,10 @@ const props = withDefaults(
         contaNoSelo?: (campo: string) => boolean;
         /** Nível do título do cartão (as listas dentro de um cartão usam 4). */
         nivel?: 3 | 4;
+        /** Só leitura: sem adicionar, mover e remover; abrir e recolher os cartões continua valendo. */
+        somenteLeitura?: boolean;
     }>(),
-    { feminino: false, resumo: undefined, contaNoSelo: undefined, nivel: 3 },
+    { feminino: false, resumo: undefined, contaNoSelo: undefined, nivel: 3, somenteLeitura: false },
 );
 
 const emit = defineEmits<{
@@ -161,7 +163,7 @@ const tituloDoCartao = computed<string>(() => `h${props.nivel}`);
                             </button>
                         </component>
 
-                        <div class="-mx-3 flex flex-wrap items-center">
+                        <div v-if="!somenteLeitura" class="-mx-3 flex flex-wrap items-center">
                             <button :id="idCampo(item, 'subir')" type="button" :disabled="indice === 0" :class="classeBotaoCartao" @click="mover(indice, -1, 'subir')">
                                 <svg aria-hidden="true" viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M12 19V5M6 11l6-6 6 6" />
@@ -203,7 +205,7 @@ const tituloDoCartao = computed<string>(() => `h${props.nivel}`);
             </li>
         </ol>
 
-        <div class="flex flex-col items-start gap-2">
+        <div v-if="!somenteLeitura" class="flex flex-col items-start gap-2">
             <button
                 ref="botaoAdicionar"
                 type="button"

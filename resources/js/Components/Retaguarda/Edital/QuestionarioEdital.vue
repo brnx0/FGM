@@ -23,8 +23,8 @@ const props = defineProps<{
     tiposPergunta: OpcaoFormulario[];
     travado: boolean;
     avisoTravado: string;
-    /** Condições removidas pelo formulário (origem apagada, opção tirada), para anunciar. */
-    avisos: string[];
+    /** Condições removidas pelo formulário (origem apagada, opção tirada), para anunciar; `id` único por aviso. */
+    avisos: { id: number; texto: string }[];
 }>();
 
 const emit = defineEmits<{ limparErros: [campos: string[]] }>();
@@ -149,13 +149,14 @@ const aplicarEmLote = (chaves: string[], vinculo: VinculoEditavel): void => {
             </div>
         </div>
 
-        <div aria-live="polite" class="flex flex-col gap-2 empty:hidden">
-            <p v-for="aviso in avisos" :key="aviso" class="rounded-[12px] bg-aviso-fundo px-4 py-3 text-[0.9375rem] font-semibold text-aviso-texto">{{ aviso }}</p>
+        <!-- A região fica sempre no DOM (o leitor de tela só anuncia o que muda numa região que já existe); vazia, não ocupa espaço. -->
+        <div aria-live="polite" class="flex flex-col gap-2" :class="{ '-mt-5': avisos.length === 0 && !anuncio }">
+            <p v-for="aviso in avisos" :key="aviso.id" class="rounded-[12px] bg-aviso-fundo px-4 py-3 text-[0.9375rem] font-semibold text-aviso-texto">{{ aviso.texto }}</p>
             <p v-if="anuncio" class="text-[0.9375rem] text-tinta-suave">{{ anuncio }}</p>
         </div>
 
-        <fieldset :disabled="travado" class="min-w-0">
-            <legend class="sr-only">Seções do questionário</legend>
+        <!-- Travado: sem adicionar, mover e remover, e os campos desabilitados; seções e perguntas continuam abrindo para leitura. -->
+        <div class="min-w-0">
             <ListaEditavel
                 v-model="secoes"
                 id="secao-questionario"
@@ -169,36 +170,39 @@ const aplicarEmLote = (chaves: string[], vinculo: VinculoEditavel): void => {
                 campo-inicial="titulo"
                 :nome="(secao) => secao.titulo"
                 :resumo="resumoDaSecao"
+                :somente-leitura="travado"
                 @limpar-erros="emit('limparErros', $event)"
             >
                 <template #default="{ item: secao, indice: indiceDaSecao, idCampo, erro, limpar }">
-                    <CampoCadastro :id="idCampo('titulo')" rotulo="Título" obrigatorio :erro="erro('titulo')" v-slot="{ descricao, invalido }">
-                        <input
-                            :id="idCampo('titulo')"
-                            v-model="secao.titulo"
-                            type="text"
-                            maxlength="255"
-                            required
-                            placeholder="Ex.: Dados do projeto"
-                            :class="classeCampo"
-                            :aria-invalid="invalido || undefined"
-                            :aria-describedby="descricao"
-                            @input="limpar('titulo')"
-                        />
-                    </CampoCadastro>
+                    <fieldset :disabled="travado" class="grid min-w-0 gap-y-5">
+                        <CampoCadastro :id="idCampo('titulo')" rotulo="Título" obrigatorio :erro="erro('titulo')" v-slot="{ descricao, invalido }">
+                            <input
+                                :id="idCampo('titulo')"
+                                v-model="secao.titulo"
+                                type="text"
+                                maxlength="255"
+                                required
+                                placeholder="Ex.: Dados do projeto"
+                                :class="classeCampo"
+                                :aria-invalid="invalido || undefined"
+                                :aria-describedby="descricao"
+                                @input="limpar('titulo')"
+                            />
+                        </CampoCadastro>
 
-                    <CampoCadastro :id="idCampo('descricao')" rotulo="Descrição" ajuda="Texto curto mostrado no início da seção." :erro="erro('descricao')" v-slot="{ descricao, invalido }">
-                        <textarea
-                            :id="idCampo('descricao')"
-                            v-model="secao.descricao"
-                            rows="2"
-                            maxlength="2000"
-                            :class="classeTexto"
-                            :aria-invalid="invalido || undefined"
-                            :aria-describedby="descricao"
-                            @input="limpar('descricao')"
-                        />
-                    </CampoCadastro>
+                        <CampoCadastro :id="idCampo('descricao')" rotulo="Descrição" ajuda="Texto curto mostrado no início da seção." :erro="erro('descricao')" v-slot="{ descricao, invalido }">
+                            <textarea
+                                :id="idCampo('descricao')"
+                                v-model="secao.descricao"
+                                rows="2"
+                                maxlength="2000"
+                                :class="classeTexto"
+                                :aria-invalid="invalido || undefined"
+                                :aria-describedby="descricao"
+                                @input="limpar('descricao')"
+                            />
+                        </CampoCadastro>
+                    </fieldset>
 
                     <div class="flex min-w-0 flex-col gap-3">
                         <p class="text-[0.9375rem] font-semibold">Perguntas</p>
@@ -216,6 +220,7 @@ const aplicarEmLote = (chaves: string[], vinculo: VinculoEditavel): void => {
                             campo-inicial="enunciado"
                             :nome="(pergunta) => pergunta.enunciado"
                             :resumo="resumoDaPergunta"
+                            :somente-leitura="travado"
                             @limpar-erros="emit('limparErros', $event)"
                         >
                             <template #selo="{ item: pergunta }">
@@ -240,6 +245,7 @@ const aplicarEmLote = (chaves: string[], vinculo: VinculoEditavel): void => {
                                     :erro-da-lista="erroDaLista"
                                     :limpar="limparDaPergunta"
                                     :limpar-lista="limparLista"
+                                    :desabilitado="travado"
                                     @mover="moverPergunta(secao, indice, $event)"
                                 />
                             </template>
@@ -247,7 +253,7 @@ const aplicarEmLote = (chaves: string[], vinculo: VinculoEditavel): void => {
                     </div>
                 </template>
             </ListaEditavel>
-        </fieldset>
+        </div>
 
         <p v-if="!travado && secoes.length > 0" :class="classeDica">Remover, mover ou reordenar só vale depois de salvar o edital.</p>
     </div>

@@ -247,10 +247,10 @@ const DEFINICAO_ABAS: AbaFormulario[] = [
 ];
 
 // AbasFormulario conta os erros pelos campos da aba: aqui eles são as chaves com erro que caem na aba.
-// Perguntas sem vínculo contam como pendência da aba Questionário (impedem a publicação).
+// Perguntas sem vínculo contam como pendência da aba Questionário (impedem a publicação); travado, não há o que fazer.
 const abas = computed<AbaFormulario[]>(() => {
     const comErro = Object.keys(erros.value).filter((chave) => Boolean(erros.value[chave]));
-    const semVinculoNoQuestionario = perguntasEmOrdem(form.questionario.secoes).filter(semVinculo).length;
+    const semVinculoNoQuestionario = props.questionarioTravado ? 0 : perguntasEmOrdem(form.questionario.secoes).filter(semVinculo).length;
 
     return DEFINICAO_ABAS.map((aba) => ({
         ...aba,
@@ -310,7 +310,8 @@ vigiarReferencias(
 
 // Condição cuja origem sumiu (apagada, mudou de tipo) ou perdeu todas as respostas escolhidas sai, com aviso na aba.
 // Resposta tirada da origem (opção removida) sai da condição.
-const avisosDoQuestionario = ref<string[]>([]);
+const avisosDoQuestionario = ref<{ id: number; texto: string }[]>([]);
+let proximoAviso = 0;
 
 const removerCondicao = (pergunta: PerguntaEditavel): void => {
     pergunta.condicao_pergunta = null;
@@ -325,7 +326,10 @@ watch(
     () => {
         const perguntas = perguntasEmOrdem(form.questionario.secoes);
         const porChave = new Map(perguntas.map((pergunta) => [pergunta.chave, pergunta]));
-        const avisos: string[] = [];
+        const avisos: { id: number; texto: string }[] = [];
+        const avisar = (texto: string): void => {
+            avisos.push({ id: ++proximoAviso, texto });
+        };
 
         for (const pergunta of perguntas) {
             if (pergunta.condicao_pergunta === null) continue;
@@ -334,12 +338,12 @@ watch(
 
             if (!origem) {
                 removerCondicao(pergunta);
-                avisos.push(`A condição de "${nome}" foi removida porque a pergunta de origem foi apagada.`);
+                avisar(`A condição de "${nome}" foi removida porque a pergunta de origem foi apagada.`);
                 continue;
             }
             if (!regraDoTipo(origem.tipo).podeSerOrigem) {
                 removerCondicao(pergunta);
-                avisos.push(`A condição de "${nome}" foi removida porque a pergunta de origem mudou de tipo.`);
+                avisar(`A condição de "${nome}" foi removida porque a pergunta de origem mudou de tipo.`);
                 continue;
             }
 
@@ -349,7 +353,7 @@ watch(
 
             if (restantes.length === 0) {
                 removerCondicao(pergunta);
-                avisos.push(`A condição de "${nome}" foi removida porque as respostas escolhidas saíram da pergunta de origem.`);
+                avisar(`A condição de "${nome}" foi removida porque as respostas escolhidas saíram da pergunta de origem.`);
             } else {
                 pergunta.condicao_opcoes = restantes;
             }
@@ -509,6 +513,7 @@ const paraEnvio = (dados: DadosDoFormulario): Record<string, unknown> => {
 // Edição vai como POST com _method=put: PUT com multipart não chega ao PHP.
 // "indices" monta chamadas[0][nome]; o padrão ("brackets") viraria chamadas[][nome] e quebraria as listas.
 const salvar = (): void => {
+    avisosDoQuestionario.value = [];
     const opcoes = {
         forceFormData: true,
         queryStringArrayFormat: 'indices' as const,

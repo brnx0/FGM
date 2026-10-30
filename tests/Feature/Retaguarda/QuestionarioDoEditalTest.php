@@ -411,6 +411,32 @@ class QuestionarioDoEditalTest extends TestCase
         $this->assertSame(0, EditalPergunta::query()->where('edital_id', $publicado->id)->count());
     }
 
+    public function test_travado_salva_mesmo_com_pergunta_que_ficou_sem_vinculo(): void
+    {
+        $publicado = Edital::factory()->create(['publicado' => true]);
+        $teatro = EditalCategoria::factory()->create(['edital_id' => $publicado->id, 'nome' => 'Teatro', 'ordem' => 1]);
+        $danca = EditalCategoria::factory()->create(['edital_id' => $publicado->id, 'nome' => 'Dança', 'ordem' => 2]);
+        $secao = EditalQuestionarioSecao::factory()->create(['edital_id' => $publicado->id]);
+        $pergunta = EditalPergunta::factory()->create([
+            'edital_id' => $publicado->id, 'edital_questionario_secao_id' => $secao->id, 'todas_categorias' => false,
+        ]);
+        $pergunta->categorias()->attach($danca->id);
+        Inscricao::factory()->finalizada()->create(['edital_id' => $publicado->id]);
+
+        // Só as listas (o formulário travado não manda o questionário): apagar Dança deixa a pergunta sem vínculo.
+        $this->put("/retaguarda/editais/{$publicado->slug}", [
+            'com_listas' => '1',
+            'publicado' => '1',
+            'titulo' => $publicado->titulo,
+            'resumo' => 'Resumo.',
+            'categoria' => 'Fomento',
+            'categorias' => [['id' => $teatro->id, 'nome' => 'Teatro']],
+        ])->assertSessionHasNoErrors();
+
+        $this->assertNull($danca->fresh());
+        $this->assertTrue($pergunta->fresh()->semVinculo());
+    }
+
     public function test_enunciado_acima_de_2000_bytes_e_recusado(): void
     {
         $this->enviar($this->edital, ['secoes' => [

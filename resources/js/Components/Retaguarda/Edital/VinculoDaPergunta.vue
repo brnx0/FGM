@@ -93,44 +93,59 @@ const marcarNatureza = (valor: string, marcada: boolean): void => {
     <div class="flex min-w-0 flex-col gap-4">
         <fieldset class="min-w-0" :aria-describedby="erroCategorias ? `${id}-categorias-erro` : undefined">
             <legend class="text-[0.9375rem] font-semibold">Vale para</legend>
-            <div class="mt-1.5 flex flex-wrap gap-x-6">
-                <label v-for="opcao in OPCOES_MODO" :key="opcao.valor" :class="classeMarcacao">
-                    <input type="radio" :name="`${id}-modo`" :checked="modo === opcao.valor" :class="classeCaixa" @change="escolherModo(opcao.valor)" />
-                    {{ opcao.rotulo }}
-                </label>
-            </div>
-            <p v-if="modo === 'sem'" :class="[classeDica, 'mt-1']">Pergunta sem vínculo não aparece na inscrição e impede a publicação do edital.</p>
+            <!-- Com erro, o grupo inteiro fica destacado e os campos marcados como inválidos (o foco vai ao primeiro). -->
+            <div class="mt-1.5" :class="{ 'campo-invalido rounded-[12px] px-3 py-1': erroCategorias }">
+                <div class="flex flex-wrap gap-x-6">
+                    <label v-for="opcao in OPCOES_MODO" :key="opcao.valor" :class="classeMarcacao">
+                        <input
+                            type="radio"
+                            :name="`${id}-modo`"
+                            :checked="modo === opcao.valor"
+                            :class="classeCaixa"
+                            :aria-invalid="erroCategorias ? true : undefined"
+                            :aria-describedby="erroCategorias ? `${id}-categorias-erro` : undefined"
+                            @change="escolherModo(opcao.valor)"
+                        />
+                        {{ opcao.rotulo }}
+                    </label>
+                </div>
+                <p v-if="modo === 'sem'" :class="[classeDica, 'mt-1']">Pergunta sem vínculo não aparece na inscrição e impede a publicação do edital.</p>
 
-            <div v-if="modo === 'algumas'" class="mt-1 grid gap-x-6 border-l-2 border-hairline pl-4 @lg:grid-cols-2">
-                <p v-if="categorias.length === 0" :class="[classeDica, 'py-2']">Cadastre as categorias na aba Categorias.</p>
-                <Interruptor
-                    v-for="(categoria, posicao) in categorias"
-                    :id="`${id}-categoria-${categoria.chave}`"
-                    :key="categoria.chave"
-                    :rotulo="rotuloDaCategoria(categoria, posicao)"
-                    variante="linha"
-                    :model-value="vinculo.categorias.includes(categoria.chave)"
-                    @update:model-value="marcarCategoria(categoria.chave, $event)"
-                />
-                <p v-if="categorias.length > 0 && vinculo.categorias.length === 0" :class="[classeDica, 'py-1 @lg:col-span-2']">Marque ao menos uma categoria.</p>
+                <div v-if="modo === 'algumas'" class="mt-1 grid gap-x-6 border-l-2 border-hairline pl-4 @lg:grid-cols-2">
+                    <p v-if="categorias.length === 0" :class="[classeDica, 'py-2']">Cadastre as categorias na aba Categorias.</p>
+                    <Interruptor
+                        v-for="(categoria, posicao) in categorias"
+                        :id="`${id}-categoria-${categoria.chave}`"
+                        :key="categoria.chave"
+                        :rotulo="rotuloDaCategoria(categoria, posicao)"
+                        variante="linha"
+                        :invalido="Boolean(erroCategorias)"
+                        :descricao="erroCategorias ? `${id}-categorias-erro` : undefined"
+                        :model-value="vinculo.categorias.includes(categoria.chave)"
+                        @update:model-value="marcarCategoria(categoria.chave, $event)"
+                    />
+                    <p v-if="categorias.length > 0 && vinculo.categorias.length === 0" :class="[classeDica, 'py-1 @lg:col-span-2']">Marque ao menos uma categoria.</p>
+                </div>
             </div>
             <p v-if="erroCategorias" :id="`${id}-categorias-erro`" class="mt-1 text-[0.875rem] font-semibold text-invalido-texto">{{ erroCategorias }}</p>
         </fieldset>
 
         <fieldset
-            v-if="oferecidas.length > 0"
+            v-if="oferecidas.length > 0 || erroNaturezas"
             class="min-w-0"
             :aria-describedby="[`${id}-naturezas-ajuda`, erroNaturezas && `${id}-naturezas-erro`].filter(Boolean).join(' ')"
         >
             <legend class="text-[0.9375rem] font-semibold">Naturezas</legend>
             <p :id="`${id}-naturezas-ajuda`" :class="[classeDica, 'mt-1']">Nenhuma marcada = todas as que as categorias aceitam.</p>
-            <div class="mt-1 grid gap-x-6 @lg:grid-cols-2">
+            <div class="mt-1 grid gap-x-6 @lg:grid-cols-2" :class="{ 'campo-invalido rounded-[12px] px-3 py-1': erroNaturezas }">
                 <Interruptor
                     v-for="natureza in oferecidas"
                     :id="`${id}-natureza-${natureza.valor}`"
                     :key="natureza.valor"
                     :rotulo="natureza.rotulo"
                     variante="linha"
+                    :invalido="Boolean(erroNaturezas)"
+                    :descricao="erroNaturezas ? `${id}-naturezas-erro` : undefined"
                     :model-value="vinculo.naturezas.includes(natureza.valor)"
                     @update:model-value="marcarNatureza(natureza.valor, $event)"
                 />
