@@ -124,7 +124,7 @@ const nova = (): ChamadaEditavel => ({ chave: novaChave(), id: null, nome: `Cham
                             :class="classeCampo"
                             :aria-invalid="invalido || undefined"
                             :aria-describedby="descricao"
-                            @input="limpar('validacao_fim')"
+                            @input="limpar('validacao_fim', 'validacao_inicio')"
                         />
                     </CampoCadastro>
                 </div>
@@ -169,7 +169,7 @@ const nova = (): ChamadaEditavel => ({ chave: novaChave(), id: null, nome: `Cham
                             :class="classeCampo"
                             :aria-invalid="invalido || undefined"
                             :aria-describedby="descricao"
-                            @input="limpar('homologacao_fim')"
+                            @input="limpar('homologacao_fim', 'homologacao_inicio')"
                         />
                     </CampoCadastro>
                 </div>

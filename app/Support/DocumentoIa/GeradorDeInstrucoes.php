@@ -33,9 +33,9 @@ class GeradorDeInstrucoes
     ];
 
     private const string PROMPT = <<<'TEXTO'
-        Você vai escrever instruções para outra IA, que confere os documentos que os proponentes enviam em PDF na inscrição de um edital de cultura da Fundação Gregório de Mattos (FGM), da Prefeitura de Salvador.
+        Você vai escrever instruções para outra IA, que confere os documentos que os proponentes enviam (em PDF ou imagem) na inscrição de um edital de cultura da Fundação Gregório de Mattos (FGM), da Prefeitura de Salvador.
 
-        Para cada documento da lista abaixo, escreva a instrução que essa IA vai seguir ao conferir o PDF enviado para ele. A instrução diz o que verificar no arquivo:
+        Para cada documento da lista abaixo, escreva a instrução que essa IA vai seguir ao conferir o arquivo enviado para ele. A instrução diz o que verificar no arquivo:
         - o tipo de documento: se o arquivo é mesmo o documento pedido;
         - a titularidade: se o documento está em nome do proponente ou de quem o edital indicar;
         - a legibilidade: se dá para ler o que precisa ser conferido;
