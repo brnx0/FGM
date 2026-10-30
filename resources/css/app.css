@@ -52,6 +52,14 @@
     --color-invalido-brilho: rgb(217 45 32 / 0.18);
     --color-invalido-texto: #8a1c1c;
 
+    /* Pílula dos avisos ao salvar (FlashMessage): azul-marinho no claro, invertida no noturno. */
+    --color-pilula-fundo: #06244a;
+    --color-pilula-texto: #ffffff;
+    --color-pilula-borda: transparent;
+    --color-pilula-sucesso: #1f9d57;
+    --color-pilula-aviso: #b45309;
+    --color-pilula-erro: #d92d20;
+
     /* Cores do texto rico (editor da descrição do evento): verde e amarelo escuros, AA sobre branco. */
     --color-texto-verde: #166534;
     --color-texto-amarelo: #805b00;
@@ -117,6 +125,8 @@ html.escuro {
     --color-invalido-fundo: #2a1a26;
     --color-invalido-brilho: rgb(255 92 92 / 0.22);
     --color-invalido-texto: #ffd6d6;
+    --color-pilula-fundo: #f5f5f7;
+    --color-pilula-texto: #06244a;
     --color-texto-verde: #86efac;
     --color-texto-amarelo: #fcd34d;
 }
@@ -138,6 +148,9 @@ html.alto-contraste {
     --color-invalido-fundo: #000000;
     --color-invalido-brilho: transparent;
     --color-invalido-texto: #ff8a8a;
+    --color-pilula-fundo: #000000;
+    --color-pilula-texto: #ffffff;
+    --color-pilula-borda: #ffffff;
     --color-fundo: #000000;
     --color-tinta: #ffffff;
     --color-home-tinta: #ffffff;
@@ -224,6 +237,62 @@ html.alto-contraste .barra-institucional {
 html.alto-contraste :is(input, select, textarea):not([type='checkbox'], [type='radio'], [type='file'])[aria-invalid='true'],
 html.alto-contraste .campo-invalido {
     border-width: 3px;
+}
+
+@layer components {
+    /* Pílula dos avisos ao salvar (FlashMessage). Arredondada como pílula numa linha; com texto longo quebra em
+       linhas e as pontas ficam só arredondadas. */
+    .pilula-aviso {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.625rem;
+        max-width: min(36rem, 100%);
+        border: 2px solid var(--color-pilula-borda);
+        border-radius: 1.375rem;
+        background: var(--color-pilula-fundo);
+        color: var(--color-pilula-texto);
+        padding: 0.4375rem 1rem 0.4375rem 0.5rem;
+        font-size: 0.9375rem;
+        font-weight: 600;
+        line-height: 1.5rem;
+        box-shadow:
+            0 8px 24px rgb(6 36 74 / 0.28),
+            0 2px 6px rgb(6 36 74 / 0.12);
+    }
+
+    .pilula-aviso-icone {
+        display: flex;
+        flex-shrink: 0;
+        align-items: center;
+        justify-content: center;
+        width: 1.5rem;
+        height: 1.5rem;
+        border-radius: 9999px;
+        color: #ffffff;
+    }
+
+    /* Área de toque de 32px sem aumentar a pílula. */
+    .pilula-aviso-fechar {
+        display: flex;
+        flex-shrink: 0;
+        align-items: center;
+        justify-content: center;
+        width: 2rem;
+        height: 2rem;
+        margin: -0.25rem -0.625rem -0.25rem 0;
+        border-radius: 9999px;
+        opacity: 0.8;
+        cursor: pointer;
+
+        &:hover {
+            opacity: 1;
+        }
+    }
+
+    /* O anel azul some sobre o azul-marinho: usa a cor do texto. */
+    .pilula-aviso :focus-visible {
+        outline-color: currentColor;
+    }
 }
 
 /* Botões e controles: escala .95 ao pressionar (regra Apple). */
