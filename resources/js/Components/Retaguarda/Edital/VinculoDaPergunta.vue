@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue';
 import Interruptor from '../../Interruptor.vue';
 import { classeCaixa, classeDica, classeMarcacao } from '../listaEditavel';
 import { naturezasOferecidas } from '../questionario';
-import type { CategoriaEditavel, OpcaoFormulario, VinculoEditavel } from '../../../types';
+import type { CategoriaDoQuestionario, OpcaoFormulario, VinculoEditavel } from '../../../types';
 
 /**
  * Para quais categorias e naturezas uma pergunta vale (no cartão da pergunta e no vínculo em lote).
@@ -12,8 +12,8 @@ import type { CategoriaEditavel, OpcaoFormulario, VinculoEditavel } from '../../
 const props = defineProps<{
     /** Prefixo dos ids, único na página. */
     id: string;
-    /** Categorias atuais da aba Categorias, na ordem em que estão. */
-    categorias: CategoriaEditavel[];
+    /** Categorias gravadas do edital, na ordem em que estão. */
+    categorias: CategoriaDoQuestionario[];
     /** Naturezas aceitas pelo edital (aba Participação). */
     naturezasDoEdital: string[];
     /** Todas as naturezas (rótulos). */
@@ -61,7 +61,7 @@ const OPCOES_MODO: { valor: Modo; rotulo: string }[] = [
     { valor: 'sem', rotulo: 'Sem vínculo' },
 ];
 
-const rotuloDaCategoria = (categoria: CategoriaEditavel, posicao: number): string => categoria.nome.trim() || `Categoria ${posicao + 1}`;
+const rotuloDaCategoria = (categoria: CategoriaDoQuestionario, posicao: number): string => categoria.nome.trim() || `Categoria ${posicao + 1}`;
 
 const marcarCategoria = (chave: string, marcada: boolean): void => {
     const sem = vinculo.value.categorias.filter((outra) => outra !== chave);
@@ -112,7 +112,7 @@ const marcarNatureza = (valor: string, marcada: boolean): void => {
                 <p v-if="modo === 'sem'" :class="[classeDica, 'mt-1']">Pergunta sem vínculo não aparece na inscrição e impede a publicação do edital.</p>
 
                 <div v-if="modo === 'algumas'" class="mt-1 grid gap-x-6 border-l-2 border-hairline pl-4 @lg:grid-cols-2">
-                    <p v-if="categorias.length === 0" :class="[classeDica, 'py-2']">Cadastre as categorias na aba Categorias.</p>
+                    <p v-if="categorias.length === 0" :class="[classeDica, 'py-2']">Cadastre as categorias no edital (aba Categorias).</p>
                     <Interruptor
                         v-for="(categoria, posicao) in categorias"
                         :id="`${id}-categoria-${categoria.chave}`"
