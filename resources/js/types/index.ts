@@ -1027,6 +1027,22 @@ export interface RetaguardaPrefeiturasBairroFormProps {
     prefeitura: PrefeituraBairroFormulario | null;
 }
 
+/** Área de atuação na lista e no formulário da retaguarda (Retaguarda\AreaAtuacaoController). */
+export interface AreaAtuacaoRetaguarda {
+    id: number;
+    nome: string;
+    ativo: boolean;
+}
+
+export interface RetaguardaAreasAtuacaoIndexProps {
+    areas: Paginado<AreaAtuacaoRetaguarda>;
+    filtros: { busca: string };
+}
+
+export interface RetaguardaAreasAtuacaoFormProps {
+    area: AreaAtuacaoRetaguarda | null;
+}
+
 /** Troca da própria senha (Retaguarda\MinhaSenhaController@edit). Sem senha (só gov.br), a atual não é pedida. */
 /** Uma aba de AbasFormulario (formulários longos da retaguarda). */
 export interface AbaFormulario {
