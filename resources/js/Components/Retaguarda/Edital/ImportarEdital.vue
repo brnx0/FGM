@@ -7,7 +7,7 @@ import CampoCadastro from '../../CampoCadastro.vue';
 import { focarPrimeiroErro } from '../../focarPrimeiroErro';
 
 const props = defineProps<{
-    /** Tamanho máximo do PDF (Integração com IA). */
+    /** Tamanho máximo do PDF, fixo no código (14 MB). */
     tamanhoMaximoMb: number;
     /** Há provedor principal com modelo e chave; sem ele, a janela avisa que o serviço está indisponível em vez de pedir o PDF. */
     configurada: boolean;

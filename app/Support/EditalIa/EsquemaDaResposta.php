@@ -21,7 +21,7 @@ final class EsquemaDaResposta
     /** Blocos com nota de confiabilidade, na ordem de exibição: chave => rótulo. */
     public const array BLOCOS = [
         'identificacao' => 'Identificação',
-        'inscricao' => 'Inscrição',
+        'inscricao' => 'Períodos',
         'participacao' => 'Participação',
         'categorias' => 'Categorias',
         'cotas' => 'Cotas',
@@ -62,6 +62,10 @@ final class EsquemaDaResposta
                     'nome' => self::texto('Ex.: Chamada 1. Edital sem chamadas tem uma só, com o nome Chamada única.'),
                     'inicio' => self::data('Início das inscrições.'),
                     'fim' => self::data('Fim das inscrições.'),
+                    'validacao_inicio' => self::data('Início da validação das inscrições; vazio se o edital só der prazo relativo.'),
+                    'validacao_fim' => self::data('Fim da validação das inscrições; vazio se o edital só der prazo relativo.'),
+                    'homologacao_inicio' => self::data('Início da homologação; vazio se o edital só der prazo relativo.'),
+                    'homologacao_fim' => self::data('Fim da homologação; vazio se o edital só der prazo relativo.'),
                 ], ['nome'])),
                 'forma_inscricao_original' => self::texto('Como a inscrição é feita no edital original (ex.: link do formulário).'),
             ], ['chamadas']),

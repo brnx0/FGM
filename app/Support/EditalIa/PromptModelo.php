@@ -5,12 +5,12 @@ namespace App\Support\EditalIa;
 /**
  * Textos das instruções enviadas à IA na importação do edital.
  *
- * O prompt tem duas partes: a editável (este prompt modelo, que a equipe pode mudar na Integração com IA)
+ * O prompt tem duas partes: a editável (este prompt modelo, fixo no código)
  * e a fixa, sempre enviada junto e nunca mostrada na tela, com as regras que não podem sumir.
  */
 final class PromptModelo
 {
-    /** O prompt modelo: o que a equipe vê e pode editar (e restaurar). */
+    /** O prompt modelo, fixo no código (não é editável na tela). */
     public static function editavel(): string
     {
         return <<<'TEXTO'
@@ -24,6 +24,7 @@ final class PromptModelo
             6. Converta datas para o formato AAAA-MM-DD, horários para HH:MM e valores em reais para número com ponto decimal (R$ 1.500,00 vira 1500.00).
             7. Nas seções informativas (recursos e pagamento, vedações, etapas e prazos, contrapartida, prestação de contas, base legal, anexos, contatos e outras regras), escreva um resumo fiel e objetivo do edital, em português, sem acrescentar interpretação.
             8. Dê a cada bloco uma nota de confiabilidade de 0 a 100, com uma justificativa curta, conforme a clareza e a completude do que encontrou.
+            9. Em cada chamada, registre as fases de inscrição, validação e homologação com as datas de início e fim que o edital trouxer. Se uma fase só tiver prazo relativo (por exemplo, "5 dias úteis após o resultado"), deixe as datas dela vazias e registre um ponto de atenção do tipo "não encontrado" no bloco "inscricao" (e não no bloco da fase), citando o item do edital.
             TEXTO;
     }
 

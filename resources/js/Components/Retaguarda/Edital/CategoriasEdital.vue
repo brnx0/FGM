@@ -8,7 +8,7 @@ defineProps<{
     /** Erros do useForm; os das categorias vêm como "categorias.N.campo" e os dos itens como "categorias.N.itens.M.campo". */
     erros: Partial<Record<string, string>>;
     naturezas: OpcaoFormulario[];
-    /** Chamadas atuais da aba Inscrição, na ordem em que estão. */
+    /** Chamadas atuais da aba Períodos, na ordem em que estão. */
     chamadas: ChamadaEditavel[];
 }>();
 

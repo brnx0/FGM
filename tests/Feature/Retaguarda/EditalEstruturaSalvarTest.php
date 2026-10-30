@@ -18,6 +18,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class EditalEstruturaSalvarTest extends TestCase
@@ -305,6 +306,103 @@ class EditalEstruturaSalvarTest extends TestCase
                     'Marque ao menos uma natureza que pode se inscrever.',
                     'Cadastre ao menos uma categoria.',
                 ]));
+    }
+
+    public function test_salva_e_reabre_as_fases_de_cada_chamada(): void
+    {
+        $this->post('/retaguarda/editais', $this->dadosCompletos([
+            'chamadas' => [[
+                'nome' => 'Chamada 1',
+                'inicio' => '2026-11-10',
+                'fim' => '2026-11-30',
+                'validacao_inicio' => '2026-12-01',
+                'validacao_fim' => '2026-12-10',
+                'homologacao_inicio' => '2026-12-15',
+                'homologacao_fim' => '2026-12-20',
+            ]],
+            'categorias' => [],
+            'documentos' => [],
+            'requisitos' => [],
+            'criterios' => [],
+        ]))->assertSessionHasNoErrors();
+
+        $edital = Edital::sole();
+        $chamada = $edital->chamadas()->sole();
+        $this->assertSame('2026-12-01', $chamada->validacao_inicio->toDateString());
+        $this->assertSame('2026-12-10', $chamada->validacao_fim->toDateString());
+        $this->assertSame('2026-12-15', $chamada->homologacao_inicio->toDateString());
+        $this->assertSame('2026-12-20', $chamada->homologacao_fim->toDateString());
+
+        $this->get("/retaguarda/editais/{$edital->slug}/edit")
+            ->assertInertia(fn (Assert $p) => $p
+                ->where('edital.chamadas.0.validacao_inicio', '2026-12-01')
+                ->where('edital.chamadas.0.validacao_fim', '2026-12-10')
+                ->where('edital.chamadas.0.homologacao_inicio', '2026-12-15')
+                ->where('edital.chamadas.0.homologacao_fim', '2026-12-20'));
+    }
+
+    public function test_fases_sem_datas_ficam_vazias(): void
+    {
+        $this->post('/retaguarda/editais', $this->dadosCompletos())->assertSessionHasNoErrors();
+
+        $chamada = Edital::sole()->chamadas()->first();
+        $this->assertNull($chamada->validacao_inicio);
+        $this->assertNull($chamada->validacao_fim);
+        $this->assertNull($chamada->homologacao_inicio);
+        $this->assertNull($chamada->homologacao_fim);
+    }
+
+    /**
+     * @return array<string, array{string, string}>
+     */
+    public static function fasesComSoUmaData(): array
+    {
+        return [
+            'só início da validação' => ['validacao_inicio', 'validacao_fim'],
+            'só fim da validação' => ['validacao_fim', 'validacao_inicio'],
+            'só início da homologação' => ['homologacao_inicio', 'homologacao_fim'],
+            'só fim da homologação' => ['homologacao_fim', 'homologacao_inicio'],
+        ];
+    }
+
+    #[DataProvider('fasesComSoUmaData')]
+    public function test_fase_com_so_uma_data_e_recusada(string $enviada, string $faltante): void
+    {
+        $mensagens = [
+            'validacao_inicio' => 'Preencha também o início da validação.',
+            'validacao_fim' => 'Preencha também o fim da validação.',
+            'homologacao_inicio' => 'Preencha também o início da homologação.',
+            'homologacao_fim' => 'Preencha também o fim da homologação.',
+        ];
+
+        $this->post('/retaguarda/editais', [
+            'com_listas' => '1',
+            'chamadas' => [['nome' => 'C', 'inicio' => '2026-11-01', 'fim' => '2026-11-30', $enviada => '2026-12-05']],
+        ])->assertSessionHasErrors(["chamadas.0.{$faltante}" => $mensagens[$faltante]]);
+
+        if (str_ends_with($enviada, '_fim')) {
+            $this->assertFalse(session('errors')->has("chamadas.0.{$enviada}"));
+        }
+
+        $this->assertSame(0, Edital::count());
+    }
+
+    public function test_fim_da_fase_antes_do_inicio_e_recusado(): void
+    {
+        $this->post('/retaguarda/editais', [
+            'com_listas' => '1',
+            'chamadas' => [['nome' => 'C', 'inicio' => '2026-11-01', 'fim' => '2026-11-30', 'validacao_inicio' => '2026-12-10', 'validacao_fim' => '2026-12-01']],
+        ])->assertSessionHasErrors(['chamadas.0.validacao_fim' => 'O fim deve ser igual ou posterior ao início.']);
+    }
+
+    public function test_publica_sem_validacao_e_homologacao(): void
+    {
+        $this->post('/retaguarda/editais', $this->dadosCompletos(['publicado' => '1', 'pdf' => $this->modelo('edital.pdf')]))
+            ->assertSessionHasNoErrors();
+
+        $edital = Edital::sole();
+        $this->assertTrue($edital->publicado);
+        $this->assertNull($edital->chamadas()->first()->validacao_inicio);
     }
 
     public function test_validacao_das_listas_com_mensagens_sem_chave_tecnica(): void

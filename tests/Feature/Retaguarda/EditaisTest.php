@@ -309,11 +309,9 @@ class EditaisTest extends TestCase
     public function test_lista_mostra_as_importacoes_em_andamento_com_erro_e_as_concluidas_do_ultimo_dia(): void
     {
         $this->travelTo(Carbon::parse('2026-10-28 15:00'));
-        // 20 MB foi aceito antes do teto de 14 MB: a tela recebe o teto.
         $configuracao = ConfiguracaoIa::factory()->create([
             'ativo' => false,
             'provedor_principal' => ProvedorIa::Gemini,
-            'importacao_tamanho_maximo_mb' => 20,
         ]);
         ConexaoIa::factory()->gemini()->create();
         $analisando = ImportacaoEdital::factory()->create(['iniciada_em' => now()->subMinutes(2)]);
@@ -377,13 +375,13 @@ class EditaisTest extends TestCase
                     'geral' => 70,
                     'blocos' => [
                         ['bloco' => 'identificacao', 'rotulo' => 'Identificação', 'nota' => 90, 'justificativa' => 'Cabeçalho claro.'],
-                        ['bloco' => 'inscricao', 'rotulo' => 'Inscrição', 'nota' => 60, 'justificativa' => 'Prazos divergentes.'],
+                        ['bloco' => 'inscricao', 'rotulo' => 'Períodos', 'nota' => 60, 'justificativa' => 'Prazos divergentes.'],
                     ],
                 ],
                 'atencao' => [
                     [
                         'bloco' => 'inscricao',
-                        'blocoRotulo' => 'Inscrição',
+                        'blocoRotulo' => 'Períodos',
                         'tipo' => 'divergencia',
                         'tipoRotulo' => 'Divergência no edital',
                         'texto' => 'O item 5.1 diz 01 a 31/07 e o 11.1 dá outro prazo.',

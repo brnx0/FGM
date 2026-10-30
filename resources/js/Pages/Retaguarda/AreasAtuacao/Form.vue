@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { nextTick } from 'vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import AvisoCamposObrigatorios from '../../../Components/AvisoCamposObrigatorios.vue';
 import CampoCadastro from '../../../Components/CampoCadastro.vue';
+import { focarPrimeiroErro } from '../../../Components/focarPrimeiroErro';
 import SecaoCadastro from '../../../Components/SecaoCadastro.vue';
 import { classeCampo } from '../../../Components/Retaguarda/listaEditavel';
 import RetaguardaLayout from '../../../Layouts/RetaguardaLayout.vue';
@@ -22,7 +23,7 @@ const form = useForm({ nome: salva?.nome ?? '' });
 const salvar = (): void => {
     const opcoes = {
         preserveScroll: true,
-        onError: () => nextTick(() => document.querySelector<HTMLElement>('#formulario-area [aria-invalid="true"]')?.focus()),
+        onError: () => focarPrimeiroErro('#formulario-area'),
     };
 
     if (editando) {
@@ -49,6 +50,8 @@ const salvar = (): void => {
         </div>
 
         <form id="formulario-area" novalidate class="flex flex-col gap-6" @submit.prevent="salvar">
+            <AvisoCamposObrigatorios />
+
             <SecaoCadastro id="secao-area-dados" :numero="1" titulo="Área de atuação">
                 <template #icone>
                     <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -88,7 +91,7 @@ const salvar = (): void => {
                     >
                         {{ form.processing ? 'Salvando…' : 'Salvar área de atuação' }}
                     </button>
-                    <p v-if="form.hasErrors" role="alert" class="text-[0.9375rem] font-semibold text-erro-texto">Confira os campos destacados acima.</p>
+                    <p v-if="form.hasErrors" role="alert" class="text-[0.9375rem] font-semibold text-invalido-texto">Confira os campos destacados acima.</p>
                 </div>
             </div>
         </form>

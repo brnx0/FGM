@@ -269,16 +269,65 @@ class EditalDaResposta
         $inicio = self::data($item['inicio'] ?? null);
         $fim = self::data($item['fim'] ?? null);
 
-        return match (true) {
-            $inicio === false => 'data de início impossível',
-            $fim === false => 'data de fim impossível',
-            $inicio !== null && $fim !== null && $fim < $inicio => 'fim antes do início',
-            default => [
-                'nome' => self::texto($item['nome'] ?? null, self::BYTES_NOME_CHAMADA) ?? 'Chamada '.($posicao + 1),
-                'inicio' => $inicio,
-                'fim' => $fim,
-            ],
+        if ($inicio === false) {
+            return 'data de início impossível';
+        }
+        if ($fim === false) {
+            return 'data de fim impossível';
+        }
+        if ($inicio !== null && $fim !== null && $fim < $inicio) {
+            return 'fim antes do início';
+        }
+
+        $nome = self::texto($item['nome'] ?? null, self::BYTES_NOME_CHAMADA) ?? 'Chamada '.($posicao + 1);
+        $validacao = $this->fase($item, 'validacao', 'validação', $nome);
+        $homologacao = $this->fase($item, 'homologacao', 'homologação', $nome);
+
+        return [
+            'nome' => $nome,
+            'inicio' => $inicio,
+            'fim' => $fim,
+            'validacao_inicio' => $validacao[0],
+            'validacao_fim' => $validacao[1],
+            'homologacao_inicio' => $homologacao[0],
+            'homologacao_fim' => $homologacao[1],
+        ];
+    }
+
+    /**
+     * Início e fim de uma fase da chamada. Fase inválida (data impossível, só uma das datas, fim antes do início)
+     * fica vazia, com ponto de atenção, sem descartar a chamada.
+     *
+     * @param  array<mixed>  $item
+     * @param  string  $prefixo  Prefixo das chaves no item: 'validacao' ou 'homologacao'.
+     * @param  string  $rotulo  Nome da fase na frase do aviso.
+     * @return array{0: string|null, 1: string|null}
+     */
+    private function fase(array $item, string $prefixo, string $rotulo, string $chamada): array
+    {
+        $inicio = self::data($item["{$prefixo}_inicio"] ?? null);
+        $fim = self::data($item["{$prefixo}_fim"] ?? null);
+        $inicial = "A chamada \"{$chamada}\" trouxe";
+
+        $motivo = match (true) {
+            $inicio === false || $fim === false => "{$inicial} uma data impossível na {$rotulo}",
+            $inicio !== null && $fim !== null && $fim < $inicio => "{$inicial} o fim da {$rotulo} antes do início",
+            ($inicio === null) !== ($fim === null) => sprintf(
+                '%s só uma das datas da %s (%s)',
+                $inicial,
+                $rotulo,
+                date('d/m/Y', strtotime((string) ($inicio ?? $fim))),
+            ),
+            default => null,
         };
+
+        if ($motivo === null) {
+            return [$inicio, $fim];
+        }
+
+        $this->avisar('inscricao', "{$motivo}; a fase ficou vazia.");
+
+        return [null, null];
     }
 
     /**

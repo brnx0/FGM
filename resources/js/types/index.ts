@@ -562,7 +562,7 @@ export interface RetaguardaEditaisIndexProps {
     situacoes: { valor: SituacaoEdital; rotulo: string }[];
     /** Provedor principal com modelo e chave na Integração com IA. "Importar com IA" aparece sempre; sem isso, o envio é recusado. */
     importacaoConfigurada: boolean;
-    /** Tamanho máximo do PDF da importação (Integração com IA). */
+    /** Tamanho máximo do PDF da importação, fixo no código (14 MB). */
     tamanhoMaximoPdfMb: number;
     importacoes: ImportacaoResumo[];
 }
@@ -641,6 +641,10 @@ export interface ChamadaFormulario {
     nome: string;
     inicio: string | null;
     fim: string | null;
+    validacao_inicio: string | null;
+    validacao_fim: string | null;
+    homologacao_inicio: string | null;
+    homologacao_fim: string | null;
 }
 
 export interface CategoriaItemFormulario {
@@ -716,6 +720,10 @@ export interface ChamadaEditavel extends ItemEditavel {
     nome: string;
     inicio: string;
     fim: string;
+    validacao_inicio: string;
+    validacao_fim: string;
+    homologacao_inicio: string;
+    homologacao_fim: string;
 }
 
 export interface CategoriaItemEditavel extends ItemEditavel {
@@ -1100,18 +1108,4 @@ export interface ProvedorIaRetaguarda {
 export interface RetaguardaIntegracaoIaProps {
     configuracao: { ativo: boolean; principal: ProvedorIa | null; redundancia: ProvedorIa | null };
     provedores: ProvedorIaRetaguarda[];
-    importacao: ImportacaoIaRetaguarda;
-}
-
-/** Parâmetros da importação de edital (cartão 3 da Integração com IA); nada da conexão. */
-export interface ImportacaoIaRetaguarda {
-    /** O prompt da equipe ou, sem ele, o prompt modelo. */
-    prompt: string;
-    promptModelo: string;
-    /** De 0 a 1. */
-    temperatura: number;
-    /** De 1 a 14. */
-    tamanhoMaximoMb: number;
-    /** Há provedor principal com modelo e chave: a importação pode ser usada. */
-    configurada: boolean;
 }
