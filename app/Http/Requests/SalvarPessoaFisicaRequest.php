@@ -73,8 +73,13 @@ class SalvarPessoaFisicaRequest extends FormRequest
             'identidade_genero' => ['required', Rule::enum(IdentidadeGenero::class)],
             'raca_cor' => ['required', Rule::enum(RacaCor::class)],
             'pcd' => ['boolean'],
-            'deficiencia' => ['nullable', 'required_if_accepted:pcd', Rule::enum(TipoDeficiencia::class)],
-            'deficiencia_outra' => ['nullable', 'required_if:deficiencia,outra', 'string', 'max:255', new TamanhoEmBytes(255)],
+            // Sem PcD o tipo e o "qual" nem são lidos: o controller os descarta.
+            'deficiencia' => $this->boolean('pcd')
+                ? ['required', Rule::enum(TipoDeficiencia::class)]
+                : ['nullable'],
+            'deficiencia_outra' => $this->boolean('pcd') && $this->input('deficiencia') === TipoDeficiencia::Outra->value
+                ? ['required', 'string', 'max:255', new TamanhoEmBytes(255)]
+                : ['nullable'],
             'escolaridade' => ['required', Rule::enum(Escolaridade::class)],
             'renda' => ['required', Rule::enum(FaixaDeRenda::class)],
             'povo_tradicional' => ['required', Rule::enum(PovoTradicional::class)],
@@ -107,8 +112,7 @@ class SalvarPessoaFisicaRequest extends FormRequest
             'in' => 'Selecione uma opção da lista.',
             Enum::class => 'Selecione uma opção da lista.',
             'boolean' => 'Valor inválido.',
-            'deficiencia.required_if_accepted' => 'Este campo é obrigatório.',
-            'deficiencia_outra.required_if' => 'Diga qual é a deficiência.',
+            'deficiencia_outra.required' => 'Diga qual é a deficiência.',
             'anos_atuacao.integer' => 'Informe um número inteiro.',
             'anos_atuacao.min' => 'Informe 0 ou mais.',
             'anos_atuacao.max' => 'Informe no máximo 100.',

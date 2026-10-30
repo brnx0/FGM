@@ -330,6 +330,38 @@ class CadastroTest extends TestCase
         $this->assertNull($cadastro->deficiencia_outra);
     }
 
+    public function test_deficiencia_outra_escondida_sem_pcd_nao_barra_o_salvamento(): void
+    {
+        Storage::fake('local');
+        $user = User::factory()->create(['email' => 'maria@example.com', 'phone' => '71998765432']);
+
+        $this->actingAs($user)->post('/cadastro', $this->dadosValidos([
+            'pcd' => 0, 'deficiencia' => 'outra', 'deficiencia_outra' => '',
+        ]))->assertSessionHasNoErrors();
+
+        $cadastro = $user->pessoaFisica()->sole();
+        $this->assertNull($cadastro->deficiencia);
+        $this->assertNull($cadastro->deficiencia_outra);
+    }
+
+    public function test_retrato_do_perfil_traz_os_campos_com_enums_como_valor(): void
+    {
+        $cadastro = PessoaFisica::factory()->create([
+            'identidade_genero' => IdentidadeGenero::MulherCis, 'escolaridade' => Escolaridade::MedioCompleto,
+            'pcd' => true, 'deficiencia' => TipoDeficiencia::Outra, 'deficiencia_outra' => 'Rara', 'anos_atuacao' => 7,
+        ]);
+
+        $retrato = $cadastro->fresh()->retratoDoPerfil();
+
+        $this->assertSame(PessoaFisica::CAMPOS_DO_PERFIL, array_keys($retrato));
+        $this->assertSame(IdentidadeGenero::MulherCis->value, $retrato['identidade_genero']);
+        $this->assertSame('medio_completo', $retrato['escolaridade']);
+        $this->assertSame('outra', $retrato['deficiencia']);
+        $this->assertSame('Rara', $retrato['deficiencia_outra']);
+        $this->assertTrue($retrato['pcd']);
+        $this->assertSame(7, $retrato['anos_atuacao']);
+    }
+
     public function test_anos_de_atuacao_inteiro_de_zero_a_cem(): void
     {
         Storage::fake('local');
