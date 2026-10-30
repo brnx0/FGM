@@ -113,7 +113,18 @@ obrigatórias sem resposta.
 
 ## Parte 3: Questionário na inscrição (portal)
 
-- Novo passo **Questionário** entre as escolhas e os documentos.
+- **A inscrição passa a ser sequencial**, em passos, e não mais uma página com rolagem (decisão do usuário): uma
+  seção por vez, e só avança quando a seção atual está preenchida por completo. Os passos são: **Escolhas** (cadastro,
+  categoria, cotas) → **uma etapa por seção do questionário** que tenha ao menos uma pergunta visível para aquele
+  proponente → **Documentos** → **Revisão e envio**. Um indicador mostra os passos, o atual e os concluídos.
+- "Completo" = todas as perguntas visíveis e obrigatórias da seção respondidas, limites respeitados, declarações
+  marcadas; nos Documentos, todos os obrigatórios anexados (as regras atuais de finalizar sobre a checagem por IA
+  continuam valendo no envio). O botão **Avançar** salva o passo no rascunho e só passa adiante se estiver completo;
+  se não, mostra os erros do passo.
+- Chamada minha: o proponente pode **voltar** a qualquer passo já concluído, e ao reabrir um rascunho continua do
+  primeiro passo incompleto. Se, ao voltar, ele trocar uma escolha ou resposta que mude o que vale depois, os passos
+  seguintes são conferidos de novo.
+- O passo **Questionário** de antes vira essas etapas por seção.
 - Mostra só as perguntas cujo vínculo inclui a categoria e a natureza da inscrição, e cuja condição por resposta está
   satisfeita (atualiza na hora, conforme o proponente responde).
 - As respostas ficam salvas no rascunho da inscrição; ao trocar as escolhas, respostas de perguntas que deixaram de
