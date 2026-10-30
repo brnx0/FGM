@@ -30,6 +30,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Support\RespostaDoQuestionario;
 use Tests\TestCase;
 use ZipArchive;
@@ -453,6 +454,30 @@ class ImportacaoQuestionarioTest extends TestCase
 
         $this->assertSame('2026-10-30 15:00:00', $concluida->refresh()->conferida_em->format('Y-m-d H:i:s'));
         $this->assertNull($comErro->refresh()->conferida_em);
+    }
+
+    public function test_tela_do_edital_traz_a_ultima_importacao_e_o_quadro_ate_conferir(): void
+    {
+        Http::fake([self::URL_ANALISE => self::respostaDoGemini($this->respostaDoQuestionario())]);
+        $this->importar($this->pdf());
+        $editar = '/retaguarda/editais/'.$this->edital->slug.'/edit';
+
+        $this->get($editar)->assertInertia(fn (Assert $pagina) => $pagina
+            ->where('importacaoQuestionario.situacao', 'concluida')
+            ->where('importacaoQuestionario.erro', null)
+            ->where('importacaoQuestionario.arquivoNome', 'espelho.pdf')
+            ->where('quadroQuestionario.confiabilidade.geral', 85)
+            ->where('quadroQuestionario.confiabilidade.blocos.0.rotulo', 'Questionário')
+            ->where('quadroQuestionario.atencao.0.blocoRotulo', 'Questionário')
+            ->where('quadroQuestionario.atencao.0.texto', 'A ficha técnica não virou pergunta.')
+            ->where('importacaoQuestionarioConfigurada', true)
+            ->has('tamanhoMaximoArquivoMb'));
+
+        $this->post("/retaguarda/editais/{$this->edital->slug}/questionario/importacao/conferida");
+
+        $this->get($editar)->assertInertia(fn (Assert $pagina) => $pagina
+            ->where('importacaoQuestionario.situacao', 'concluida')
+            ->where('quadroQuestionario', null));
     }
 
     public function test_proponente_nao_acessa(): void

@@ -24,10 +24,12 @@ use App\Models\EditalDocumento;
 use App\Models\EditalPergunta;
 use App\Models\EditalQuestionarioSecao;
 use App\Models\ImportacaoEdital;
+use App\Models\ImportacaoQuestionario;
 use App\Support\ArquivoArmazenado;
 use App\Support\Edital\SincronizadorDoEdital;
 use App\Support\Edital\SincronizadorDoQuestionario;
 use App\Support\EditalIa\EsquemaDaResposta;
+use App\Support\EditalIa\QuestionarioDaResposta;
 use App\Support\SlugUnico;
 use BackedEnum;
 use Illuminate\Database\Eloquent\Builder;
@@ -51,6 +53,8 @@ use Throwable;
 class EditalController extends Controller
 {
     private const string PASTA = 'editais';
+
+    private const string ROTULO_DO_QUESTIONARIO = 'Questionário';
 
     public function index(Request $request): Response
     {
@@ -117,6 +121,9 @@ class EditalController extends Controller
             'questionarioTravado' => false,
             'avisoQuestionarioTravado' => Edital::AVISO_QUESTIONARIO_TRAVADO,
             'importacao' => null,
+            'importacaoQuestionario' => null,
+            'quadroQuestionario' => null,
+            ...$this->dadosDaImportacaoDoQuestionario(),
             ...$this->opcoesDoFormulario(),
         ]);
     }
@@ -226,6 +233,9 @@ class EditalController extends Controller
             'questionarioTravado' => $edital->questionarioTravado(),
             'avisoQuestionarioTravado' => Edital::AVISO_QUESTIONARIO_TRAVADO,
             'importacao' => $this->importacaoNaoConferida($edital),
+            'importacaoQuestionario' => $this->ultimaImportacaoDoQuestionario($edital),
+            'quadroQuestionario' => $this->quadroDoQuestionario($edital),
+            ...$this->dadosDaImportacaoDoQuestionario(),
             ...$this->opcoesDoFormulario(),
         ]);
     }
@@ -425,6 +435,98 @@ class EditalController extends Controller
                 'itens' => $ponto['itens'] ?? [],
             ], $importacao->atencao ?? []),
             'conferida' => $importacao->conferida_em !== null,
+            'modelo' => $importacao->modelo,
+            'tokensTotal' => $importacao->tokens_total,
+            'importadaEm' => $importacao->updated_at->setTimezone(config('app.timezone'))->format('d/m/Y H:i'),
+        ];
+    }
+
+    /**
+     * Configuração da importação do questionário (provedor com modelo e chave; tamanho máximo do arquivo).
+     *
+     * @return array{importacaoQuestionarioConfigurada: bool, tamanhoMaximoArquivoMb: int}
+     */
+    private function dadosDaImportacaoDoQuestionario(): array
+    {
+        $configuracaoIa = ConfiguracaoIa::atual();
+
+        return [
+            'importacaoQuestionarioConfigurada' => $configuracaoIa->provedoresDaImportacao() !== [],
+            'tamanhoMaximoArquivoMb' => $configuracaoIa->tamanhoMaximoPdfMb(),
+        ];
+    }
+
+    /**
+     * A importação do questionário mais recente do edital, para a linha de situação da aba (sem as colunas CLOB).
+     *
+     * @return array{id: int, situacao: string, erro: ?string, arquivoNome: string, enviadaEm: string}|null
+     */
+    private function ultimaImportacaoDoQuestionario(Edital $edital): ?array
+    {
+        $importacao = ImportacaoQuestionario::query()
+            ->select(['id', 'situacao', 'erro', 'iniciada_em', 'arquivo_nome', 'created_at'])
+            ->where('edital_id', $edital->getKey())
+            ->latest('id')
+            ->first();
+
+        if ($importacao === null) {
+            return null;
+        }
+
+        return [
+            'id' => (int) $importacao->id,
+            'situacao' => $importacao->situacaoExibida()->value,
+            'erro' => $importacao->erroExibido(),
+            'arquivoNome' => $importacao->arquivo_nome,
+            'enviadaEm' => $importacao->created_at->setTimezone(config('app.timezone'))->format('d/m/Y H:i'),
+        ];
+    }
+
+    /**
+     * Quadro "Importado pela IA" da aba Questionário, enquanto a última importação concluída não foi conferida.
+     * Só essa importação tem as colunas CLOB lidas.
+     *
+     * @return array{
+     *     confiabilidade: array{geral: ?int, blocos: list<array{bloco: string, rotulo: string, nota: int, justificativa: string}>},
+     *     atencao: list<array{bloco: ?string, blocoRotulo: string, tipo: string, tipoRotulo: string, texto: string, itens: list<string>}>,
+     *     conferida: bool, modelo: string, tokensTotal: ?int, importadaEm: string
+     * }|null
+     */
+    private function quadroDoQuestionario(Edital $edital): ?array
+    {
+        $importacao = ImportacaoQuestionario::query()
+            ->select(['id', 'confiabilidade', 'atencao', 'conferida_em', 'modelo', 'tokens_total', 'updated_at'])
+            ->where('edital_id', $edital->getKey())
+            ->where('situacao', SituacaoImportacao::Concluida->value)
+            ->latest('id')
+            ->first();
+
+        if ($importacao === null || $importacao->conferida_em !== null) {
+            return null;
+        }
+
+        $bloco = QuestionarioDaResposta::BLOCO;
+        $nota = $importacao->confiabilidade['blocos'][$bloco] ?? null;
+
+        return [
+            'confiabilidade' => [
+                'geral' => $importacao->confiabilidade['geral'] ?? null,
+                'blocos' => $nota === null ? [] : [[
+                    'bloco' => $bloco,
+                    'rotulo' => self::ROTULO_DO_QUESTIONARIO,
+                    'nota' => (int) $nota['nota'],
+                    'justificativa' => (string) ($nota['justificativa'] ?? ''),
+                ]],
+            ],
+            'atencao' => array_map(fn (array $ponto): array => [
+                'bloco' => ($ponto['bloco'] ?? null) === $bloco ? $bloco : null,
+                'blocoRotulo' => ($ponto['bloco'] ?? null) === $bloco ? self::ROTULO_DO_QUESTIONARIO : 'Geral',
+                'tipo' => $ponto['tipo'],
+                'tipoRotulo' => EsquemaDaResposta::TIPOS_ATENCAO[$ponto['tipo']] ?? $ponto['tipo'],
+                'texto' => $ponto['texto'],
+                'itens' => $ponto['itens'] ?? [],
+            ], $importacao->atencao ?? []),
+            'conferida' => false,
             'modelo' => $importacao->modelo,
             'tokensTotal' => $importacao->tokens_total,
             'importadaEm' => $importacao->updated_at->setTimezone(config('app.timezone'))->format('d/m/Y H:i'),

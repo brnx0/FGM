@@ -12,6 +12,7 @@ import CriteriosEdital from '../../../Components/Retaguarda/Edital/CriteriosEdit
 import DocumentosEdital from '../../../Components/Retaguarda/Edital/DocumentosEdital.vue';
 import InformacoesEdital from '../../../Components/Retaguarda/Edital/InformacoesEdital.vue';
 import QuadroImportacao from '../../../Components/Retaguarda/Edital/QuadroImportacao.vue';
+import ImportarQuestionario from '../../../Components/Retaguarda/Edital/ImportarQuestionario.vue';
 import QuestionarioEdital from '../../../Components/Retaguarda/Edital/QuestionarioEdital.vue';
 import {
     OPCOES_SIM_NAO,
@@ -258,7 +259,9 @@ const abas = computed<AbaFormulario[]>(() => {
         ...(aba.id === 'questionario' ? { pendencias: semVinculoNoQuestionario } : {}),
     }));
 });
-const abaAtiva = ref<string>('identificacao');
+// "?aba=" abre o formulário numa aba (usado ao recarregar depois de importar o questionário).
+const abaDaUrl = new URLSearchParams(window.location.search).get('aba');
+const abaAtiva = ref<string>(DEFINICAO_ABAS.some((aba) => aba.id === abaDaUrl) ? (abaDaUrl as string) : 'identificacao');
 
 // Do quadro "Importado pela IA": abre a aba do bloco e leva o foco (e a rolagem) até ela.
 const irParaAba = async (aba: string): Promise<void> => {
@@ -881,8 +884,24 @@ const tituloDaPagina = editando ? salvo.titulo || 'Edital sem título' : 'Novo e
                             :travado="questionarioTravado"
                             :aviso-travado="avisoQuestionarioTravado"
                             :avisos="avisosDoQuestionario"
+                            :quadro="quadroQuestionario"
+                            :url-conferida="salvo ? `${BASE}/${salvo.slug}/questionario/importacao/conferida` : null"
                             @limpar-erros="limparErros"
-                        />
+                        >
+                            <template #importar>
+                                <ImportarQuestionario
+                                    :edital-slug="salvo?.slug ?? null"
+                                    :tem-categoria-salva="(salvo?.categorias.length ?? 0) > 0"
+                                    :tem-secoes="form.questionario.secoes.length > 0"
+                                    :travado="questionarioTravado"
+                                    :aviso-travado="avisoQuestionarioTravado"
+                                    :alteracoes-nao-salvas="form.isDirty"
+                                    :configurada="importacaoQuestionarioConfigurada"
+                                    :tamanho-maximo-mb="tamanhoMaximoArquivoMb"
+                                    :importacao="importacaoQuestionario"
+                                />
+                            </template>
+                        </QuestionarioEdital>
 
                         <div v-else-if="aba.id === 'avaliacao'" class="flex flex-col gap-8">
                             <div class="grid gap-x-6 gap-y-5 md:grid-cols-2">

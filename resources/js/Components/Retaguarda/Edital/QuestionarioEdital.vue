@@ -3,10 +3,11 @@ import { computed, nextTick, ref } from 'vue';
 import CampoCadastro from '../../CampoCadastro.vue';
 import ListaEditavel from './ListaEditavel.vue';
 import PerguntaDoQuestionario from './PerguntaDoQuestionario.vue';
+import QuadroImportacao from './QuadroImportacao.vue';
 import VincularEmLote from './VincularEmLote.vue';
 import { classeCampo, classeDica, classeTexto, novaChave } from '../listaEditavel';
 import { TIPO_PADRAO, perguntasEmOrdem, semVinculo } from '../questionario';
-import type { CategoriaEditavel, OpcaoFormulario, PerguntaEditavel, SecaoQuestionarioEditavel, VinculoEditavel } from '../../../types';
+import type { CategoriaEditavel, ImportacaoDoEdital, OpcaoFormulario, PerguntaEditavel, SecaoQuestionarioEditavel, VinculoEditavel } from '../../../types';
 
 /**
  * Aba Questionário do formulário do edital: seções com perguntas, vínculo (um a um e em lote) e condições.
@@ -25,6 +26,10 @@ const props = defineProps<{
     avisoTravado: string;
     /** Condições removidas pelo formulário (origem apagada, opção tirada), para anunciar; `id` único por aviso. */
     avisos: { id: number; texto: string }[];
+    /** Quadro "Importado pela IA" da última importação, enquanto não foi conferida. */
+    quadro: ImportacaoDoEdital | null;
+    /** POST que marca a importação como conferida; null enquanto o edital não foi salvo. */
+    urlConferida: string | null;
 }>();
 
 const emit = defineEmits<{ limparErros: [campos: string[]] }>();
@@ -101,6 +106,12 @@ const moverPergunta = (origem: SecaoQuestionarioEditavel, indice: number, chaveD
     void focarVisivel(`pergunta-${destino.chave}-${pergunta.chave}-cartao`, `secao-questionario-${destino.chave}-cartao`);
 };
 
+// O quadro já está na aba do questionário: "Ir para a aba" leva o foco à primeira seção.
+const irParaAsSecoes = (): void => {
+    const primeira = secoes.value[0];
+    if (primeira) void focarVisivel(`secao-questionario-${primeira.chave}-cartao`);
+};
+
 const aplicarEmLote = (chaves: string[], vinculo: VinculoEditavel): void => {
     const escolhidas = new Set(chaves);
     for (const pergunta of todas.value) {
@@ -125,6 +136,8 @@ const aplicarEmLote = (chaves: string[], vinculo: VinculoEditavel): void => {
             <p class="text-[0.9375rem] leading-[1.6] font-semibold">{{ avisoTravado }}</p>
         </div>
 
+        <QuadroImportacao v-if="quadro && urlConferida" :importacao="quadro" :url-conferida="urlConferida" :abas="['questionario']" @ir-para-aba="irParaAsSecoes" />
+
         <p v-if="erroGeral" id="questionario-erro" role="alert" class="rounded-[12px] bg-erro-fundo px-4 py-3 text-[0.9375rem] font-semibold text-invalido-texto">{{ erroGeral }}</p>
 
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
@@ -136,7 +149,6 @@ const aplicarEmLote = (chaves: string[], vinculo: VinculoEditavel): void => {
                 </template>
             </p>
             <div class="flex shrink-0 flex-col gap-3 sm:flex-row">
-                <!-- Lugar do botão "Importar com IA" do questionário. -->
                 <slot name="importar" />
                 <VincularEmLote
                     :secoes="secoes"

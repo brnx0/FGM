@@ -618,6 +618,16 @@ export interface ImportacaoDoEdital {
     importadaEm: string;
 }
 
+/** Última importação do questionário do edital (aba Questionário), sem o conteúdo analisado. */
+export interface ImportacaoDoQuestionario {
+    id: number;
+    situacao: 'analisando' | 'concluida' | 'erro';
+    erro: string | null;
+    arquivoNome: string;
+    /** dd/mm/aaaa hh:mm */
+    enviadaEm: string;
+}
+
 /** Opção de um campo de escolha (valor do enum e rótulo). */
 export interface OpcaoFormulario {
     valor: string;
@@ -927,6 +937,12 @@ export interface RetaguardaEditaisFormProps {
     tiposPergunta: OpcaoFormulario[];
     /** Importação por IA que gerou o edital, enquanto não foi conferida. */
     importacao: ImportacaoDoEdital | null;
+    /** Última importação do questionário por IA (a mais recente do edital). */
+    importacaoQuestionario: ImportacaoDoQuestionario | null;
+    /** Quadro "Importado pela IA" da aba Questionário, enquanto a última importação concluída não foi conferida. */
+    quadroQuestionario: ImportacaoDoEdital | null;
+    importacaoQuestionarioConfigurada: boolean;
+    tamanhoMaximoArquivoMb: number;
     naturezas: OpcaoFormulario[];
     etapas: OpcaoFormulario[];
     modalidadesCota: OpcaoFormulario[];
