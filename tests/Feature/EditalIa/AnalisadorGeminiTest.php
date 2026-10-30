@@ -72,6 +72,17 @@ class AnalisadorGeminiTest extends TestCase
             && $pedido['generationConfig'] === ['temperature' => 0.1, 'responseMimeType' => 'application/json', 'responseSchema' => self::ESQUEMA]);
     }
 
+    public function test_imagem_vai_com_o_tipo_dela(): void
+    {
+        Http::fake([self::URL_ANALISE => Http::response(self::corpo('{"aprovado": true}'))]);
+
+        app(AnalisadorGemini::class)->analisar('gemini-2.5-pro', self::CHAVE, 'jpg binário', 'Confira o documento.', 0.1, self::ESQUEMA, 'image/jpeg');
+
+        Http::assertSent(fn (Request $pedido): bool => $pedido['contents'][0]['parts'][0] === [
+            'inline_data' => ['mime_type' => 'image/jpeg', 'data' => base64_encode('jpg binário')],
+        ]);
+    }
+
     public function test_sem_pdf_o_pedido_do_gemini_so_leva_o_texto(): void
     {
         Http::fake([self::URL_ANALISE => Http::response(self::corpo('{"titulo": "Edital 007/2026"}'))]);

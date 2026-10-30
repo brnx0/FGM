@@ -27,12 +27,12 @@ abstract class AnalisadorPorHttp implements AnalisadorDeEdital
     abstract protected function provedor(): ProvedorIa;
 
     /**
-     * Corpo do pedido; sem a parte do arquivo quando o PDF é null e sem temperatura quando ela é null.
+     * Corpo do pedido; sem a parte do arquivo quando ele é null e sem temperatura quando ela é null.
      *
      * @param  array<string, mixed>  $esquema
      * @return array<string, mixed>
      */
-    abstract protected function corpo(string $modelo, ?string $pdfBinario, string $prompt, ?float $temperatura, array $esquema): array;
+    abstract protected function corpo(string $modelo, ?string $arquivoBinario, string $tipoDoArquivo, string $prompt, ?float $temperatura, array $esquema): array;
 
     /**
      * @param  array<string, mixed>  $corpo
@@ -50,15 +50,15 @@ abstract class AnalisadorPorHttp implements AnalisadorDeEdital
      */
     abstract protected function tokens(Response $resposta): array;
 
-    public function analisar(string $modelo, #[SensitiveParameter] string $chave, ?string $pdfBinario, string $prompt, float $temperatura, array $esquema): array
+    public function analisar(string $modelo, #[SensitiveParameter] string $chave, ?string $arquivoBinario, string $prompt, float $temperatura, array $esquema, string $tipoDoArquivo = 'application/pdf'): array
     {
-        $resposta = $this->chamar($modelo, $chave, $this->corpo($modelo, $pdfBinario, $prompt, $temperatura, $esquema));
+        $resposta = $this->chamar($modelo, $chave, $this->corpo($modelo, $arquivoBinario, $tipoDoArquivo, $prompt, $temperatura, $esquema));
 
         if ($resposta->failed() && $this->temperaturaRecusada($resposta)) {
-            $resposta = $this->chamar($modelo, $chave, $this->corpo($modelo, $pdfBinario, $prompt, null, $esquema));
+            $resposta = $this->chamar($modelo, $chave, $this->corpo($modelo, $arquivoBinario, $tipoDoArquivo, $prompt, null, $esquema));
         }
-        // Um PDF grande pesa três vezes (binário, base64 e o JSON do pedido): solta o que já não serve.
-        unset($pdfBinario);
+        // Um arquivo grande pesa três vezes (binário, base64 e o JSON do pedido): solta o que já não serve.
+        unset($arquivoBinario);
 
         if ($resposta->failed()) {
             $this->registrarFalha($resposta->status());

@@ -25,7 +25,7 @@ const envio = computed(() => {
     return { data, hora };
 });
 
-// O Inertia faz uma requisição comum por vez: a nova cancela a que ainda está em andamento (um envio de PDF, por exemplo)
+// O Inertia faz uma requisição comum por vez: a nova cancela a que ainda está em andamento (um envio de arquivo, por exemplo)
 // sem avisar. Enquanto houver uma, os controles que disparam outra ficam desabilitados. A consulta periódica usa
 // fetch e as requisições assíncronas não interrompem ninguém, então nenhuma das duas conta.
 const requisicoesEmAndamento = ref<number>(0);

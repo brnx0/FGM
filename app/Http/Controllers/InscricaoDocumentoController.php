@@ -28,7 +28,7 @@ use Throwable;
  */
 class InscricaoDocumentoController extends Controller
 {
-    public const string ERRO_ARQUIVO = 'Envie um PDF de até 10 MB.';
+    public const string ERRO_ARQUIVO = 'Envie um PDF ou uma imagem (JPG ou PNG) de até 10 MB.';
 
     public const string ERRO_OBRIGATORIO = 'Este documento é obrigatório: envie outro arquivo para trocá-lo.';
 
@@ -53,7 +53,7 @@ class InscricaoDocumentoController extends Controller
         }
 
         $arquivo = $request->validate([
-            'arquivo' => ['required', 'file', 'mimes:pdf', 'mimetypes:application/pdf', 'max:10240'],
+            'arquivo' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'mimetypes:'.implode(',', Inscricao::TIPOS_DE_ARQUIVO), 'max:10240'],
         ], array_fill_keys(
             ['arquivo.required', 'arquivo.file', 'arquivo.mimes', 'arquivo.mimetypes', 'arquivo.max', 'arquivo.uploaded'],
             self::ERRO_ARQUIVO,

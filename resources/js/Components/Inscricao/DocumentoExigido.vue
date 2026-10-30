@@ -17,9 +17,11 @@ const props = defineProps<{
     ocupado: boolean;
 }>();
 
-// Mesmo limite e mesma mensagem do servidor (InscricaoDocumentoController::ERRO_ARQUIVO).
+// Mesmos tipos, limite e mensagem do servidor (Inscricao::TIPOS_DE_ARQUIVO, InscricaoDocumentoController::ERRO_ARQUIVO).
 const TAMANHO_MAXIMO_MB = 10;
-const ERRO_ARQUIVO = `Envie um PDF de até ${TAMANHO_MAXIMO_MB} MB.`;
+const ERRO_ARQUIVO = `Envie um PDF ou uma imagem (JPG ou PNG) de até ${TAMANHO_MAXIMO_MB} MB.`;
+const TIPOS_ACEITOS = ['application/pdf', 'image/jpeg', 'image/png'];
+const EXTENSOES_ACEITAS = ['.pdf', '.jpg', '.jpeg', '.png'];
 // Mesma mensagem do servidor (InscricaoDocumentoController::NAO_CONFERIDO), caso o motivo venha vazio.
 const NAO_CONFERIDO = 'Não foi possível conferir o documento agora.';
 const ERRO_ENVIO_INTERROMPIDO = 'O envio foi interrompido; envie de novo.';
@@ -44,15 +46,16 @@ const focarCampo = (): void => {
     void nextTick(() => document.getElementById(idCampo)?.focus());
 };
 
-// O arquivo que não é PDF ou passa de 10 MB nem sai do navegador; o servidor confere de novo.
+// O arquivo que não é PDF nem imagem JPG ou PNG, ou passa de 10 MB, nem sai do navegador; o servidor confere de novo.
 const escolher = (arquivo: File | null): void => {
     formulario.clearErrors();
     if (arquivo === null) {
         return;
     }
 
-    const ehPdf = arquivo.type === 'application/pdf' || arquivo.name.toLowerCase().endsWith('.pdf');
-    if (!ehPdf || arquivo.size > TAMANHO_MAXIMO_MB * 1024 * 1024) {
+    const nome = arquivo.name.toLowerCase();
+    const aceito = TIPOS_ACEITOS.includes(arquivo.type) || EXTENSOES_ACEITAS.some((extensao) => nome.endsWith(extensao));
+    if (!aceito || arquivo.size > TAMANHO_MAXIMO_MB * 1024 * 1024) {
         formulario.setError('arquivo', ERRO_ARQUIVO);
         limparCampo();
         focarCampo();
@@ -188,8 +191,8 @@ const classeAcao = 'pressionavel inline-flex min-h-11 items-center gap-1.5 round
         >
             <CampoArquivo
                 :id="idCampo"
-                accept="application/pdf,.pdf"
-                :dica="aguardando ? 'Aguarde a ação em andamento terminar para enviar um arquivo' : `Só PDF, até ${TAMANHO_MAXIMO_MB} MB`"
+                :accept="[...TIPOS_ACEITOS, ...EXTENSOES_ACEITAS].join(',')"
+                :dica="aguardando ? 'Aguarde a ação em andamento terminar para enviar um arquivo' : `PDF ou imagem (JPG ou PNG), até ${TAMANHO_MAXIMO_MB} MB`"
                 :arquivo="null"
                 :enviado="documento.enviado !== null"
                 :descricao="descricao"

@@ -34,7 +34,12 @@ class InscricaoDocumentosTest extends TestCase
 
     private const string CONTEUDO_PDF = "%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n";
 
-    private const string ERRO_ARQUIVO = 'Envie um PDF de até 10 MB.';
+    /** Só o começo de cada imagem: é por ele que o tipo do arquivo é reconhecido. */
+    private const string CONTEUDO_JPG = "\xFF\xD8\xFF\xE0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00";
+
+    private const string CONTEUDO_PNG = "\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00";
+
+    private const string ERRO_ARQUIVO = 'Envie um PDF ou uma imagem (JPG ou PNG) de até 10 MB.';
 
     /** Lançador que só registra as conferências pedidas (a conferência em si é testada em ConferenciaDocumentoTest). */
     private LancadorDeConferencia $lancador;
@@ -72,7 +77,7 @@ class InscricaoDocumentosTest extends TestCase
         $exigido = $this->documentoExigido($edital, ChecagemDocumento::Rigorosa);
         $inscricao = $this->rascunho($edital, $user);
 
-        $this->actingAs($user)->post($this->urlDoDocumento($inscricao, $exigido), ['arquivo' => $this->pdf('rg.pdf')])
+        $this->actingAs($user)->post($this->urlDoDocumento($inscricao, $exigido), ['arquivo' => $this->arquivo('rg.pdf')])
             ->assertRedirect(route('portal.inscricoes.show', $inscricao))
             ->assertSessionHas('sucesso');
 
@@ -90,6 +95,33 @@ class InscricaoDocumentosTest extends TestCase
         $this->assertSame([[(int) $enviado->id, $enviado->execucao]], $this->lancador->chamadas);
     }
 
+    public function test_anexa_imagem_jpg_ou_png_e_lanca_a_conferencia(): void
+    {
+        $user = User::factory()->proponente()->create(['cpf' => self::CPF]);
+        $edital = $this->editalAberto();
+        $identidade = $this->documentoExigido($edital, ChecagemDocumento::Rigorosa);
+        $comprovante = $this->documentoExigido($edital, ChecagemDocumento::AceitaSemValidar);
+        $inscricao = $this->rascunho($edital, $user);
+
+        $this->actingAs($user);
+        $this->post($this->urlDoDocumento($inscricao, $identidade), ['arquivo' => $this->arquivo('rg.jpg', self::CONTEUDO_JPG)])
+            ->assertRedirect(route('portal.inscricoes.show', $inscricao))
+            ->assertSessionHas('sucesso');
+        $this->post($this->urlDoDocumento($inscricao, $comprovante), ['arquivo' => $this->arquivo('comprovante.png', self::CONTEUDO_PNG)])
+            ->assertRedirect(route('portal.inscricoes.show', $inscricao))
+            ->assertSessionHas('sucesso');
+
+        $jpg = InscricaoDocumento::query()->where('edital_documento_id', $identidade->id)->sole();
+        $png = InscricaoDocumento::query()->where('edital_documento_id', $comprovante->id)->sole();
+        $this->assertSame('rg.jpg', $jpg->arquivo_nome);
+        $this->assertSame(self::CONTEUDO_JPG, Storage::disk('local')->get($jpg->arquivo));
+        $this->assertSame('comprovante.png', $png->arquivo_nome);
+        $this->assertSame(self::CONTEUDO_PNG, Storage::disk('local')->get($png->arquivo));
+        $this->assertSame(SituacaoConferencia::Conferindo, $jpg->situacao);
+        $this->assertSame(SituacaoConferencia::Conferindo, $png->situacao);
+        $this->assertSame([[(int) $jpg->id, $jpg->execucao], [(int) $png->id, $png->execucao]], $this->lancador->chamadas);
+    }
+
     public function test_documento_sem_checagem_fica_enviado_sem_lancar(): void
     {
         $user = User::factory()->proponente()->create(['cpf' => self::CPF]);
@@ -97,7 +129,7 @@ class InscricaoDocumentosTest extends TestCase
         $exigido = $this->documentoExigido($edital, ChecagemDocumento::Nenhuma);
         $inscricao = $this->rascunho($edital, $user);
 
-        $this->actingAs($user)->post($this->urlDoDocumento($inscricao, $exigido), ['arquivo' => $this->pdf('rg.pdf')])
+        $this->actingAs($user)->post($this->urlDoDocumento($inscricao, $exigido), ['arquivo' => $this->arquivo('rg.pdf')])
             ->assertRedirect(route('portal.inscricoes.show', $inscricao));
 
         $enviado = InscricaoDocumento::sole();
@@ -127,7 +159,7 @@ class InscricaoDocumentosTest extends TestCase
             'conferido_em' => now(),
         ]);
 
-        $this->actingAs($user)->post($this->urlDoDocumento($inscricao, $exigido), ['arquivo' => $this->pdf('novo.pdf', self::CONTEUDO_PDF."%novo\n")])
+        $this->actingAs($user)->post($this->urlDoDocumento($inscricao, $exigido), ['arquivo' => $this->arquivo('novo.pdf', self::CONTEUDO_PDF."%novo\n")])
             ->assertRedirect(route('portal.inscricoes.show', $inscricao));
 
         $enviado = InscricaoDocumento::sole();
@@ -147,7 +179,7 @@ class InscricaoDocumentosTest extends TestCase
         $this->assertSame([[(int) $enviado->id, $enviado->execucao]], $this->lancador->chamadas);
     }
 
-    public function test_arquivo_que_nao_e_pdf_ou_acima_de_10mb_e_recusado(): void
+    public function test_arquivo_que_nao_e_pdf_nem_imagem_jpg_ou_png_ou_acima_de_10mb_e_recusado(): void
     {
         $user = User::factory()->proponente()->create(['cpf' => self::CPF]);
         $edital = $this->editalAberto();
@@ -159,9 +191,9 @@ class InscricaoDocumentosTest extends TestCase
         $this->actingAs($user);
 
         $this->post($url, [])->assertSessionHasErrors(['arquivo' => self::ERRO_ARQUIVO]);
-        $this->post($url, ['arquivo' => $this->pdf('rg.pdf', 'isto não é um pdf')])->assertSessionHasErrors(['arquivo' => self::ERRO_ARQUIVO]);
-        $this->post($url, ['arquivo' => $this->pdf('rg.png', "\x89PNG\r\n\x1a\n")])->assertSessionHasErrors(['arquivo' => self::ERRO_ARQUIVO]);
-        $this->post($url, ['arquivo' => $this->pdf('rg.pdf', $acimaDoLimite)])->assertSessionHasErrors(['arquivo' => self::ERRO_ARQUIVO]);
+        $this->post($url, ['arquivo' => $this->arquivo('rg.pdf', 'isto não é um pdf')])->assertSessionHasErrors(['arquivo' => self::ERRO_ARQUIVO]);
+        $this->post($url, ['arquivo' => $this->arquivo('rg.gif', "GIF89a\x01\x00\x01\x00\x00\x00\x00")])->assertSessionHasErrors(['arquivo' => self::ERRO_ARQUIVO]);
+        $this->post($url, ['arquivo' => $this->arquivo('rg.pdf', $acimaDoLimite)])->assertSessionHasErrors(['arquivo' => self::ERRO_ARQUIVO]);
 
         $this->assertSame(0, InscricaoDocumento::count());
         $this->assertSame([], Storage::disk('local')->allFiles());
@@ -183,11 +215,11 @@ class InscricaoDocumentosTest extends TestCase
         foreach ([$deOutraCategoria->id, $deOutroEdital->id, 999999] as $id) {
             $url = "/portal/inscricoes/{$inscricao->id}/documentos/{$id}";
 
-            $this->post($url, ['arquivo' => $this->pdf('rg.pdf')])->assertNotFound();
+            $this->post($url, ['arquivo' => $this->arquivo('rg.pdf')])->assertNotFound();
             $this->delete($url)->assertNotFound();
             $this->get("{$url}/arquivo")->assertNotFound();
         }
-        $this->post("/portal/inscricoes/{$inscricao->id}/documentos/abc", ['arquivo' => $this->pdf('rg.pdf')])->assertNotFound();
+        $this->post("/portal/inscricoes/{$inscricao->id}/documentos/abc", ['arquivo' => $this->arquivo('rg.pdf')])->assertNotFound();
 
         $this->assertSame(0, InscricaoDocumento::count());
         $this->assertSame([], Storage::disk('local')->allFiles());
@@ -265,7 +297,7 @@ class InscricaoDocumentosTest extends TestCase
         $url = $this->urlDoDocumento($inscricao, $exigido);
 
         $this->actingAs($outro);
-        $this->post($url, ['arquivo' => $this->pdf('rg.pdf')])->assertNotFound();
+        $this->post($url, ['arquivo' => $this->arquivo('rg.pdf')])->assertNotFound();
         $this->delete($url)->assertNotFound();
 
         $this->assertSame(['inscricoes/rg.pdf'], Storage::disk('local')->allFiles());
@@ -284,7 +316,7 @@ class InscricaoDocumentosTest extends TestCase
         $url = $this->urlDoDocumento($inscricao, $exigido);
 
         $this->actingAs($user);
-        $this->post($url, ['arquivo' => $this->pdf('novo.pdf')])
+        $this->post($url, ['arquivo' => $this->arquivo('novo.pdf')])
             ->assertRedirect(route('portal.inscricoes.show', $inscricao))
             ->assertSessionHas('erro', InscricaoController::ERRO_REABRIR);
         $this->delete($url)
@@ -307,7 +339,7 @@ class InscricaoDocumentosTest extends TestCase
         $url = $this->urlDoDocumento($inscricao, $exigido);
 
         $this->actingAs($user);
-        $this->post($url, ['arquivo' => $this->pdf('novo.pdf')])
+        $this->post($url, ['arquivo' => $this->arquivo('novo.pdf')])
             ->assertRedirect(route('portal.editais'))
             ->assertSessionHas('aviso', PortalController::AVISO_INSCRICOES_FECHADAS);
         $this->delete($url)
@@ -327,7 +359,7 @@ class InscricaoDocumentosTest extends TestCase
         $inscricao = $this->rascunho($edital, $user);
         $this->lancador->falha = new RuntimeException('sh: php: not found com segredo-da-chave');
 
-        $this->actingAs($user)->post($this->urlDoDocumento($inscricao, $exigido), ['arquivo' => $this->pdf('rg.pdf')])
+        $this->actingAs($user)->post($this->urlDoDocumento($inscricao, $exigido), ['arquivo' => $this->arquivo('rg.pdf')])
             ->assertRedirect(route('portal.inscricoes.show', $inscricao))
             ->assertSessionHas('erro', InscricaoDocumentoController::ERRO_AO_INICIAR);
 
@@ -351,7 +383,7 @@ class InscricaoDocumentosTest extends TestCase
             && str_ends_with($processo->command, '> /dev/null 2>&1 &'));
     }
 
-    private function pdf(string $nome, string $conteudo = self::CONTEUDO_PDF): UploadedFile
+    private function arquivo(string $nome, string $conteudo = self::CONTEUDO_PDF): UploadedFile
     {
         $caminho = tempnam(sys_get_temp_dir(), 'upl');
         file_put_contents($caminho, $conteudo);

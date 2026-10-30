@@ -20,13 +20,13 @@ class AnalisadorGemini extends AnalisadorPorHttp
         return ProvedorIa::Gemini;
     }
 
-    protected function corpo(string $modelo, ?string $pdfBinario, string $prompt, ?float $temperatura, array $esquema): array
+    protected function corpo(string $modelo, ?string $arquivoBinario, string $tipoDoArquivo, string $prompt, ?float $temperatura, array $esquema): array
     {
         return [
             'contents' => [[
                 'parts' => [
-                    ...($pdfBinario === null ? [] : [
-                        ['inline_data' => ['mime_type' => 'application/pdf', 'data' => base64_encode($pdfBinario)]],
+                    ...($arquivoBinario === null ? [] : [
+                        ['inline_data' => ['mime_type' => $tipoDoArquivo, 'data' => base64_encode($arquivoBinario)]],
                     ]),
                     ['text' => $prompt],
                 ],
