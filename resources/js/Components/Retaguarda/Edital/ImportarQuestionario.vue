@@ -154,7 +154,11 @@ const consultar = async (): Promise<void> => {
 
         atual.value = { ...importacao, situacao: situacao.situacao, erro: situacao.erro };
         concluidaAgora.value = situacao.situacao === 'concluida';
-        if (concluidaAgora.value) emit('concluida');
+        if (concluidaAgora.value) {
+            emit('concluida');
+            // Sem nada pendente no formulário, já mostra o questionário importado; com alterações, espera a pessoa decidir.
+            if (!props.alteracoesNaoSalvas) recarregarNoQuestionario();
+        }
     } catch {
         // Sem conexão: tenta de novo na próxima rodada.
     }
@@ -179,10 +183,14 @@ watch(
 onBeforeUnmount(pararConsulta);
 
 // Recarrega a página já na aba Questionário (?aba=), com o formulário refeito a partir do que o servidor gravou.
+const recarregarNoQuestionario = (): void => {
+    router.visit(`${window.location.pathname}?aba=questionario`, { preserveState: false, preserveScroll: true });
+};
+
 const verQuestionario = (): void => {
     if (props.alteracoesNaoSalvas && !window.confirm('Há alterações não salvas neste formulário. Ao recarregar, elas serão perdidas. Continuar?')) return;
 
-    router.visit(`${window.location.pathname}?aba=questionario`, { preserveState: false, preserveScroll: true });
+    recarregarNoQuestionario();
 };
 </script>
 
@@ -205,10 +213,12 @@ const verQuestionario = (): void => {
 
         <div ref="areaDeSituacao" tabindex="-1" role="status" class="flex flex-col items-start gap-1 text-[0.8125rem] leading-[1.5] outline-offset-4">
             <template v-if="atual">
-                <p v-if="analisando" class="text-tinta-suave">Analisando “{{ atual.arquivoNome }}”, enviado em {{ atual.enviadaEm }}. Você pode continuar usando o sistema.</p>
-                <p v-if="analisando && consultaInterrompida" class="font-semibold text-aviso-texto">Não foi possível acompanhar a análise. Recarregue a página para ver a situação.</p>
+                <template v-if="analisando">
+                    <p class="text-tinta-suave">Analisando “{{ atual.arquivoNome }}”, enviado em {{ atual.enviadaEm }}. Você pode continuar usando o sistema.</p>
+                    <p v-if="consultaInterrompida" class="font-semibold text-aviso-texto">Não foi possível acompanhar a análise. Recarregue a página para ver a situação.</p>
+                </template>
                 <template v-else-if="atual.situacao === 'concluida'">
-                    <p v-if="concluidaAgora" class="font-semibold text-texto-verde">Questionário importado. Recarregue para ver e editar.</p>
+                    <p v-if="concluidaAgora" class="font-semibold text-texto-verde">Questionário importado. Como há alterações não salvas, ele aparece quando você recarregar.</p>
                     <p v-else class="text-tinta-suave">Última importação: “{{ atual.arquivoNome }}”, concluída (enviada em {{ atual.enviadaEm }}).</p>
                     <button
                         v-if="concluidaAgora"
