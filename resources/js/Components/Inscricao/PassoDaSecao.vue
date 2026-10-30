@@ -24,10 +24,12 @@ const props = defineProps<{
 const idFormulario = `formulario-secao-${props.secao.id}`;
 
 // Sim/não sem resposta começa em "Não" (o interruptor desligado), e é isso que vale para as condições na tela.
+// Número gravado ("123.456") volta com vírgula decimal ("123,456"): sem isso, reenviar a seção o leria como milhar.
 const respostaInicial = (pergunta: PerguntaDaInscricao): RespostaEditavel => {
     const salva = props.respostas[pergunta.id];
+    const texto = salva?.texto ?? '';
     return {
-        texto: salva?.texto ?? '',
+        texto: pergunta.tipo === 'numero' ? texto.replace('.', ',') : texto,
         opcoes: salva?.opcoes.length ? [...salva.opcoes] : pergunta.tipo === 'sim_nao' ? [CHAVE_NAO] : [],
         outro: salva?.outro ?? '',
     };
