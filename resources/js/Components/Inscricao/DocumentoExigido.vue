@@ -140,6 +140,13 @@ const estado = computed<Estado | null>(() => {
         };
     }
 
+    // Enviado sem conferência (a validação por IA estava desligada no envio) que agora a IA confere: a pessoa pede.
+    if (atual.situacao === 'enviado' && checagem !== 'nenhuma') {
+        return checagem === 'rigorosa'
+            ? { tom: 'aviso', texto: 'Ainda não conferido. Peça a conferência para poder finalizar.', reconferivel: props.podeEditar }
+            : { tom: 'ok', texto: 'Recebido', reconferivel: props.podeEditar };
+    }
+
     switch (atual.situacao) {
         case 'conferindo':
             return { tom: 'andamento', texto: 'Conferindo…', reconferivel: false };
@@ -251,7 +258,7 @@ const classeAcao = 'pressionavel inline-flex min-h-11 items-center gap-1.5 round
         </div>
         <div v-if="estado?.reconferivel" class="flex">
             <button type="button" :disabled="reconferindo || ocupado" :class="classeAcao" @click="conferirDeNovo">
-                {{ reconferindo ? 'Pedindo…' : 'Conferir de novo' }}<span class="sr-only"> {{ documento.nome }}</span>
+                {{ reconferindo ? 'Pedindo…' : situacao?.situacao === 'enviado' ? 'Conferir' : 'Conferir de novo' }}<span class="sr-only"> {{ documento.nome }}</span>
             </button>
         </div>
     </article>

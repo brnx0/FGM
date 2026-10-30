@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\ChecagemDocumento;
 use App\Enums\SituacaoConferencia;
 use App\Enums\SituacaoInscricao;
+use App\Models\ConfiguracaoIa;
 use App\Models\EditalDocumento;
 use App\Models\Inscricao;
 use App\Models\InscricaoDocumento;
@@ -62,16 +63,17 @@ class InscricaoDocumentoController extends Controller
         $caminho = ArquivoArmazenado::guardar($arquivo, Inscricao::DISCO, Inscricao::PASTA.'/'.$inscricao->id);
         $nome = mb_strcut($arquivo->getClientOriginalName(), 0, 255, 'UTF-8');
         $substituido = null;
+        $validacaoLigada = ConfiguracaoIa::validacaoLigada();
 
         try {
-            $enviado = DB::transaction(function () use ($inscricao, $documento, $caminho, $nome, &$substituido): InscricaoDocumento {
+            $enviado = DB::transaction(function () use ($inscricao, $documento, $caminho, $nome, $validacaoLigada, &$substituido): InscricaoDocumento {
                 $travada = $this->travarInscricao($inscricao);
                 $this->exigirEditavel($travada);
                 $this->exigirDocumento($travada, $documento);
 
                 $enviado = $travada->documentos()->firstOrNew(['edital_documento_id' => $documento->id]);
                 $substituido = $enviado->arquivo;
-                $enviado->fill($this->atributosDoEnvio($documento, $caminho, $nome))->save();
+                $enviado->fill($this->atributosDoEnvio($documento, $caminho, $nome, $validacaoLigada))->save();
 
                 return $enviado;
             });
@@ -120,7 +122,8 @@ class InscricaoDocumentoController extends Controller
 
     /**
      * "Conferir de novo": só o documento reprovado ou não conferido (inclusive o conferindo parado) ganha uma execução
-     * nova; em "Não validar" ele só volta a ser enviado, sem chamar a IA.
+     * nova; em "Não validar" ele só volta a ser enviado, sem chamar a IA. "Conferir": o enviado sem conferência (a
+     * validação por IA estava desligada no envio) que agora a IA confere também ganha uma execução.
      */
     public function conferir(Inscricao $inscricao, EditalDocumento $documento, LancadorDeConferencia $lancador): RedirectResponse
     {
@@ -131,18 +134,22 @@ class InscricaoDocumentoController extends Controller
             return $recusa;
         }
 
-        $reiniciado = DB::transaction(function () use ($inscricao, $documento): ?InscricaoDocumento {
+        $validacaoLigada = ConfiguracaoIa::validacaoLigada();
+        $reiniciado = DB::transaction(function () use ($inscricao, $documento, $validacaoLigada): ?InscricaoDocumento {
             $travada = $this->travarInscricao($inscricao);
             $this->exigirEditavel($travada);
 
             $enviado = $travada->documentos()->where('edital_documento_id', $documento->id)->lockForUpdate()->first();
 
-            if (! in_array($enviado?->situacaoExibida(), [SituacaoConferencia::Reprovado, SituacaoConferencia::NaoConferido], true)) {
+            // A equipe pode ter posto o documento em "Não validar" (ou desligado a validação por IA) depois do envio: nada vai para a IA.
+            $confere = $documento->checagemNaInscricao($validacaoLigada) !== ChecagemDocumento::Nenhuma;
+            $situacao = $enviado?->situacaoExibida();
+            $falhou = in_array($situacao, [SituacaoConferencia::Reprovado, SituacaoConferencia::NaoConferido], true);
+            if (! $falhou && ! ($confere && $situacao === SituacaoConferencia::Enviado)) {
                 return null;
             }
 
-            // A equipe pode ter posto o documento em "Não validar" depois do envio: nada vai para a IA.
-            $enviado->fill($this->atributosDaConferencia($documento->checagem !== ChecagemDocumento::Nenhuma))->save();
+            $enviado->fill($this->atributosDaConferencia($confere))->save();
 
             return $enviado;
         });
@@ -179,12 +186,12 @@ class InscricaoDocumentoController extends Controller
      *
      * @return array<string, mixed>
      */
-    private function atributosDoEnvio(EditalDocumento $documento, string $caminho, string $nome): array
+    private function atributosDoEnvio(EditalDocumento $documento, string $caminho, string $nome, bool $validacaoLigada): array
     {
         return [
             'arquivo' => $caminho,
             'arquivo_nome' => $nome,
-            ...$this->atributosDaConferencia($documento->checagem !== ChecagemDocumento::Nenhuma),
+            ...$this->atributosDaConferencia($documento->checagemNaInscricao($validacaoLigada) !== ChecagemDocumento::Nenhuma),
         ];
     }
 

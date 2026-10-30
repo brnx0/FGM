@@ -119,7 +119,8 @@ class Inscricao extends Model
     /**
      * O que impede de finalizar, na ordem dos documentos do edital: obrigatório sem arquivo, documento ainda sendo
      * conferido (a conferência parada há mais de 5 minutos já conta como não conferida) e documento em "Rigorosa"
-     * (obrigatório ou opcional anexado) que não foi aprovado. Reprovado ou não conferido em "Aceita sem validar" não impede.
+     * (obrigatório ou opcional anexado) que não foi aprovado. Reprovado ou não conferido em "Aceita sem validar" não impede,
+     * nem "Rigorosa" com a validação por IA desligada (o documento segue como enviado).
      *
      * @return list<string>
      */
@@ -127,6 +128,7 @@ class Inscricao extends Model
     {
         $enviados = $this->documentos()->get()->keyBy(fn (InscricaoDocumento $enviado): int => (int) $enviado->edital_documento_id);
         $pendencias = [];
+        $validacaoLigada = ConfiguracaoIa::validacaoLigada();
 
         foreach ($this->documentosExigidos() as $exigido) {
             $situacao = $enviados->get((int) $exigido->id)?->situacaoExibida($agora);
@@ -137,7 +139,7 @@ class Inscricao extends Model
                 }
             } elseif ($situacao === SituacaoConferencia::Conferindo) {
                 $pendencias[] = "Aguarde a conferência de \"{$exigido->nome}\".";
-            } elseif ($exigido->checagem === ChecagemDocumento::Rigorosa && $situacao !== SituacaoConferencia::Aprovado) {
+            } elseif ($exigido->checagemNaInscricao($validacaoLigada) === ChecagemDocumento::Rigorosa && $situacao !== SituacaoConferencia::Aprovado) {
                 $pendencias[] = "\"{$exigido->nome}\" precisa ser aprovado na conferência.";
             }
         }

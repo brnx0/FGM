@@ -40,6 +40,12 @@ class EditalDocumento extends Model
         ];
     }
 
+    /** Como o documento é conferido na inscrição: com a validação por IA desligada, nenhum vai para a IA. */
+    public function checagemNaInscricao(bool $validacaoLigada): ChecagemDocumento
+    {
+        return $validacaoLigada ? $this->checagem : ChecagemDocumento::Nenhuma;
+    }
+
     /** @return BelongsTo<Edital, $this> */
     public function edital(): BelongsTo
     {

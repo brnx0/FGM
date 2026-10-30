@@ -8,6 +8,7 @@ use App\Enums\SituacaoInscricao;
 use App\Http\Controllers\InscricaoController;
 use App\Http\Controllers\InscricaoDocumentoController;
 use App\Http\Controllers\PortalController;
+use App\Models\ConfiguracaoIa;
 use App\Models\Edital;
 use App\Models\EditalChamada;
 use App\Models\EditalDocumento;
@@ -37,6 +38,9 @@ class FinalizarInscricaoTest extends TestCase
 
         $this->travelTo(Carbon::parse('2026-11-10 10:00', 'America/Bahia'));
 
+        // Validação por IA ligada (a chave da Integração com IA); os testes com ela desligada a desligam.
+        ConfiguracaoIa::factory()->create();
+
         $this->user = User::factory()->proponente()->create(['cpf' => self::CPF]);
         $this->edital = $this->editalAberto();
         $this->inscricao = $this->rascunho($this->edital, $this->user);
@@ -58,6 +62,19 @@ class FinalizarInscricaoTest extends TestCase
         $this->assertSame(SituacaoInscricao::Finalizada, $finalizada->situacao);
         $this->assertTrue(now()->equalTo($finalizada->finalizada_em));
         $this->assertSame('2026'.str_pad((string) $finalizada->id, 6, '0', STR_PAD_LEFT), $finalizada->numero);
+    }
+
+    public function test_rigoroso_nao_aprovado_nao_impede_finalizar_com_a_validacao_por_ia_desligada(): void
+    {
+        ConfiguracaoIa::query()->update(['ativo' => false]);
+        $rg = $this->documentoExigido('RG', ChecagemDocumento::Rigorosa);
+        $this->enviar($rg, SituacaoConferencia::Enviado);
+
+        $this->actingAs($this->user)->post(route('portal.inscricoes.finalizar', $this->inscricao))
+            ->assertRedirect(route('portal.inscricoes.show', $this->inscricao))
+            ->assertSessionHas('sucesso');
+
+        $this->assertSame(SituacaoInscricao::Finalizada, $this->inscricao->fresh()->situacao);
     }
 
     public function test_nao_finaliza_com_obrigatorio_faltando(): void

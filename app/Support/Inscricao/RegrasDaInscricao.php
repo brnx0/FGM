@@ -4,12 +4,14 @@ namespace App\Support\Inscricao;
 
 use App\Enums\ModalidadeCota;
 use App\Enums\NaturezaProponente;
+use App\Enums\SituacaoEdital;
 use App\Models\Edital;
 use App\Models\EditalCategoria;
 use App\Models\EditalChamada;
 use App\Models\Inscricao;
 use App\Models\Organizacao;
 use App\Models\User;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 
 /**
@@ -109,17 +111,21 @@ final class RegrasDaInscricao
     }
 
     /**
-     * Chamada em que a inscrição fica: a da categoria; sem categoria ou sem chamada nela, a única do edital.
+     * Chamada em que a inscrição fica: a da categoria; sem categoria ou sem chamada nela ("Todas as chamadas"), a única
+     * do edital ou, com várias, a que está aberta agora. Sem nenhuma aberta, null: a inscrição fica fora do período.
      */
-    public static function chamada(Edital $edital, ?EditalCategoria $categoria): ?EditalChamada
+    public static function chamada(Edital $edital, ?EditalCategoria $categoria, ?CarbonInterface $agora = null): ?EditalChamada
     {
         if ($categoria?->edital_chamada_id !== null) {
             return $edital->chamadas()->whereKey($categoria->edital_chamada_id)->first();
         }
 
         $chamadas = $edital->chamadas()->get();
+        if ($chamadas->count() === 1) {
+            return $chamadas->first();
+        }
 
-        return $chamadas->count() === 1 ? $chamadas->first() : null;
+        return $chamadas->first(fn (EditalChamada $chamada): bool => $chamada->situacao($agora) === SituacaoEdital::Aberto);
     }
 
     /**

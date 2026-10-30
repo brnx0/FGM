@@ -18,7 +18,7 @@ use Illuminate\Support\Collection;
 final class PropsDaInscricao
 {
     /**
-     * @return array{slug: string, titulo: string, categoria: string, periodo: string, pdf: ?string}
+     * @return array{slug: string, titulo: string, categoria: string, periodo: ?string, pdf: ?string}
      */
     public static function edital(Edital $edital): array
     {
@@ -26,7 +26,10 @@ final class PropsDaInscricao
             'slug' => $edital->slug,
             'titulo' => $edital->titulo,
             'categoria' => $edital->categoria,
-            'periodo' => $edital->inscricoes_inicio->format('d/m/Y').' a '.$edital->inscricoes_fim->format('d/m/Y'),
+            // Sem chamadas com datas (a equipe pode tê-las apagado num edital publicado), o edital fica sem período.
+            'periodo' => $edital->inscricoes_inicio && $edital->inscricoes_fim
+                ? $edital->inscricoes_inicio->format('d/m/Y').' a '.$edital->inscricoes_fim->format('d/m/Y')
+                : null,
             'pdf' => $edital->pdfUrl(),
         ];
     }

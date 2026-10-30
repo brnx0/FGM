@@ -226,10 +226,10 @@ class ConferenciaDocumentoTest extends TestCase
         $this->assertStringNotContainsString('Detalhe', $resposta->getContent());
     }
 
-    public function test_sem_configuracao_de_ia_fica_nao_conferido(): void
+    public function test_sem_provedor_configurado_fica_nao_conferido(): void
     {
         Http::fake();
-        ConfiguracaoIa::query()->delete();
+        ConfiguracaoIa::query()->update(['provedor_principal' => null]);
         $documento = $this->documentoConferindo();
 
         $this->assertSame(1, $this->conferir($documento));
@@ -303,7 +303,8 @@ class ConferenciaDocumentoTest extends TestCase
         $url = route('portal.inscricoes.documentos.conferir', [$this->inscricao, $this->exigido]);
         $this->actingAs($this->user);
 
-        foreach ([SituacaoConferencia::Enviado, SituacaoConferencia::Conferindo, SituacaoConferencia::Aprovado] as $situacao) {
+        // O enviado sem conferência também pode ser conferido quando a IA confere o documento (ver o teste da chave ligada depois).
+        foreach ([SituacaoConferencia::Conferindo, SituacaoConferencia::Aprovado] as $situacao) {
             $documento = $this->documentoConferindo(['situacao' => $situacao]);
 
             $this->post($url)
@@ -365,6 +366,25 @@ class ConferenciaDocumentoTest extends TestCase
         }
 
         $this->assertCount(2, $this->lancador->chamadas);
+    }
+
+    public function test_enviado_com_a_validacao_desligada_pode_ser_conferido_depois_de_ligada(): void
+    {
+        Http::fake([self::URL_OPENAI => self::respostaDaOpenAi(['aprovado' => true, 'motivo' => 'Ok.'])]);
+        ConfiguracaoIa::query()->update(['ativo' => false]);
+        $this->actingAs($this->user)->post(route('portal.inscricoes.documentos.store', [$this->inscricao, $this->exigido]), ['arquivo' => $this->pdf()]);
+        $documento = InscricaoDocumento::sole();
+        $this->assertSame(SituacaoConferencia::Enviado, $documento->situacao);
+
+        ConfiguracaoIa::query()->update(['ativo' => true]);
+        $this->assertSame(["\"{$this->exigido->nome}\" precisa ser aprovado na conferência."], $this->inscricao->fresh()->pendenciasParaFinalizar());
+
+        $this->post(route('portal.inscricoes.documentos.conferir', [$this->inscricao, $this->exigido]))
+            ->assertRedirect(route('portal.inscricoes.show', $this->inscricao))
+            ->assertSessionHas('sucesso');
+
+        $this->assertSame(SituacaoConferencia::Aprovado, $documento->refresh()->situacao);
+        $this->assertSame([], $this->inscricao->fresh()->pendenciasParaFinalizar());
     }
 
     public function test_conferir_de_novo_segue_as_regras_de_anexar(): void
@@ -451,6 +471,20 @@ class ConferenciaDocumentoTest extends TestCase
         $aprovado = $this->documentoConferindo(['situacao' => SituacaoConferencia::Aprovado]);
         $this->post($url)->assertSessionHas('aviso', InscricaoDocumentoController::AVISO_CONFERIR_DE_NOVO);
         $this->assertSame(SituacaoConferencia::Aprovado, $aprovado->fresh()->situacao);
+        Http::assertNothingSent();
+    }
+
+    public function test_comando_nao_chama_a_ia_quando_a_validacao_por_ia_foi_desligada(): void
+    {
+        Http::fake();
+        $documento = $this->documentoConferindo();
+        ConfiguracaoIa::query()->update(['ativo' => false]);
+
+        $this->assertSame(0, $this->conferir($documento));
+
+        $documento->refresh();
+        $this->assertSame(SituacaoConferencia::Enviado, $documento->situacao);
+        $this->assertNull($documento->execucao);
         Http::assertNothingSent();
     }
 

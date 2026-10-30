@@ -231,7 +231,7 @@ const classeSecundario = `${classeBotao} border border-tinta-suave/70 bg-superfi
                 </h1>
                 <p class="max-w-2xl text-base leading-[1.7] text-white/85 md:text-[1.0625rem]">
                     <strong class="font-semibold text-white">{{ edital.titulo }}</strong> · {{ edital.categoria }}<br />
-                    Inscrições de {{ edital.periodo }}.<br />
+                    <template v-if="edital.periodo">Inscrições de {{ edital.periodo }}.<br /></template>
                     {{ inscricao.situacaoRotulo }}<template v-if="inscricao.numero"> · nº {{ inscricao.numero }}</template>
                 </p>
             </div>

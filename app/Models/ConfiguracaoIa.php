@@ -63,6 +63,12 @@ class ConfiguracaoIa extends Model
         return self::query()->orderBy('id')->first() ?? new self;
     }
 
+    /** A conferência dos documentos da inscrição pela IA, que segue a chave "Ativar validação por IA" da tela. */
+    public static function validacaoLigada(): bool
+    {
+        return self::atual()->ativo;
+    }
+
     /**
      * Provedores que a importação de edital usa, na ordem: o principal e, se houver, a redundância. Só entra o que tem
      * modelo e chave legível (a que não decifra vale como sem chave, como na tela). Sem o principal, a lista fica vazia.

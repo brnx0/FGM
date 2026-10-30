@@ -6,6 +6,7 @@ use App\Enums\ModalidadeCota;
 use App\Enums\SituacaoConferencia;
 use App\Enums\SituacaoInscricao;
 use App\Http\Requests\SalvarInscricaoRequest;
+use App\Models\ConfiguracaoIa;
 use App\Models\Edital;
 use App\Models\EditalDocumento;
 use App\Models\Inscricao;
@@ -64,6 +65,7 @@ class InscricaoController extends Controller
         $inscricao->load(['organizacao', 'categoria', 'chamada']);
         $enviados = $inscricao->documentos()->get()
             ->keyBy(fn (InscricaoDocumento $enviado): int => (int) $enviado->edital_documento_id);
+        $validacaoLigada = ConfiguracaoIa::validacaoLigada();
 
         return Inertia::render('Portal/InscricaoDocumentos', [
             'edital' => PropsDaInscricao::edital($edital),
@@ -93,7 +95,7 @@ class InscricaoController extends Controller
                     'obrigatorio' => $documento->obrigatorio,
                     'modeloUrl' => filled($documento->modelo) ? route('editais.documentos.modelo', [$edital, $documento]) : null,
                     'modeloNome' => $documento->modelo_nome,
-                    'checagem' => $documento->checagem->value,
+                    'checagem' => $documento->checagemNaInscricao($validacaoLigada)->value,
                     'enviado' => $this->arquivoEnviado($inscricao, $documento, $enviados->get((int) $documento->id)),
                 ])
                 ->all(),

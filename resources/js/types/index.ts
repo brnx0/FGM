@@ -486,7 +486,8 @@ export interface InscricaoResumo {
 
 /** Tela de inscrição num edital aberto (PortalController@inscricao). */
 export interface PortalInscricaoProps extends OpcoesDaInscricao {
-    edital: Pick<EditalPortal, 'slug' | 'titulo' | 'categoria' | 'periodo' | 'pdf'>;
+    /** `periodo` nulo quando o edital ficou sem chamadas com datas. */
+    edital: Pick<EditalPortal, 'slug' | 'titulo' | 'categoria' | 'pdf'> & { periodo: string | null };
     inscricoes: InscricaoResumo[];
 }
 
@@ -526,7 +527,8 @@ export interface DocumentoDaInscricao {
 
 /** Tela da inscrição com a lista de documentos (InscricaoController@show). */
 export interface PortalInscricaoDocumentosProps extends OpcoesDaInscricao {
-    edital: Pick<EditalPortal, 'slug' | 'titulo' | 'categoria' | 'periodo' | 'pdf'>;
+    /** `periodo` nulo quando o edital ficou sem chamadas com datas. */
+    edital: Pick<EditalPortal, 'slug' | 'titulo' | 'categoria' | 'pdf'> & { periodo: string | null };
     inscricao: InscricaoResumo & {
         /** Valor de CadastroDaInscricao.chave do cadastro da inscrição. */
         cadastroChave: string;

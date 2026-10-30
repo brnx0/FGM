@@ -8,6 +8,7 @@ use App\Enums\NaturezaProponente;
 use App\Enums\SituacaoInscricao;
 use App\Http\Controllers\InscricaoController;
 use App\Http\Controllers\PortalController;
+use App\Models\ConfiguracaoIa;
 use App\Models\Edital;
 use App\Models\EditalCategoria;
 use App\Models\EditalChamada;
@@ -39,6 +40,9 @@ class InscricaoTest extends TestCase
         parent::setUp();
 
         $this->travelTo(Carbon::parse('2026-11-10 10:00', 'America/Bahia'));
+
+        // Validação por IA ligada (a chave da Integração com IA); os testes com ela desligada a desligam.
+        ConfiguracaoIa::factory()->create();
     }
 
     public function test_cria_rascunho_com_as_escolhas(): void
@@ -68,6 +72,34 @@ class InscricaoTest extends TestCase
         $this->assertSame([ModalidadeCota::Negros, ModalidadeCota::Pcd], $inscricao->cotas->all());
         $this->assertSame(SituacaoInscricao::Rascunho, $inscricao->situacao);
         $this->assertNull($inscricao->numero);
+    }
+
+    public function test_categoria_em_todas_as_chamadas_inscreve_na_chamada_aberta(): void
+    {
+        $user = User::factory()->proponente()->create(['cpf' => self::CPF]);
+        $edital = $this->editalAberto();
+        $aberta = $edital->chamadas()->sole();
+        // Uma chamada encerrada antes da aberta e outra depois: vale a aberta, não a primeira.
+        EditalChamada::factory()->for($edital)->create(['inicio' => '2026-10-01', 'fim' => '2026-10-15', 'ordem' => 0]);
+        EditalChamada::factory()->for($edital)->create(['inicio' => '2026-12-01', 'fim' => '2026-12-15', 'ordem' => 2]);
+        $categoria = EditalCategoria::factory()->for($edital)->create(['edital_chamada_id' => null]);
+
+        $this->actingAs($user)->post('/portal/editais/pnab/inscricoes', ['cadastro' => 'pessoa_fisica', 'categoria' => $categoria->id])
+            ->assertRedirect(route('portal.inscricoes.show', Inscricao::sole()));
+
+        $this->assertSame((int) $aberta->id, (int) Inscricao::sole()->edital_chamada_id);
+    }
+
+    public function test_inscricao_de_edital_sem_datas_abre_sem_o_periodo(): void
+    {
+        $user = User::factory()->proponente()->create(['cpf' => self::CPF]);
+        $edital = $this->editalAberto();
+        $inscricao = $this->rascunho($edital, $user);
+        $edital->update(['inscricoes_inicio' => null, 'inscricoes_fim' => null]);
+
+        $this->actingAs($user)->get(route('portal.inscricoes.show', $inscricao))
+            ->assertOk()
+            ->assertInertia(fn (Assert $p) => $p->component('Portal/InscricaoDocumentos')->where('edital.periodo', null));
     }
 
     public function test_pessoa_fisica_se_inscreve_sem_categoria_nem_cota_quando_o_edital_nao_tem(): void

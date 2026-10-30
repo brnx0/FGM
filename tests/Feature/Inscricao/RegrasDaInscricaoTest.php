@@ -96,6 +96,15 @@ class RegrasDaInscricaoTest extends TestCase
         $categoria = EditalCategoria::factory()->for($edital)->create(['edital_chamada_id' => $segunda->id]);
 
         $this->assertTrue($segunda->is(RegrasDaInscricao::chamada($edital, $categoria)));
+    }
+
+    public function test_sem_chamada_na_categoria_e_nenhuma_chamada_aberta_fica_sem_chamada(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-12-20 10:00', 'America/Bahia'));
+        $edital = Edital::factory()->create();
+        EditalChamada::factory()->for($edital)->create(['inicio' => '2026-11-01', 'fim' => '2026-11-15', 'ordem' => 1]);
+        EditalChamada::factory()->for($edital)->create(['inicio' => '2026-12-01', 'fim' => '2026-12-15', 'ordem' => 2]);
+
         $this->assertNull(RegrasDaInscricao::chamada($edital, null));
     }
 

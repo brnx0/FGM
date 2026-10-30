@@ -9,6 +9,7 @@ use App\Enums\SituacaoInscricao;
 use App\Http\Controllers\InscricaoController;
 use App\Http\Controllers\InscricaoDocumentoController;
 use App\Http\Controllers\PortalController;
+use App\Models\ConfiguracaoIa;
 use App\Models\Edital;
 use App\Models\EditalCategoria;
 use App\Models\EditalChamada;
@@ -23,6 +24,7 @@ use Illuminate\Process\PendingProcess;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
+use Inertia\Testing\AssertableInertia as Assert;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -50,6 +52,9 @@ class InscricaoDocumentosTest extends TestCase
 
         Storage::fake('local');
         $this->travelTo(Carbon::parse('2026-11-10 10:00', 'America/Bahia'));
+
+        // Validação por IA ligada (a chave da Integração com IA); os testes com ela desligada a desligam.
+        ConfiguracaoIa::factory()->create();
 
         $this->lancador = new class extends LancadorDeConferencia
         {
@@ -120,6 +125,26 @@ class InscricaoDocumentosTest extends TestCase
         $this->assertSame(SituacaoConferencia::Conferindo, $jpg->situacao);
         $this->assertSame(SituacaoConferencia::Conferindo, $png->situacao);
         $this->assertSame([[(int) $jpg->id, $jpg->execucao], [(int) $png->id, $png->execucao]], $this->lancador->chamadas);
+    }
+
+    public function test_com_a_validacao_por_ia_desligada_o_documento_fica_enviado_sem_lancar(): void
+    {
+        ConfiguracaoIa::query()->update(['ativo' => false]);
+        $user = User::factory()->proponente()->create(['cpf' => self::CPF]);
+        $edital = $this->editalAberto();
+        $exigido = $this->documentoExigido($edital, ChecagemDocumento::Rigorosa);
+        $inscricao = $this->rascunho($edital, $user);
+
+        $this->actingAs($user)->post($this->urlDoDocumento($inscricao, $exigido), ['arquivo' => $this->arquivo('rg.pdf')])
+            ->assertRedirect(route('portal.inscricoes.show', $inscricao));
+
+        $enviado = InscricaoDocumento::sole();
+        $this->assertSame(SituacaoConferencia::Enviado, $enviado->situacao);
+        $this->assertNull($enviado->execucao);
+        $this->assertSame([], $this->lancador->chamadas);
+        // A tela trata o documento como "Não validar" enquanto a chave estiver desligada.
+        $this->get(route('portal.inscricoes.show', $inscricao))
+            ->assertInertia(fn (Assert $p) => $p->where('documentos.0.checagem', ChecagemDocumento::Nenhuma->value));
     }
 
     public function test_documento_sem_checagem_fica_enviado_sem_lancar(): void

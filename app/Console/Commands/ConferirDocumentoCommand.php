@@ -80,8 +80,9 @@ class ConferirDocumentoCommand extends Command
             return self::FAILURE;
         }
 
-        // A equipe pode ter posto o documento em "Não validar" depois do lançamento: o arquivo não sai do servidor.
-        if ($documento->documento?->checagem === ChecagemDocumento::Nenhuma) {
+        // A equipe pode ter posto o documento em "Não validar" (ou desligado a validação por IA) depois do lançamento: o
+        // arquivo não sai do servidor.
+        if ($documento->documento?->checagemNaInscricao(ConfiguracaoIa::validacaoLigada()) === ChecagemDocumento::Nenhuma) {
             return $this->dispensar();
         }
 
