@@ -25,6 +25,26 @@ const envio = computed(() => {
     return { data, hora };
 });
 
+// O Inertia faz uma requisição comum por vez: a nova cancela a que ainda está em andamento (um envio de PDF, por exemplo)
+// sem avisar. Enquanto houver uma, os controles que disparam outra ficam desabilitados. A consulta periódica usa
+// fetch e as requisições assíncronas não interrompem ninguém, então nenhuma das duas conta.
+const requisicoesEmAndamento = ref<number>(0);
+const ocupado = computed<boolean>(() => requisicoesEmAndamento.value > 0);
+const pararDeOuvirInicio = router.on('start', (evento) => {
+    if (!evento.detail.visit.async) {
+        requisicoesEmAndamento.value += 1;
+    }
+});
+const pararDeOuvirFim = router.on('finish', (evento) => {
+    if (!evento.detail.visit.async) {
+        requisicoesEmAndamento.value = Math.max(0, requisicoesEmAndamento.value - 1);
+    }
+});
+onBeforeUnmount(() => {
+    pararDeOuvirInicio();
+    pararDeOuvirFim();
+});
+
 // Escolhas do rascunho.
 const formulario = useForm<{ cadastro: string; categoria: number | null; cotas: string[] }>({
     cadastro: props.inscricao.cadastroChave,
@@ -245,7 +265,7 @@ const classeSecundario = `${classeBotao} border border-tinta-suave/70 bg-superfi
                         @limpar-erro="(campo) => formulario.clearErrors(campo)"
                     />
                     <div class="flex">
-                        <button type="submit" :disabled="formulario.processing || !formulario.isDirty" :class="classePrimario">
+                        <button type="submit" :disabled="formulario.processing || !formulario.isDirty || ocupado" :class="classePrimario">
                             {{ formulario.processing ? 'Salvando…' : 'Salvar escolhas' }}
                         </button>
                     </div>
@@ -281,6 +301,7 @@ const classeSecundario = `${classeBotao} border border-tinta-suave/70 bg-superfi
                             :inscricao-id="inscricao.id"
                             :situacao="situacoes[documento.id] ?? null"
                             :pode-editar="podeEditar"
+                            :ocupado="ocupado"
                         />
                     </li>
                 </ul>
@@ -330,7 +351,7 @@ const classeSecundario = `${classeBotao} border border-tinta-suave/70 bg-superfi
                     <div class="flex">
                         <button
                             type="button"
-                            :disabled="!podeFinalizar || finalizando"
+                            :disabled="!podeFinalizar || finalizando || ocupado"
                             :aria-describedby="pendencias.length > 0 ? 'pendencias-finalizar' : undefined"
                             :class="classePrimario"
                             @click="finalizar"
@@ -368,7 +389,7 @@ const classeSecundario = `${classeBotao} border border-tinta-suave/70 bg-superfi
                 </button>
                 <button
                     type="button"
-                    :disabled="reabrindo"
+                    :disabled="reabrindo || ocupado"
                     class="pressionavel inline-flex min-h-11 items-center justify-center rounded-pill bg-acao px-5 text-[0.8125rem] font-bold tracking-[0.12em] text-sobre-acao uppercase hover:bg-acao-escuro disabled:cursor-wait disabled:opacity-70"
                     @click="reabrir"
                 >

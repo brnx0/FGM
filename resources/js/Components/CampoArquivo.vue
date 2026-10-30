@@ -13,6 +13,8 @@ const props = defineProps<{
     /** aria-describedby vindo do CampoCadastro (a mensagem de erro). */
     descricao?: string;
     invalido?: boolean;
+    /** Campo travado: não escolhe nem recebe arquivo arrastado. */
+    desabilitado?: boolean;
 }>();
 
 const emit = defineEmits<{ escolher: [arquivo: File | null] }>();
@@ -64,6 +66,7 @@ const tamanho = (bytes: number): string =>
 
 const estiloCaixa = computed(() => {
     if (props.invalido) return 'border-erro-texto bg-superficie';
+    if (props.desabilitado) return `border-tinta-suave/70 bg-superficie opacity-60${props.arquivo || props.enviado ? '' : ' border-dashed'}`;
     if (arrastando.value) return 'border-dashed border-acao bg-nevoa';
     if (props.arquivo || props.enviado) return 'border-tinta-suave/70 bg-superficie hover:border-acao';
     return 'border-dashed border-tinta-suave/70 bg-superficie hover:border-acao hover:bg-nevoa';
@@ -85,8 +88,9 @@ const estiloCaixa = computed(() => {
                 type="file"
                 :accept="accept"
                 :required="obrigatorio"
+                :disabled="desabilitado"
                 title=""
-                class="absolute inset-0 size-full cursor-pointer opacity-0"
+                class="absolute inset-0 size-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
                 :aria-invalid="invalido || undefined"
                 :aria-describedby="descricaoCompleta"
                 @change="escolher"

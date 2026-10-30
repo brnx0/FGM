@@ -13,12 +13,15 @@ const props = defineProps<{
     situacao: SituacaoDoDocumento | null;
     /** Rascunho no período: só então dá para enviar, trocar, remover e conferir de novo. */
     podeEditar: boolean;
+    /** Outra requisição da tela em andamento: enquanto durar, nada aqui dispara uma nova (ela cancelaria a primeira). */
+    ocupado: boolean;
 }>();
 
 // Mesmo limite e mesma mensagem do servidor (InscricaoDocumentoController::ERRO_ARQUIVO).
 const TAMANHO_MAXIMO_MB = 10;
 const ERRO_ARQUIVO = `Envie um PDF de até ${TAMANHO_MAXIMO_MB} MB.`;
 const NAO_CONFERIDO_AGORA = 'Não foi possível conferir agora; a equipe vai conferir.';
+const ERRO_ENVIO_INTERROMPIDO = 'O envio foi interrompido; envie de novo.';
 
 type Tom = 'andamento' | 'ok' | 'erro' | 'aviso';
 
@@ -59,10 +62,15 @@ const escolher = (arquivo: File | null): void => {
     formulario.post(urlDoDocumento, {
         forceFormData: true,
         preserveScroll: true,
-        onError: focarCampo,
+        // Outra visita (sair da tela, por exemplo) cancela o envio em andamento; a pessoa precisa saber que o arquivo não foi.
+        onCancel: () => formulario.setError('arquivo', ERRO_ENVIO_INTERROMPIDO),
+        // O foco só volta ao campo no fim: durante a requisição ele fica desabilitado.
         onFinish: () => {
             formulario.reset('arquivo');
             limparCampo();
+            if (formulario.hasErrors) {
+                focarCampo();
+            }
         },
     });
 };
@@ -141,6 +149,9 @@ const classeDoEstado: Record<Tom, string> = {
     aviso: 'rounded-[12px] border border-aviso-texto/40 bg-aviso-fundo px-4 py-3 text-aviso-texto',
 };
 
+// O campo que está enviando já mostra "Enviando…"; nos outros, a dica explica por que estão travados.
+const aguardando = computed<boolean>(() => props.ocupado && !formulario.processing);
+
 const classeAcao = 'pressionavel inline-flex min-h-11 items-center gap-1.5 rounded-pill px-3 text-[0.8125rem] font-bold text-acao hover:bg-nevoa disabled:cursor-wait disabled:opacity-70';
 </script>
 
@@ -173,11 +184,12 @@ const classeAcao = 'pressionavel inline-flex min-h-11 items-center gap-1.5 round
             <CampoArquivo
                 :id="idCampo"
                 accept="application/pdf,.pdf"
-                :dica="`Só PDF, até ${TAMANHO_MAXIMO_MB} MB`"
+                :dica="aguardando ? 'Aguarde a ação em andamento terminar para enviar um arquivo' : `Só PDF, até ${TAMANHO_MAXIMO_MB} MB`"
                 :arquivo="null"
                 :enviado="documento.enviado !== null"
                 :descricao="descricao"
                 :invalido="invalido"
+                :desabilitado="ocupado"
                 @escolher="escolher"
             />
         </CampoCadastro>
@@ -195,6 +207,7 @@ const classeAcao = 'pressionavel inline-flex min-h-11 items-center gap-1.5 round
                 :pergunta="`Remover o arquivo de “${documento.nome}”?`"
                 aviso="O arquivo será apagado da sua inscrição."
                 acao-em-andamento="Removendo…"
+                :desabilitado="ocupado"
             />
         </div>
         <p v-else class="text-[0.875rem] text-tinta-suave">Nenhum arquivo enviado.</p>
@@ -229,7 +242,7 @@ const classeAcao = 'pressionavel inline-flex min-h-11 items-center gap-1.5 round
             </p>
         </div>
         <div v-if="estado?.reconferivel" class="flex">
-            <button type="button" :disabled="reconferindo" :class="classeAcao" @click="conferirDeNovo">
+            <button type="button" :disabled="reconferindo || ocupado" :class="classeAcao" @click="conferirDeNovo">
                 {{ reconferindo ? 'Pedindo…' : 'Conferir de novo' }}<span class="sr-only"> {{ documento.nome }}</span>
             </button>
         </div>
